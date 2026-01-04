@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "categories",
+  "info": {
+    "singularName": "categorie",
+    "pluralName": "categories",
+    "displayName": "Catégorie",
+    "description": "Catégories de recettes"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "nom": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "nom",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "recettes": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::recette.recette",
+      "inversedBy": "categories"
+    }
+  }
+}
+

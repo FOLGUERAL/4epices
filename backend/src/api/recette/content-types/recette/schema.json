@@ -1,0 +1,95 @@
+{
+  "kind": "collectionType",
+  "collectionName": "recettes",
+  "info": {
+    "singularName": "recette",
+    "pluralName": "recettes",
+    "displayName": "Recette",
+    "description": "Recettes culinaires pour 4épices"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "titre": {
+      "type": "string",
+      "required": true,
+      "maxLength": 255
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "titre",
+      "required": true
+    },
+    "description": {
+      "type": "text",
+      "required": true
+    },
+    "imagePrincipale": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": ["images"]
+    },
+    "tempsPreparation": {
+      "type": "integer",
+      "required": false
+    },
+    "tempsCuisson": {
+      "type": "integer",
+      "required": false
+    },
+    "nombrePersonnes": {
+      "type": "integer",
+      "required": false,
+      "default": 4
+    },
+    "difficulte": {
+      "type": "enumeration",
+      "enum": ["facile", "moyen", "difficile"],
+      "default": "facile"
+    },
+    "ingredients": {
+      "type": "json",
+      "required": true
+    },
+    "etapes": {
+      "type": "richtext",
+      "required": true
+    },
+    "categories": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::categorie.categorie",
+      "mappedBy": "recettes"
+    },
+    "tags": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::tag.tag",
+      "mappedBy": "recettes"
+    },
+    "datePublication": {
+      "type": "datetime",
+      "required": false
+    },
+    "pinterestPinId": {
+      "type": "string",
+      "required": false
+    },
+    "pinterestAutoPublish": {
+      "type": "boolean",
+      "default": false
+    },
+    "metaTitle": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "metaDescription": {
+      "type": "text",
+      "maxLength": 160
+    }
+  }
+}
+
