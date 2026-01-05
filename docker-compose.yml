@@ -42,7 +42,7 @@ services:
     container_name: 4epices_frontend
     restart: unless-stopped
     env_file:
-      - ./frontend/.env
+      - ./frontend/.env.production
     ports:
       - "3000:3000"
     depends_on:
