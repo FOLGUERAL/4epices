@@ -16,14 +16,11 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-4xl font-bold text-gray-900">4épices</h1>
-          <p className="text-gray-600 mt-2">Recettes culinaires délicieuses</p>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">4épices</h1>
+          <p className="text-gray-600 text-lg">Recettes culinaires délicieuses</p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {recettes?.map((recette) => {
             const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url

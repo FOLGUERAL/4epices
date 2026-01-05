@@ -146,6 +146,61 @@ export async function getCategories(): Promise<StrapiResponse<Categorie[]>> {
   return fetchAPI<Categorie[]>('/categories?populate=*');
 }
 
+export async function getCategorieBySlug(slug: string): Promise<StrapiResponse<Categorie | null>> {
+  const queryParams = new URLSearchParams();
+  queryParams.append('filters[slug][$eq]', slug);
+  queryParams.append('populate', '*');
+  
+  const response = await fetchAPI<Categorie[]>(`/categories?${queryParams.toString()}`);
+  
+  return {
+    data: response.data?.[0] || null,
+    meta: response.meta,
+  };
+}
+
+export async function getRecettesByCategory(
+  categorySlug: string,
+  params?: {
+    page?: number;
+    pageSize?: number;
+  }
+): Promise<StrapiResponse<Recette[]>> {
+  const queryParams = new URLSearchParams();
+  
+  if (params?.page) queryParams.append('pagination[page]', params.page.toString());
+  if (params?.pageSize) queryParams.append('pagination[pageSize]', params.pageSize.toString());
+  
+  queryParams.append('filters[categories][slug][$eq]', categorySlug);
+  queryParams.append('populate', 'imagePrincipale,categories,tags');
+  queryParams.append('sort', 'publishedAt:desc');
+
+  return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+}
+
+export async function getRecettesSimilaires(
+  recetteId: number,
+  categoryIds: number[],
+  limit: number = 4
+): Promise<StrapiResponse<Recette[]>> {
+  if (categoryIds.length === 0) {
+    return { data: [] };
+  }
+
+  const queryParams = new URLSearchParams();
+  queryParams.append('filters[id][$ne]', recetteId.toString());
+  
+  // Utiliser la première catégorie pour trouver des recettes similaires
+  // On pourrait améliorer avec $or pour plusieurs catégories, mais cela fonctionne bien
+  queryParams.append('filters[categories][id][$eq]', categoryIds[0].toString());
+  
+  queryParams.append('populate', 'imagePrincipale,categories');
+  queryParams.append('pagination[pageSize]', limit.toString());
+  queryParams.append('sort', 'publishedAt:desc');
+
+  return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+}
+
 export function getStrapiMediaUrl(url: string): string {
   if (url.startsWith('http')) {
     return url;
