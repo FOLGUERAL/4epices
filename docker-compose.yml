@@ -41,8 +41,9 @@ services:
       dockerfile: Dockerfile
     container_name: 4epices_frontend
     restart: unless-stopped
-    env_file:
-      - ./frontend/.env
+    environment:
+      - NEXT_PUBLIC_STRAPI_URL=${NEXT_PUBLIC_STRAPI_URL:-http://backend:1337}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     ports:
       - "3000:3000"
     depends_on:
