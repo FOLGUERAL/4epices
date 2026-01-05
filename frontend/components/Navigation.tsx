@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { getCategories, Categorie } from '@/lib/strapi';
+import SearchBar from './SearchBar';
 
 export default async function Navigation() {
   let categories: Categorie[] = [];
@@ -13,22 +15,31 @@ export default async function Navigation() {
   return (
     <nav className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link href="/" className="text-2xl font-bold text-gray-900 hover:text-gray-700 transition-colors">
-            4épices
+        <div className="flex justify-between items-center h-16 gap-4">
+          <Link href="/" className="flex items-center h-16 hover:opacity-80 transition-opacity">
+            <Image
+              src="/logo.png"
+              alt="4épices"
+              width={120}
+              height={40}
+              className="h-10 w-auto object-contain"
+              priority
+            />
           </Link>
+          
+          <SearchBar />
           
           <div className="flex items-center gap-6">
             <Link 
               href="/" 
-              className="text-gray-700 hover:text-gray-900 font-medium transition-colors"
+              className="text-gray-700 hover:text-gray-900 font-medium transition-colors whitespace-nowrap"
             >
               Accueil
             </Link>
             
             {categories.length > 0 && (
               <div className="relative group">
-                <button className="text-gray-700 hover:text-gray-900 font-medium transition-colors flex items-center gap-1">
+                <button className="text-gray-700 hover:text-gray-900 font-medium transition-colors flex items-center gap-1 whitespace-nowrap">
                   Catégories
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

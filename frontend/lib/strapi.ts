@@ -116,6 +116,7 @@ export async function getRecettes(params?: {
   page?: number;
   pageSize?: number;
   populate?: string;
+  sort?: string;
 }): Promise<StrapiResponse<Recette[]>> {
   const queryParams = new URLSearchParams();
   
@@ -124,7 +125,7 @@ export async function getRecettes(params?: {
   
   const populate = params?.populate || 'imagePrincipale,categories,tags';
   queryParams.append('populate', populate);
-  queryParams.append('sort', 'publishedAt:desc');
+  queryParams.append('sort', params?.sort || 'publishedAt:desc');
 
   return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
 }
@@ -178,6 +179,50 @@ export async function getRecettesByCategory(
   return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
 }
 
+export interface Tag {
+  id: number;
+  attributes: {
+    nom: string;
+    slug: string;
+  };
+}
+
+export async function getTags(): Promise<StrapiResponse<Tag[]>> {
+  return fetchAPI<Tag[]>('/tags?populate=*');
+}
+
+export async function getTagBySlug(slug: string): Promise<StrapiResponse<Tag | null>> {
+  const queryParams = new URLSearchParams();
+  queryParams.append('filters[slug][$eq]', slug);
+  queryParams.append('populate', '*');
+  
+  const response = await fetchAPI<Tag[]>(`/tags?${queryParams.toString()}`);
+  
+  return {
+    data: response.data?.[0] || null,
+    meta: response.meta,
+  };
+}
+
+export async function getRecettesByTag(
+  tagSlug: string,
+  params?: {
+    page?: number;
+    pageSize?: number;
+  }
+): Promise<StrapiResponse<Recette[]>> {
+  const queryParams = new URLSearchParams();
+  
+  if (params?.page) queryParams.append('pagination[page]', params.page.toString());
+  if (params?.pageSize) queryParams.append('pagination[pageSize]', params.pageSize.toString());
+  
+  queryParams.append('filters[tags][slug][$eq]', tagSlug);
+  queryParams.append('populate', 'imagePrincipale,categories,tags');
+  queryParams.append('sort', 'publishedAt:desc');
+
+  return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+}
+
 export async function getRecettesSimilaires(
   recetteId: number,
   categoryIds: number[],
@@ -196,6 +241,34 @@ export async function getRecettesSimilaires(
   
   queryParams.append('populate', 'imagePrincipale,categories');
   queryParams.append('pagination[pageSize]', limit.toString());
+  queryParams.append('sort', 'publishedAt:desc');
+
+  return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+}
+
+export async function searchRecettes(
+  query: string,
+  params?: {
+    page?: number;
+    pageSize?: number;
+  }
+): Promise<StrapiResponse<Recette[]>> {
+  if (!query || query.trim().length === 0) {
+    return { data: [] };
+  }
+
+  const queryParams = new URLSearchParams();
+  const searchTerm = query.trim();
+  
+  // Recherche dans le titre et la description avec $containsi (insensible à la casse)
+  // Syntaxe Strapi v4 pour $or
+  queryParams.append('filters[$or][0][titre][$containsi]', searchTerm);
+  queryParams.append('filters[$or][1][description][$containsi]', searchTerm);
+  
+  if (params?.page) queryParams.append('pagination[page]', params.page.toString());
+  if (params?.pageSize) queryParams.append('pagination[pageSize]', params.pageSize.toString());
+  
+  queryParams.append('populate', 'imagePrincipale,categories,tags');
   queryParams.append('sort', 'publishedAt:desc');
 
   return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);

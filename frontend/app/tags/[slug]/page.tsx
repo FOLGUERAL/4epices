@@ -1,46 +1,46 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getCategorieBySlug, getRecettesByCategory, Recette } from '@/lib/strapi';
+import { getTagBySlug, getRecettesByTag, Recette } from '@/lib/strapi';
 import OptimizedImage from '@/components/OptimizedImage';
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  let categorie = null;
+  let tag = null;
   try {
-    const response = await getCategorieBySlug(params.slug);
-    categorie = response.data;
+    const response = await getTagBySlug(params.slug);
+    tag = response.data;
   } catch (error) {
-    console.error('Erreur lors de la récupération de la catégorie pour metadata:', error);
+    console.error('Erreur lors de la récupération du tag pour metadata:', error);
   }
 
-  if (!categorie) {
+  if (!tag) {
     return {
-      title: 'Catégorie non trouvée',
+      title: 'Tag non trouvé',
     };
   }
 
   return {
-    title: `${categorie.attributes.nom} - 4épices`,
-    description: categorie.attributes.description || `Découvrez toutes nos recettes de la catégorie ${categorie.attributes.nom}`,
+    title: `${tag.attributes.nom} - 4épices`,
+    description: `Découvrez toutes nos recettes avec le tag ${tag.attributes.nom}`,
   };
 }
 
-export default async function CategoriePage({ params }: { params: { slug: string } }) {
-  let categorie = null;
+export default async function TagPage({ params }: { params: { slug: string } }) {
+  let tag = null;
   let recettes: Recette[] = [];
   
   try {
-    const [categorieResponse, recettesResponse] = await Promise.all([
-      getCategorieBySlug(params.slug),
-      getRecettesByCategory(params.slug, { pageSize: 50 })
+    const [tagResponse, recettesResponse] = await Promise.all([
+      getTagBySlug(params.slug),
+      getRecettesByTag(params.slug, { pageSize: 50 })
     ]);
     
-    categorie = categorieResponse.data;
+    tag = tagResponse.data;
     recettes = recettesResponse.data || [];
   } catch (error) {
-    console.error('Erreur lors de la récupération de la catégorie:', error);
+    console.error('Erreur lors de la récupération du tag:', error);
   }
 
-  if (!categorie) {
+  if (!tag) {
     notFound();
   }
 
@@ -51,20 +51,23 @@ export default async function CategoriePage({ params }: { params: { slug: string
           <nav className="text-sm text-gray-500 mb-4">
             <Link href="/" className="hover:text-gray-700">Accueil</Link>
             <span className="mx-2">/</span>
-            <Link href="/categories" className="hover:text-gray-700">Catégories</Link>
+            <Link href="/" className="hover:text-gray-700">Tags</Link>
             <span className="mx-2">/</span>
-            <span className="text-gray-900">{categorie.attributes.nom}</span>
+            <span className="text-gray-900">{tag.attributes.nom}</span>
           </nav>
           
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            {categorie.attributes.nom}
-          </h1>
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-3xl">🏷️</span>
+            <h1 className="text-4xl font-bold text-gray-900">
+              {tag.attributes.nom}
+            </h1>
+          </div>
           
-          {categorie.attributes.description && (
-            <p className="text-xl text-gray-600">
-              {categorie.attributes.description}
-            </p>
-          )}
+          <p className="text-gray-600 text-lg">
+            {recettes.length > 0 
+              ? `${recettes.length} ${recettes.length === 1 ? 'recette trouvée' : 'recettes trouvées'} avec ce tag`
+              : 'Aucune recette avec ce tag pour le moment'}
+          </p>
         </div>
 
         {recettes.length > 0 ? (
@@ -88,10 +91,10 @@ export default async function CategoriePage({ params }: { params: { slug: string
                     <h2 className="text-xl font-semibold text-gray-900 mb-2">
                       {recette.attributes.titre}
                     </h2>
-                    <p className="text-gray-600 text-sm line-clamp-2">
+                    <p className="text-gray-600 text-sm line-clamp-2 mb-4">
                       {recette.attributes.description}
                     </p>
-                    <div className="mt-4 flex items-center gap-4 text-sm text-gray-700 mb-3">
+                    <div className="flex items-center gap-4 text-sm text-gray-700">
                       {recette.attributes.tempsPreparation && (
                         <span className="font-medium">⏱️ {recette.attributes.tempsPreparation} min</span>
                       )}
@@ -104,22 +107,17 @@ export default async function CategoriePage({ params }: { params: { slug: string
                         </span>
                       )}
                     </div>
-                    {recette.attributes.tags?.data && recette.attributes.tags.data.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {recette.attributes.tags.data.slice(0, 3).map((tag) => (
+                    {recette.attributes.categories?.data && recette.attributes.categories.data.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {recette.attributes.categories.data.map((categorie) => (
                           <Link
-                            key={tag.id}
-                            href={`/tags/${tag.attributes.slug}`}
-                            className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded text-xs hover:bg-orange-100 transition-colors"
+                            key={categorie.id}
+                            href={`/categories/${categorie.attributes.slug}`}
+                            className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs hover:bg-gray-200 transition-colors"
                           >
-                            #{tag.attributes.nom}
+                            {categorie.attributes.nom}
                           </Link>
                         ))}
-                        {recette.attributes.tags.data.length > 3 && (
-                          <span className="px-2 py-0.5 text-gray-400 text-xs">
-                            +{recette.attributes.tags.data.length - 3}
-                          </span>
-                        )}
                       </div>
                     )}
                   </div>
@@ -129,7 +127,13 @@ export default async function CategoriePage({ params }: { params: { slug: string
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">Aucune recette dans cette catégorie pour le moment.</p>
+            <p className="text-gray-500 text-lg">Aucune recette avec ce tag pour le moment.</p>
+            <Link
+              href="/"
+              className="mt-4 inline-block text-orange-600 hover:text-orange-700 font-medium transition-colors"
+            >
+              ← Retour aux recettes
+            </Link>
           </div>
         )}
       </div>

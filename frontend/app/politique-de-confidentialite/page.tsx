@@ -11,7 +11,7 @@ export default function PolitiqueConfidentialite() {
       <header className="bg-white shadow-sm">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <h1 className="text-4xl font-bold text-gray-900">Politique de Confidentialité</h1>
-          <p className="text-gray-600 mt-2">Dernière mise à jour : {new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p className="text-gray-600 mt-2">Dernière mise à jour : {new Date(2024, 0, 1).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
       </header>
 

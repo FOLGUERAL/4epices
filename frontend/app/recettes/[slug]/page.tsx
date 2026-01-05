@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getRecetteBySlug, getStrapiMediaUrl, getRecettesSimilaires, Recette } from '@/lib/strapi';
-import Image from 'next/image';
+import OptimizedImage from '@/components/OptimizedImage';
+import IngredientsAdjuster from '@/components/IngredientsAdjuster';
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   let recette = null;
@@ -53,13 +54,42 @@ export default async function RecettePage({ params }: { params: { slug: string }
     notFound();
   }
 
-  const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url
-    ? getStrapiMediaUrl(recette.attributes.imagePrincipale.data.attributes.url)
-    : '/placeholder.jpg';
+  const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url || null;
+  const imageUrlForStructuredData = imageUrl
+    ? getStrapiMediaUrl(imageUrl)
+    : '/placeholder-recipe.svg';
 
-  const ingredients = Array.isArray(recette.attributes.ingredients)
+  // Gérer les deux formats d'ingrédients : tableau de strings ou tableau d'objets
+  const rawIngredients = Array.isArray(recette.attributes.ingredients)
     ? recette.attributes.ingredients
     : [];
+  
+  // Normaliser les ingrédients pour l'affichage
+  const ingredients = rawIngredients.map((ing: any) => {
+    if (typeof ing === 'string') {
+      return ing;
+    }
+    if (typeof ing === 'object' && ing !== null) {
+      // Format structuré : {quantite, ingredient}
+      const quantite = ing.quantite || '';
+      const ingredient = ing.ingredient || '';
+      return quantite ? `${quantite} ${ingredient}`.trim() : ingredient;
+    }
+    return String(ing);
+  });
+  
+  // Pour le structured data, convertir en tableau de strings
+  const ingredientsForStructuredData = rawIngredients.map((ing: any) => {
+    if (typeof ing === 'string') {
+      return ing;
+    }
+    if (typeof ing === 'object' && ing !== null) {
+      const quantite = ing.quantite || '';
+      const ingredient = ing.ingredient || '';
+      return quantite ? `${quantite} ${ingredient}`.trim() : ingredient;
+    }
+    return String(ing);
+  });
 
   const tempsTotal = (recette.attributes.tempsPreparation || 0) + (recette.attributes.tempsCuisson || 0);
   
@@ -83,7 +113,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
     "@type": "Recipe",
     "name": recette.attributes.titre,
     "description": recette.attributes.description,
-    "image": imageUrl,
+    "image": imageUrlForStructuredData,
     "url": recetteUrl,
     "author": {
       "@type": "Organization",
@@ -94,7 +124,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
     "cookTime": recette.attributes.tempsCuisson ? `PT${recette.attributes.tempsCuisson}M` : undefined,
     "totalTime": tempsTotal > 0 ? `PT${tempsTotal}M` : undefined,
     "recipeYield": recette.attributes.nombrePersonnes?.toString() || "4",
-    "recipeIngredient": ingredients,
+    "recipeIngredient": ingredientsForStructuredData,
     "recipeInstructions": recette.attributes.etapes,
     "recipeCategory": recette.attributes.categories?.data?.map(cat => cat.attributes.nom).join(", ") || undefined,
     "keywords": recette.attributes.tags?.data?.map(tag => tag.attributes.nom).join(", ") || undefined
@@ -117,14 +147,15 @@ export default async function RecettePage({ params }: { params: { slug: string }
         </nav>
 
         <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-12">
-          <div className="relative h-96 w-full">
-            <Image
-              src={imageUrl}
-              alt={recette.attributes.imagePrincipale?.data?.attributes?.alternativeText || recette.attributes.titre}
-              fill
-              className="object-cover"
-            />
-          </div>
+          <OptimizedImage
+            src={imageUrl}
+            alt={recette.attributes.imagePrincipale?.data?.attributes?.alternativeText || recette.attributes.titre}
+            fill
+            className="w-full"
+            priority
+            sizes="100vw"
+            aspectRatio="16/9"
+          />
 
           <div className="p-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -140,8 +171,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">⏱️</span>
                   <div>
-                    <div className="text-sm text-gray-500">Préparation</div>
-                    <div className="font-semibold">{recette.attributes.tempsPreparation} min</div>
+                    <div className="text-sm text-gray-700 font-medium">Préparation</div>
+                    <div className="font-semibold text-gray-900">{recette.attributes.tempsPreparation} min</div>
                   </div>
                 </div>
               )}
@@ -149,8 +180,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🔥</span>
                   <div>
-                    <div className="text-sm text-gray-500">Cuisson</div>
-                    <div className="font-semibold">{recette.attributes.tempsCuisson} min</div>
+                    <div className="text-sm text-gray-700 font-medium">Cuisson</div>
+                    <div className="font-semibold text-gray-900">{recette.attributes.tempsCuisson} min</div>
                   </div>
                 </div>
               )}
@@ -158,8 +189,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">⏰</span>
                   <div>
-                    <div className="text-sm text-gray-500">Total</div>
-                    <div className="font-semibold">{tempsTotal} min</div>
+                    <div className="text-sm text-gray-700 font-medium">Total</div>
+                    <div className="font-semibold text-gray-900">{tempsTotal} min</div>
                   </div>
                 </div>
               )}
@@ -167,8 +198,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">👥</span>
                   <div>
-                    <div className="text-sm text-gray-500">Portions</div>
-                    <div className="font-semibold">{recette.attributes.nombrePersonnes}</div>
+                    <div className="text-sm text-gray-700 font-medium">Portions</div>
+                    <div className="font-semibold text-gray-900">{recette.attributes.nombrePersonnes}</div>
                   </div>
                 </div>
               )}
@@ -176,22 +207,18 @@ export default async function RecettePage({ params }: { params: { slug: string }
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">📊</span>
                   <div>
-                    <div className="text-sm text-gray-500">Difficulté</div>
-                    <div className="font-semibold capitalize">{recette.attributes.difficulte}</div>
+                    <div className="text-sm text-gray-700 font-medium">Difficulté</div>
+                    <div className="font-semibold text-gray-900 capitalize">{recette.attributes.difficulte}</div>
                   </div>
                 </div>
               )}
             </div>
 
             {ingredients.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Ingrédients</h2>
-                <ul className="list-disc list-inside space-y-2 text-gray-700">
-                  {ingredients.map((ingredient: string, index: number) => (
-                    <li key={index}>{ingredient}</li>
-                  ))}
-                </ul>
-              </div>
+              <IngredientsAdjuster
+                ingredients={rawIngredients}
+                basePortions={recette.attributes.nombrePersonnes || 4}
+              />
             )}
 
             <div className="mb-8">
@@ -202,19 +229,37 @@ export default async function RecettePage({ params }: { params: { slug: string }
               />
             </div>
 
-            {recette.attributes.categories?.data && recette.attributes.categories.data.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {recette.attributes.categories.data.map((categorie) => (
-                  <Link
-                    key={categorie.id}
-                    href={`/categories/${categorie.attributes.slug}`}
-                    className="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300 transition-colors"
-                  >
-                    {categorie.attributes.nom}
-                  </Link>
-                ))}
-              </div>
-            )}
+            <div className="flex flex-wrap gap-4">
+              {recette.attributes.categories?.data && recette.attributes.categories.data.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-sm font-medium text-gray-500 mr-2">Catégories :</span>
+                  {recette.attributes.categories.data.map((categorie) => (
+                    <Link
+                      key={categorie.id}
+                      href={`/categories/${categorie.attributes.slug}`}
+                      className="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300 transition-colors"
+                    >
+                      {categorie.attributes.nom}
+                    </Link>
+                  ))}
+                </div>
+              )}
+              
+              {recette.attributes.tags?.data && recette.attributes.tags.data.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-sm font-medium text-gray-500 mr-2">Tags :</span>
+                  {recette.attributes.tags.data.map((tag) => (
+                    <Link
+                      key={tag.id}
+                      href={`/tags/${tag.attributes.slug}`}
+                      className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm hover:bg-orange-200 transition-colors"
+                    >
+                      #{tag.attributes.nom}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -223,9 +268,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
             <h2 className="text-3xl font-bold text-gray-900 mb-8">Recettes similaires</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {recettesSimilaires.map((recetteSimilaire) => {
-                const imageUrlSimilaire = recetteSimilaire.attributes.imagePrincipale?.data?.attributes?.url
-                  ? getStrapiMediaUrl(recetteSimilaire.attributes.imagePrincipale.data.attributes.url)
-                  : '/placeholder.jpg';
+                const imageUrlSimilaire = recetteSimilaire.attributes.imagePrincipale?.data?.attributes?.url || null;
 
                 return (
                   <Link
@@ -233,24 +276,22 @@ export default async function RecettePage({ params }: { params: { slug: string }
                     href={`/recettes/${recetteSimilaire.attributes.slug}`}
                     className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow"
                   >
-                    <div className="relative h-48 w-full">
-                      <Image
-                        src={imageUrlSimilaire}
-                        alt={recetteSimilaire.attributes.imagePrincipale?.data?.attributes?.alternativeText || recetteSimilaire.attributes.titre}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
+                    <OptimizedImage
+                      src={imageUrlSimilaire}
+                      alt={recetteSimilaire.attributes.imagePrincipale?.data?.attributes?.alternativeText || recetteSimilaire.attributes.titre}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                    />
                     <div className="p-4">
                       <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
                         {recetteSimilaire.attributes.titre}
                       </h3>
-                      <div className="flex items-center gap-3 text-sm text-gray-500">
+                      <div className="flex items-center gap-3 text-sm text-gray-700">
                         {recetteSimilaire.attributes.tempsPreparation && (
-                          <span>⏱️ {recetteSimilaire.attributes.tempsPreparation} min</span>
+                          <span className="font-medium">⏱️ {recetteSimilaire.attributes.tempsPreparation} min</span>
                         )}
                         {recetteSimilaire.attributes.nombrePersonnes && (
-                          <span>👥 {recetteSimilaire.attributes.nombrePersonnes}</span>
+                          <span className="font-medium">👥 {recetteSimilaire.attributes.nombrePersonnes}</span>
                         )}
                       </div>
                     </div>
