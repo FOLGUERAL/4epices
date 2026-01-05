@@ -5,6 +5,7 @@ import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
 import ShareRecipe from '@/components/ShareRecipe';
 import FavoriteButton from '@/components/FavoriteButton';
+import AddToShoppingListButton from '@/components/AddToShoppingListButton';
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   let recette = null;
@@ -236,10 +237,16 @@ export default async function RecettePage({ params }: { params: { slug: string }
             </div>
 
             {ingredients.length > 0 && (
-              <IngredientsAdjuster
-                ingredients={rawIngredients}
-                basePortions={recette.attributes.nombrePersonnes || 4}
-              />
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-gray-900">Ingrédients</h2>
+                  <AddToShoppingListButton ingredients={rawIngredients} />
+                </div>
+                <IngredientsAdjuster
+                  ingredients={rawIngredients}
+                  basePortions={recette.attributes.nombrePersonnes || 4}
+                />
+              </div>
             )}
 
             <div className="mb-8">
