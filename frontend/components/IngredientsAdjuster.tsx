@@ -77,7 +77,9 @@ export default function IngredientsAdjuster({ ingredients, basePortions }: Ingre
     return ingredients.map((ing: any) => {
       // Format simple (string)
       if (typeof ing === 'string') {
-        const quantiteMatch = ing.match(/^([\d\.\/\s]+)(.*)$/);
+        // Pattern pour extraire: quantité (avec unité optionnelle) + reste
+        // Ex: "500g de pâtes" -> quantité: "500g", reste: "de pâtes"
+        const quantiteMatch = ing.match(/^([\d\.\/\s]+[a-z]*)\s*(.+)$/i);
         if (quantiteMatch) {
           const quantiteStr = quantiteMatch[1].trim();
           const reste = quantiteMatch[2].trim();
@@ -86,8 +88,11 @@ export default function IngredientsAdjuster({ ingredients, basePortions }: Ingre
           if (quantite !== null) {
             const newQuantite = quantite * ratio;
             const formattedQuantite = formatQuantity(newQuantite, quantiteStr);
-            const unit = extractUnit(ing);
-            return `${formattedQuantite}${unit ? ' ' + unit : ''} ${reste}`.trim();
+            // Extraire l'unité uniquement de la partie quantité (ex: "500g" -> "g")
+            const unitMatch = quantiteStr.match(/^\d+\.?\d*\s*([a-z]+)$/i);
+            const unit = unitMatch ? unitMatch[1] : '';
+            // Si on a une unité, l'ajouter après la quantité, sinon juste le reste
+            return unit ? `${formattedQuantite} ${unit} ${reste}`.trim() : `${formattedQuantite} ${reste}`.trim();
           }
         }
         return ing;
