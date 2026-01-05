@@ -7,13 +7,13 @@ function SearchBarContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState('');
+  const [mounted, setMounted] = useState(false);
 
-  // Préremplir le champ si on est sur la page de recherche
+  // Éviter les problèmes d'hydratation en initialisant après le montage
   useEffect(() => {
-    const q = searchParams.get('q');
-    if (q) {
-      setQuery(q);
-    }
+    setMounted(true);
+    const q = searchParams.get('q') || '';
+    setQuery(q);
   }, [searchParams]);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -24,16 +24,16 @@ function SearchBarContent() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex-1 max-w-md w-full">
+    <form onSubmit={handleSubmit} className="flex-1 max-w-md w-full min-w-0">
       <div className="relative">
         <input
           type="text"
-          value={query}
+          value={mounted ? query : ''}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Rechercher une recette..."
-          className="w-full px-4 py-2 pl-10 pr-10 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
+          className="w-full px-3 sm:px-4 py-2.5 sm:py-2 pl-9 sm:pl-10 pr-9 sm:pr-10 text-base sm:text-sm text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
         />
-        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+        <div className="absolute inset-y-0 left-0 flex items-center pl-2.5 sm:pl-3 pointer-events-none">
           <svg
             className="w-5 h-5 text-gray-400"
             fill="none"
@@ -55,7 +55,7 @@ function SearchBarContent() {
               setQuery('');
               router.push('/recherche');
             }}
-            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+            className="absolute inset-y-0 right-0 flex items-center pr-2.5 sm:pr-3 text-gray-400 hover:text-gray-600"
           >
             <svg
               className="w-5 h-5"
@@ -80,13 +80,13 @@ function SearchBarContent() {
 export default function SearchBar() {
   return (
     <Suspense fallback={
-      <div className="flex-1 max-w-md w-full">
+      <div className="flex-1 max-w-md w-full min-w-0">
         <div className="relative">
           <input
             type="text"
             placeholder="Rechercher une recette..."
             disabled
-            className="w-full px-4 py-2 pl-10 pr-10 text-gray-700 bg-white border border-gray-300 rounded-lg text-sm opacity-50"
+            className="w-full px-3 sm:px-4 py-2.5 sm:py-2 pl-9 sm:pl-10 pr-9 sm:pr-10 text-base sm:text-sm text-gray-700 bg-white border border-gray-300 rounded-lg opacity-50"
           />
         </div>
       </div>

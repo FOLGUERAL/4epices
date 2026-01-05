@@ -14,33 +14,33 @@ export default async function Navigation() {
 
   return (
     <nav className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 gap-4">
-          <Link href="/" className="flex items-center h-16 hover:opacity-80 transition-opacity">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+        <div className="flex justify-between items-center h-16 gap-2 sm:gap-4">
+          <Link href="/" className="flex items-center h-16 hover:opacity-80 transition-opacity flex-shrink-0">
             <Image
               src="/logo.png"
               alt="4épices"
               width={120}
               height={40}
-              className="h-10 w-auto object-contain"
+              className="h-8 sm:h-10 w-auto object-contain"
               priority
             />
           </Link>
           
           <SearchBar />
           
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 flex-shrink-0">
             <Link 
               href="/" 
-              className="text-gray-700 hover:text-gray-900 font-medium transition-colors whitespace-nowrap"
+              className="text-gray-700 hover:text-gray-900 font-medium transition-colors whitespace-nowrap text-sm sm:text-base"
             >
               Accueil
             </Link>
             
             {categories.length > 0 && (
               <div className="relative group">
-                <button className="text-gray-700 hover:text-gray-900 font-medium transition-colors flex items-center gap-1 whitespace-nowrap">
-                  Catégories
+                <button className="text-gray-700 hover:text-gray-900 font-medium transition-colors flex items-center gap-1 whitespace-nowrap text-sm sm:text-base">
+                  <span className="inline">Catégories</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
