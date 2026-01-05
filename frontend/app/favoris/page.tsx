@@ -138,13 +138,14 @@ export default function FavorisPage() {
                   href={`/recettes/${recette.attributes.slug}`}
                   className="block"
                 >
-                  <div className="relative h-64 overflow-hidden">
+                  <div className="relative overflow-hidden" style={{ aspectRatio: '4/3' }}>
                     <OptimizedImage
                       src={imageUrl}
                       alt={recette.attributes.imagePrincipale?.data?.attributes?.alternativeText || recette.attributes.titre}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      aspectRatio="4/3"
                     />
                   </div>
                   <div className="p-6">
