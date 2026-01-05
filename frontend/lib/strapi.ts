@@ -1,4 +1,6 @@
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+// Pour les requêtes serveur (SSR), utiliser le service Docker si disponible
+// Pour les requêtes client, utiliser l'URL publique
+const STRAPI_URL = process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
 
 export interface StrapiResponse<T> {
   data: T;
@@ -76,19 +78,29 @@ async function fetchAPI<T>(
 ): Promise<StrapiResponse<T>> {
   const url = `${STRAPI_URL}/api${endpoint}`;
   
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  });
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+      // Désactiver le cache pour le développement
+      cache: 'no-store',
+    });
 
-  if (!response.ok) {
-    throw new Error(`API error: ${response.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API error (${response.status}):`, errorText);
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('Erreur fetchAPI:', error);
+    console.error('URL tentée:', url);
+    throw error;
   }
-
-  return response.json();
 }
 
 export async function getRecettes(params?: {
@@ -129,6 +141,8 @@ export function getStrapiMediaUrl(url: string): string {
   if (url.startsWith('http')) {
     return url;
   }
-  return `${STRAPI_URL}${url}`;
+  // Pour les images, toujours utiliser l'URL publique (client-side)
+  const publicUrl = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+  return `${publicUrl}${url}`;
 }
 
