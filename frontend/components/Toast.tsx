@@ -62,13 +62,13 @@ export default function ToastContainer() {
 
   return (
     <div className="fixed top-4 right-4 z-50 space-y-2">
-      {toasts.map((toast) => {
+      {toasts.map((toastItem) => {
         const bgColor = {
           success: 'bg-green-500',
           error: 'bg-red-500',
           info: 'bg-blue-500',
           warning: 'bg-yellow-500',
-        }[toast.type];
+        }[toastItem.type];
 
         const icon = {
           success: (
@@ -91,18 +91,18 @@ export default function ToastContainer() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           ),
-        }[toast.type];
+        }[toastItem.type];
 
         return (
           <div
-            key={toast.id}
+            key={toastItem.id}
             className={`${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] max-w-md animate-in slide-in-from-right fade-in`}
           >
             {icon}
-            <p className="flex-1 font-medium">{toast.message}</p>
+            <p className="flex-1 font-medium">{toastItem.message}</p>
             <button
               onClick={() => {
-                toasts = toasts.filter(t => t.id !== toast.id);
+                toasts = toasts.filter(t => t.id !== toastItem.id);
                 toastListeners.forEach(listener => listener(toasts));
               }}
               className="text-white hover:text-gray-200 transition-colors"
