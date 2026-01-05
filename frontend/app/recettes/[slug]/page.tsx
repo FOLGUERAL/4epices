@@ -4,6 +4,7 @@ import { getRecetteBySlug, getStrapiMediaUrl, getRecettesSimilaires, Recette } f
 import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
 import ShareRecipe from '@/components/ShareRecipe';
+import FavoriteButton from '@/components/FavoriteButton';
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   let recette = null;
@@ -164,12 +165,22 @@ export default async function RecettePage({ params }: { params: { slug: string }
               <h1 className="text-4xl font-bold text-gray-900">
                 {recette.attributes.titre}
               </h1>
-              <ShareRecipe
-                title={recette.attributes.titre}
-                url={recetteUrl}
-                description={recette.attributes.description}
-                imageUrl={imageUrlForShare}
-              />
+              <div className="flex items-center gap-3">
+                <FavoriteButton
+                  recette={{
+                    id: recette.id,
+                    slug: recette.attributes.slug,
+                    titre: recette.attributes.titre,
+                    imageUrl: imageUrlForShare,
+                  }}
+                />
+                <ShareRecipe
+                  title={recette.attributes.titre}
+                  url={recetteUrl}
+                  description={recette.attributes.description}
+                  imageUrl={imageUrlForShare}
+                />
+              </div>
             </div>
 
             <p className="text-xl text-gray-600 mb-6">
