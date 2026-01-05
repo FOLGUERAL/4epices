@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -11,10 +9,17 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Port commenté : PostgreSQL n'est accessible que depuis le réseau Docker
+    # Décommentez si vous avez besoin d'accéder à PostgreSQL depuis l'extérieur
+    # ports:
+    #   - "5432:5432"
     networks:
       - 4epices_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U 4epices -d 4epices"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -31,9 +36,16 @@ services:
       - /opt/app/node_modules
       - ./backend/uploads:/opt/app/public/uploads
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - 4epices_network
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:1337/api', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
     build:
@@ -42,14 +54,25 @@ services:
     container_name: 4epices_frontend
     restart: unless-stopped
     environment:
+      # ⚠️ IMPORTANT : Modifiez ces valeurs pour la production
+      # Créez un fichier .env à la racine avec :
+      # NEXT_PUBLIC_STRAPI_URL=https://api.4epices.fr
+      # NEXT_PUBLIC_SITE_URL=https://4epices.fr
       - NEXT_PUBLIC_STRAPI_URL=${NEXT_PUBLIC_STRAPI_URL:-http://backend:1337}
       - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - 4epices_network
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
  4epices_network:
