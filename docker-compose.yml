@@ -39,10 +39,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-https://api.4epices.fr}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://4epices.fr}
     container_name: 4epices_frontend
     restart: unless-stopped
-    env_file:
-      - ./frontend/.env.production
     ports:
       - "3000:3000"
     depends_on:
