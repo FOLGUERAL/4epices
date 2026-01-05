@@ -45,7 +45,7 @@ export function useToast() {
     };
     
     toastListeners.push(listener);
-    setToastList(toasts);
+    setToastList(globalToasts);
     
     return () => {
       toastListeners = toastListeners.filter(l => l !== listener);
@@ -102,8 +102,8 @@ export default function ToastContainer() {
             <p className="flex-1 font-medium">{toastItem.message}</p>
             <button
               onClick={() => {
-                toasts = toasts.filter(t => t.id !== toastItem.id);
-                toastListeners.forEach(listener => listener(toasts));
+                globalToasts = globalToasts.filter(t => t.id !== toastItem.id);
+                toastListeners.forEach(listener => listener(globalToasts));
               }}
               className="text-white hover:text-gray-200 transition-colors"
             >
