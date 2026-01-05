@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import Link from 'next/link';
 import { getRecettes, getStrapiMediaUrl } from '@/lib/strapi';
 import Image from 'next/image';

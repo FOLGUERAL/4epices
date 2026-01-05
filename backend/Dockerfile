@@ -9,7 +9,8 @@ WORKDIR /opt/app
 COPY package*.json ./
 
 # Installer les dépendances
-RUN npm ci --omit=dev
+# Utiliser npm install si package-lock.json n'est pas synchronisé
+RUN npm install --omit=dev --legacy-peer-deps
 
 # Copier le reste de l'application
 COPY . .

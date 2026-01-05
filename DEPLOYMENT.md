@@ -52,12 +52,11 @@ GRANT ALL PRIVILEGES ON DATABASE "4epices" TO "4epices_user";
 
 ```bash
 # Cloner ou transférer le projet
-git clone <votre-repo> /opt/4epices
+git clone https://github.com/FOLGUERAL/4epices.git /opt/4epices
 cd /opt/4epices
 
 # Créer les fichiers .env
 cp backend/config/env.example backend/.env
-cp frontend/.env.example frontend/.env.local
 
 # Éditer backend/.env avec vos configurations
 nano backend/.env
@@ -73,12 +72,11 @@ nano backend/.env
 # - PINTEREST_BOARD_ID
 # - FRONTEND_URL=https://4epices.fr
 
-# Éditer frontend/.env.local
-nano frontend/.env.local
-
-# Configurer :
-# - NEXT_PUBLIC_STRAPI_URL=https://api.4epices.fr (ou votre domaine backend)
-# - NEXT_PUBLIC_SITE_URL=https://4epices.fr
+# Optionnel : Créer un fichier .env pour le frontend (ou utiliser les variables dans docker-compose.yml)
+# Les variables d'environnement peuvent être configurées directement dans docker-compose.yml
+# ou via un fichier .env à la racine du projet avec :
+# NEXT_PUBLIC_STRAPI_URL=https://api.4epices.fr
+# NEXT_PUBLIC_SITE_URL=https://4epices.fr
 
 # Modifier docker-compose.yml pour PostgreSQL
 # Changer DATABASE_HOST dans backend/.env pour "postgres"
