@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { Recette } from '@/lib/strapi';
 import OptimizedImage from './OptimizedImage';
