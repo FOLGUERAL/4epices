@@ -14,6 +14,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Variables d'environnement au build (NEXT_PUBLIC_* doivent être au build)
+ARG NEXT_PUBLIC_STRAPI_URL
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_STRAPI_URL=$NEXT_PUBLIC_STRAPI_URL
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+
 # Désactiver la télématrie Next.js
 ENV NEXT_TELEMETRY_DISABLED 1
 

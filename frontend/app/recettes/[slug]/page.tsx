@@ -3,7 +3,13 @@ import { getRecetteBySlug, getStrapiMediaUrl } from '@/lib/strapi';
 import Image from 'next/image';
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const { data: recette } = await getRecetteBySlug(params.slug);
+  let recette = null;
+  try {
+    const response = await getRecetteBySlug(params.slug);
+    recette = response.data;
+  } catch (error) {
+    console.error('Erreur lors de la récupération de la recette pour metadata:', error);
+  }
 
   if (!recette) {
     return {
@@ -25,7 +31,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function RecettePage({ params }: { params: { slug: string } }) {
-  const { data: recette } = await getRecetteBySlug(params.slug);
+  let recette = null;
+  try {
+    const response = await getRecetteBySlug(params.slug);
+    recette = response.data;
+  } catch (error) {
+    console.error('Erreur lors de la récupération de la recette:', error);
+  }
 
   if (!recette) {
     notFound();

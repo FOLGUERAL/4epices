@@ -5,7 +5,14 @@ import { getRecettes, getStrapiMediaUrl } from '@/lib/strapi';
 import Image from 'next/image';
 
 export default async function Home() {
-  const { data: recettes } = await getRecettes({ pageSize: 12 });
+  let recettes = [];
+  try {
+    const response = await getRecettes({ pageSize: 12 });
+    recettes = response.data || [];
+  } catch (error) {
+    console.error('Erreur lors de la récupération des recettes:', error);
+    // En cas d'erreur, on continue avec un tableau vide
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

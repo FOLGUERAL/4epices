@@ -11,6 +11,11 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'api.4epices.fr',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
         hostname: '*.pinterest.com',
       },
     ],

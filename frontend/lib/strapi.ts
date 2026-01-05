@@ -1,6 +1,15 @@
-// Pour les requêtes serveur (SSR), utiliser le service Docker si disponible
-// Pour les requêtes client, utiliser l'URL publique
-const STRAPI_URL = process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+// Fonction pour obtenir l'URL Strapi selon le contexte
+function getStrapiUrl(): string {
+  // Côté serveur (SSR), utiliser le service Docker si disponible
+  if (typeof window === 'undefined') {
+    // On est côté serveur
+    return process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+  }
+  // Côté client, utiliser l'URL publique
+  return process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+}
+
+const STRAPI_URL = getStrapiUrl();
 
 export interface StrapiResponse<T> {
   data: T;
