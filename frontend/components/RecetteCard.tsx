@@ -3,7 +3,11 @@
 import Link from 'next/link';
 import { Recette } from '@/lib/strapi';
 import OptimizedImage from './OptimizedImage';
-import RatingDisplay from './RatingDisplay';
+import dynamic from 'next/dynamic';
+
+const RatingDisplay = dynamic(() => import('./RatingDisplay'), {
+  ssr: false,
+});
 
 interface RecetteCardProps {
   recette: Recette;
