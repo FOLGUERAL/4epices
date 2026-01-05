@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Recette } from '@/lib/strapi';
 import OptimizedImage from './OptimizedImage';
+import RatingDisplay from './RatingDisplay';
 
 interface RecetteCardProps {
   recette: Recette;
@@ -46,6 +47,9 @@ export default function RecetteCard({ recette }: RecetteCardProps) {
               {recette.attributes.difficulte}
             </span>
           )}
+        </div>
+        <div className="mb-3">
+          <RatingDisplay recetteId={recette.id} size="sm" />
         </div>
         {recette.attributes.tags?.data && recette.attributes.tags.data.length > 0 && (
           <div className="flex flex-wrap gap-1.5">

@@ -288,6 +288,21 @@ export default async function RecettePage({ params }: { params: { slug: string }
                 </div>
               )}
             </div>
+
+            {/* Notes et avis */}
+            <div className="mt-8 pt-8 border-t">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Notes et avis</h2>
+                <RatingDisplay recetteId={recette.id} size="lg" />
+              </div>
+              
+              <RatingForm
+                recetteId={recette.id}
+                recetteTitle={recette.attributes.titre}
+              />
+              
+              <RatingList recetteId={recette.id} />
+            </div>
           </div>
         </div>
 
