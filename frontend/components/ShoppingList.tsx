@@ -8,10 +8,13 @@ import {
   clearShoppingList,
   ShoppingListItem,
 } from '@/lib/shoppingList';
+import ConfirmDialog from './ConfirmDialog';
+import { toast } from './Toast';
 
 export default function ShoppingList() {
   const [items, setItems] = useState<ShoppingListItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
 
   useEffect(() => {
     setItems(getShoppingList());
@@ -44,10 +47,14 @@ export default function ShoppingList() {
   };
 
   const handleClear = () => {
-    if (confirm('Voulez-vous vraiment vider la liste de courses ?')) {
-      clearShoppingList();
-      setItems([]);
-    }
+    setShowConfirmClear(true);
+  };
+
+  const confirmClear = () => {
+    clearShoppingList();
+    setItems([]);
+    setShowConfirmClear(false);
+    toast.success('Liste de courses vidée');
   };
 
   const handlePrint = () => {
@@ -204,6 +211,17 @@ export default function ShoppingList() {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        isOpen={showConfirmClear}
+        title="Vider la liste de courses"
+        message="Êtes-vous sûr de vouloir vider toute la liste de courses ? Cette action est irréversible."
+        confirmText="Vider"
+        cancelText="Annuler"
+        type="warning"
+        onConfirm={confirmClear}
+        onCancel={() => setShowConfirmClear(false)}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { addRating, getRatings } from '@/lib/ratings';
+import { toast } from './Toast';
 
 interface RatingFormProps {
   recetteId: number;
@@ -20,7 +21,7 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
     e.preventDefault();
     
     if (rating === 0) {
-      alert('Veuillez sélectionner une note');
+      toast.warning('Veuillez sélectionner une note');
       return;
     }
 
@@ -36,10 +37,13 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
       setRating(0);
       setComment('');
       setAuthor('');
+      toast.success('Votre avis a été publié avec succès !');
       if (onRatingAdded) {
         onRatingAdded();
       }
       setTimeout(() => setSubmitted(false), 3000);
+    } else {
+      toast.error('Une erreur est survenue. Veuillez réessayer.');
     }
   };
 
@@ -48,7 +52,7 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
       <h3 className="text-xl font-semibold text-gray-900 mb-4">Donner votre avis</h3>
       
       {submitted && (
-        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm">
+        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm animate-in fade-in">
           Merci pour votre avis !
         </div>
       )}

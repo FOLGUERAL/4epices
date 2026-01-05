@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { addIngredientsToShoppingList } from '@/lib/shoppingList';
+import { toast } from './Toast';
 
 interface AddToShoppingListButtonProps {
   ingredients: any[];
@@ -12,7 +13,9 @@ export default function AddToShoppingListButton({ ingredients }: AddToShoppingLi
 
   const handleAdd = () => {
     const newItems = addIngredientsToShoppingList(ingredients);
+    const addedCount = newItems.length;
     setAdded(true);
+    toast.success(`${addedCount} ingrédient${addedCount > 1 ? 's' : ''} ajouté${addedCount > 1 ? 's' : ''} à la liste de courses`);
     setTimeout(() => setAdded(false), 2000);
   };
 

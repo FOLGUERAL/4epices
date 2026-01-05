@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { isFavorite, toggleFavorite as toggleFavoriteStorage } from '@/lib/favorites';
+import { toast } from './Toast';
 
 interface FavoriteButtonProps {
   recette: {
@@ -28,6 +29,13 @@ export default function FavoriteButton({ recette, className = '' }: FavoriteButt
     // Animation
     setIsAnimating(true);
     setTimeout(() => setIsAnimating(false), 600);
+    
+    // Toast notification
+    if (newState) {
+      toast.success('Recette ajoutée aux favoris');
+    } else {
+      toast.info('Recette retirée des favoris');
+    }
   };
 
   return (
