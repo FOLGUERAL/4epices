@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getRecetteBySlug, getStrapiMediaUrl, getRecettesSimilaires, Recette } from '@/lib/strapi';
 import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
+import ShareRecipe from '@/components/ShareRecipe';
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   let recette = null;
@@ -96,6 +97,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
   // Structured data pour le SEO (JSON-LD)
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
   const recetteUrl = `${siteUrl}/recettes/${recette.attributes.slug}`;
+  const imageUrlForShare = imageUrl ? getStrapiMediaUrl(imageUrl) : undefined;
   
   // Fonction pour nettoyer les valeurs undefined
   const cleanObject = (obj: any): any => {
@@ -158,9 +160,17 @@ export default async function RecettePage({ params }: { params: { slug: string }
           />
 
           <div className="p-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              {recette.attributes.titre}
-            </h1>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+              <h1 className="text-4xl font-bold text-gray-900">
+                {recette.attributes.titre}
+              </h1>
+              <ShareRecipe
+                title={recette.attributes.titre}
+                url={recetteUrl}
+                description={recette.attributes.description}
+                imageUrl={imageUrlForShare}
+              />
+            </div>
 
             <p className="text-xl text-gray-600 mb-6">
               {recette.attributes.description}
