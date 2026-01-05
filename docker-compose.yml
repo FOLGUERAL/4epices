@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -9,10 +11,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # Port commenté : PostgreSQL n'est accessible que depuis le réseau Docker
-    # Décommentez si vous avez besoin d'accéder à PostgreSQL depuis l'extérieur
-    # ports:
-    #   - "5432:5432"
+    ports:
+      - "5432:5432"
     networks:
       - 4epices_network
 
@@ -31,30 +31,25 @@ services:
       - /opt/app/node_modules
       - ./backend/uploads:/opt/app/public/uploads
     depends_on:
-
+      - postgres
     networks:
       - 4epices_network
-    
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: 4epices_frontend
     restart: unless-stopped
-    environment:
-      # ⚠️ IMPORTANT : Modifiez ces valeurs pour la production
-      # Créez un fichier .env à la racine avec :
-      # NEXT_PUBLIC_STRAPI_URL=https://api.4epices.fr
-      # NEXT_PUBLIC_SITE_URL=https://4epices.fr
-      - NEXT_PUBLIC_STRAPI_URL=${NEXT_PUBLIC_STRAPI_URL:-http://backend:1337}
-      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+    env_file:
+      - ./frontend/.env
     ports:
       - "3000:3000"
     depends_on:
-
+      - backend
     networks:
       - 4epices_network
-    
+
 networks:
  4epices_network:
    driver: bridge
