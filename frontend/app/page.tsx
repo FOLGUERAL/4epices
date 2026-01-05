@@ -1,11 +1,11 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { getRecettes, getStrapiMediaUrl } from '@/lib/strapi';
+import { getRecettes, getStrapiMediaUrl, Recette } from '@/lib/strapi';
 import Image from 'next/image';
 
 export default async function Home() {
-  let recettes = [];
+  let recettes: Recette[] = [];
   try {
     const response = await getRecettes({ pageSize: 12 });
     recettes = response.data || [];
