@@ -1,11 +1,18 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { getRecetteBySlug, getStrapiMediaUrl, getRecettesSimilaires, Recette } from '@/lib/strapi';
 import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
 import ShareRecipe from '@/components/ShareRecipe';
 import FavoriteButton from '@/components/FavoriteButton';
 import AddToShoppingListButton from '@/components/AddToShoppingListButton';
+import RatingForm from '@/components/RatingForm';
+import RatingList from '@/components/RatingList';
+
+const RatingDisplay = dynamic(() => import('@/components/RatingDisplay'), {
+  ssr: false,
+});
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   let recette = null;
