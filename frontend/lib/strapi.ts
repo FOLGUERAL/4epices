@@ -9,8 +9,6 @@ function getStrapiUrl(): string {
   return process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
 }
 
-const STRAPI_URL = getStrapiUrl();
-
 export interface StrapiResponse<T> {
   data: T;
   meta?: {
@@ -85,7 +83,9 @@ async function fetchAPI<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<StrapiResponse<T>> {
-  const url = `${STRAPI_URL}/api${endpoint}`;
+  // Récupérer l'URL dynamiquement à chaque appel
+  const strapiUrl = getStrapiUrl();
+  const url = `${strapiUrl}/api${endpoint}`;
   
   try {
     const response = await fetch(url, {

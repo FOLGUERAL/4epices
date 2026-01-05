@@ -32,7 +32,7 @@ export default function CuisineModePage() {
         
         if (!isMounted) return;
         
-        if (response.data) {
+        if (response && response.data) {
           setRecette(response.data);
           
           // Normaliser les ingrédients
@@ -54,10 +54,14 @@ export default function CuisineModePage() {
           setLoading(false);
         } else {
           // Ne pas rediriger immédiatement, laisser l'utilisateur voir l'erreur
-          setLoading(false);
+          console.warn('Recette non trouvée pour le slug:', slug);
+          if (isMounted) {
+            setLoading(false);
+          }
         }
       } catch (error) {
-        console.error('Erreur:', error);
+        console.error('Erreur lors du chargement de la recette:', error);
+        console.error('Slug:', slug);
         if (isMounted) {
           setLoading(false);
         }
