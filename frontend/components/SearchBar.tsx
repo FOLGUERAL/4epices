@@ -31,7 +31,7 @@ function SearchBarContent() {
           value={mounted ? query : ''}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Rechercher une recette..."
-          className="w-full px-3 sm:px-4 py-2.5 sm:py-2 pl-9 sm:pl-10 pr-9 sm:pr-10 text-base sm:text-sm text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          className="w-full px-3 sm:px-4 py-2.5 sm:py-2 pl-9 sm:pl-10 pr-9 sm:pr-10 text-base sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
         />
         <div className="absolute inset-y-0 left-0 flex items-center pl-2.5 sm:pl-3 pointer-events-none">
           <svg
@@ -86,7 +86,7 @@ export default function SearchBar() {
             type="text"
             placeholder="Rechercher une recette..."
             disabled
-            className="w-full px-3 sm:px-4 py-2.5 sm:py-2 pl-9 sm:pl-10 pr-9 sm:pr-10 text-base sm:text-sm text-gray-700 bg-white border border-gray-300 rounded-lg opacity-50"
+            className="w-full px-3 sm:px-4 py-2.5 sm:py-2 pl-9 sm:pl-10 pr-9 sm:pr-10 text-base sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-lg opacity-50"
           />
         </div>
       </div>

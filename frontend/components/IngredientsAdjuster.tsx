@@ -134,7 +134,7 @@ export default function IngredientsAdjuster({ ingredients, basePortions }: Ingre
           id="portions"
           value={selectedPortions}
           onChange={(e) => setSelectedPortions(Number(e.target.value))}
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
         >
           {portionOptions.map((num) => (
             <option key={num} value={num}>

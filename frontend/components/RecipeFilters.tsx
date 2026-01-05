@@ -114,7 +114,7 @@ export default function RecipeFilters({ categories, tags, onFilterChange }: Reci
             <select
               value={filters.category || ''}
               onChange={(e) => handleFilterChange('category', e.target.value || null)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
             >
               <option value="">Toutes les catégories</option>
               {categories.map((cat) => (
@@ -133,7 +133,7 @@ export default function RecipeFilters({ categories, tags, onFilterChange }: Reci
             <select
               value={filters.difficulty || ''}
               onChange={(e) => handleFilterChange('difficulty', e.target.value || null)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
             >
               <option value="">Toutes les difficultés</option>
               <option value="facile">Facile</option>
@@ -154,7 +154,7 @@ export default function RecipeFilters({ categories, tags, onFilterChange }: Reci
                   placeholder="Min"
                   value={filters.minTime || ''}
                   onChange={(e) => handleFilterChange('minTime', e.target.value ? parseInt(e.target.value) : null)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
                   min="0"
                 />
               </div>
@@ -165,7 +165,7 @@ export default function RecipeFilters({ categories, tags, onFilterChange }: Reci
                   placeholder="Max"
                   value={filters.maxTime || ''}
                   onChange={(e) => handleFilterChange('maxTime', e.target.value ? parseInt(e.target.value) : null)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
                   min="0"
                 />
               </div>
@@ -184,7 +184,7 @@ export default function RecipeFilters({ categories, tags, onFilterChange }: Reci
                   placeholder="Min"
                   value={filters.minPersons || ''}
                   onChange={(e) => handleFilterChange('minPersons', e.target.value ? parseInt(e.target.value) : null)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
                   min="1"
                 />
               </div>
@@ -195,7 +195,7 @@ export default function RecipeFilters({ categories, tags, onFilterChange }: Reci
                   placeholder="Max"
                   value={filters.maxPersons || ''}
                   onChange={(e) => handleFilterChange('maxPersons', e.target.value ? parseInt(e.target.value) : null)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
                   min="1"
                 />
               </div>
@@ -236,7 +236,7 @@ export default function RecipeFilters({ categories, tags, onFilterChange }: Reci
               placeholder="Ex: tomate, farine, beurre..."
               value={filters.searchIngredients}
               onChange={(e) => handleFilterChange('searchIngredients', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
             />
           </div>
         </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getRecettes, getCategories, getTags, Recette, Categorie, Tag } from '@/lib/strapi';
 import { filterRecettes } from '@/lib/filterRecettes';
-import { FilterState, RecipeFilters } from '@/components/RecipeFilters';
+import RecipeFilters, { FilterState } from '@/components/RecipeFilters';
 import RecetteCard from '@/components/RecetteCard';
 import RecettesGridSkeleton from '@/components/RecettesGridSkeleton';
 
@@ -103,7 +103,7 @@ export default function RecettesPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
             >
               <option value="date">Date de publication</option>
               <option value="temps">Temps de préparation</option>
