@@ -15,6 +15,9 @@ RUN npm install --omit=dev --legacy-peer-deps
 # Copier le reste de l'application
 COPY . .
 
+# Build l'admin panel Strapi
+RUN npm run build
+
 # Exposer le port
 EXPOSE 1337
 
