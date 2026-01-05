@@ -8,23 +8,20 @@ WORKDIR /opt/app
 # Copier les fichiers de dépendances
 COPY package*.json ./
 
-# Installer les dépendances de production
-# Utiliser npm install si package-lock.json n'est pas synchronisé
-RUN npm install --omit=dev --legacy-peer-deps
+# Installer les dépendances (production + dev pour le build)
+RUN npm install --legacy-peer-deps
 
 # Copier le reste de l'application
 COPY . .
 
-# Définir NODE_ENV en production pour le build
-ENV NODE_ENV=production
-
-# Build l'admin panel Strapi
-# Les dépendances react sont maintenant dans package.json, donc pas de prompt interactif
-RUN npm run build
+# Copier le script d'entrée
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Exposer le port
 EXPOSE 1337
 
-# Commande par défaut
+# Script d'entrée qui rebuild l'admin si le volume mount l'a écrasé
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["npm", "run", "start"]
 
