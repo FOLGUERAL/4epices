@@ -58,7 +58,7 @@ export default async function Home() {
                 <p className="text-gray-600">Les recettes les plus appréciées</p>
               </div>
               <Link
-                href="/"
+                href="/recettes"
                 className="text-orange-600 hover:text-orange-700 font-medium transition-colors"
               >
                 Voir tout →
@@ -81,7 +81,7 @@ export default async function Home() {
                 <p className="text-gray-600">Les dernières recettes ajoutées</p>
               </div>
               <Link
-                href="/"
+                href="/recettes"
                 className="text-orange-600 hover:text-orange-700 font-medium transition-colors"
               >
                 Voir tout →

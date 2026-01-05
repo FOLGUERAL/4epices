@@ -37,6 +37,12 @@ export default async function Navigation() {
               Accueil
             </Link>
             <Link 
+              href="/recettes" 
+              className="text-gray-700 hover:text-gray-900 font-medium transition-colors whitespace-nowrap text-sm sm:text-base"
+            >
+              Recettes
+            </Link>
+            <Link 
               href="/favoris" 
               className="text-gray-700 hover:text-gray-900 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1"
             >
