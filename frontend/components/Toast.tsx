@@ -11,19 +11,19 @@ interface Toast {
 }
 
 let toastListeners: ((toasts: Toast[]) => void)[] = [];
-let toasts: Toast[] = [];
+let globalToasts: Toast[] = [];
 
 function notify(message: string, type: ToastType = 'info') {
   const id = Math.random().toString(36).substring(7);
   const newToast: Toast = { id, message, type };
   
-  toasts = [...toasts, newToast];
-  toastListeners.forEach(listener => listener(toasts));
+  globalToasts = [...globalToasts, newToast];
+  toastListeners.forEach(listener => listener(globalToasts));
   
   // Auto-remove after 5 seconds
   setTimeout(() => {
-    toasts = toasts.filter(t => t.id !== id);
-    toastListeners.forEach(listener => listener(toasts));
+    globalToasts = globalToasts.filter(t => t.id !== id);
+    toastListeners.forEach(listener => listener(globalToasts));
   }, 5000);
   
   return id;
