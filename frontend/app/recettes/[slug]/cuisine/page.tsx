@@ -19,8 +19,9 @@ export default function CuisineModePage() {
     let isMounted = true;
     
     const loadRecette = async () => {
+      const slug = params.slug as string;
+      
       try {
-        const slug = params.slug as string;
         if (!slug) {
           if (isMounted) {
             setLoading(false);
