@@ -16,10 +16,22 @@ export default function CuisineModePage() {
   const [ingredients, setIngredients] = useState<string[]>([]);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const loadRecette = async () => {
       try {
         const slug = params.slug as string;
+        if (!slug) {
+          if (isMounted) {
+            setLoading(false);
+          }
+          return;
+        }
+        
         const response = await getRecetteBySlug(slug);
+        
+        if (!isMounted) return;
+        
         if (response.data) {
           setRecette(response.data);
           
@@ -39,19 +51,25 @@ export default function CuisineModePage() {
           });
           
           setIngredients(normalized);
+          setLoading(false);
         } else {
-          router.push('/');
+          // Ne pas rediriger immédiatement, laisser l'utilisateur voir l'erreur
+          setLoading(false);
         }
       } catch (error) {
         console.error('Erreur:', error);
-        router.push('/');
-      } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadRecette();
-  }, [params.slug, router]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [params.slug]);
 
   if (loading) {
     return (
@@ -64,7 +82,24 @@ export default function CuisineModePage() {
   }
 
   if (!recette) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Recette non trouvée</h2>
+            <p className="text-gray-600 mb-6">
+              La recette demandée n'existe pas ou n'est plus disponible.
+            </p>
+            <button
+              onClick={() => router.push('/')}
+              className="inline-block bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors font-medium"
+            >
+              Retour à l'accueil
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Extraire les étapes du HTML
@@ -150,13 +185,14 @@ export default function CuisineModePage() {
 
         <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
           {imageUrl && (
-            <div className="relative h-64">
+            <div className="relative overflow-hidden" style={{ aspectRatio: '16/9' }}>
               <OptimizedImage
                 src={imageUrl}
                 alt={recette.attributes.titre}
                 fill
                 className="object-cover"
                 sizes="100vw"
+                aspectRatio="16/9"
               />
             </div>
           )}
