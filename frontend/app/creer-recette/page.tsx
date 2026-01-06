@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/Toast';
+import { parseRecipeText, ParsedRecipe } from '@/lib/parseRecipeText';
 
 export default function CreerRecettePage() {
   const router = useRouter();
@@ -29,6 +30,46 @@ export default function CreerRecettePage() {
   
   // État pour l'envoi
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // État pour afficher le JSON
+  const [showJson, setShowJson] = useState(false);
+  
+  // Calculer le JSON généré à partir du transcript
+  const generatedJson = useMemo(() => {
+    if (!transcript.trim()) {
+      return null;
+    }
+    
+    try {
+      const parsed = parseRecipeText(transcript.trim());
+      
+      // Convertir les étapes en HTML (comme dans l'API)
+      const etapesHtml = parsed.etapes
+        .map((etape, index) => `<p><strong>Étape ${index + 1} :</strong> ${etape}</p>`)
+        .join('\n');
+      
+      // Créer le JSON comme il sera envoyé à Strapi
+      const jsonData = {
+        data: {
+          titre: parsed.titre,
+          description: parsed.description || parsed.titre,
+          ingredients: parsed.ingredients,
+          etapes: etapesHtml,
+          tempsPreparation: parsed.tempsPreparation,
+          tempsCuisson: parsed.tempsCuisson,
+          nombrePersonnes: parsed.nombrePersonnes || 4,
+          difficulte: parsed.difficulte || 'facile',
+          publishedAt: new Date().toISOString(),
+          ...(selectedImage && { imagePrincipale: '[ID de l\'image après upload]' }),
+        },
+      };
+      
+      return jsonData;
+    } catch (error) {
+      console.error('Erreur lors du parsing:', error);
+      return null;
+    }
+  }, [transcript, selectedImage]);
 
   // Initialiser la reconnaissance vocale
   useEffect(() => {
@@ -631,26 +672,44 @@ export default function CreerRecettePage() {
               <h2 className="text-lg font-semibold text-gray-900">
                 Aperçu recette brute
               </h2>
-              {transcript && (
-                <button
-                  onClick={handleClearTranscript}
-                  className="text-sm text-red-500 hover:text-red-600 font-medium"
-                >
-                  Effacer
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {transcript && (
+                  <>
+                    <button
+                      onClick={() => setShowJson(!showJson)}
+                      className="text-sm text-blue-500 hover:text-blue-600 font-medium"
+                    >
+                      {showJson ? '📝 Texte' : '📄 JSON'}
+                    </button>
+                    <button
+                      onClick={handleClearTranscript}
+                      className="text-sm text-red-500 hover:text-red-600 font-medium"
+                    >
+                      Effacer
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="text-gray-700 whitespace-pre-wrap break-words">
-              {transcript}
-              {interimTranscript && (
-                <span className="text-gray-400 italic">{interimTranscript}</span>
-              )}
-              {!transcript && !interimTranscript && (
-                <p className="text-gray-400 italic">
-                  Le texte dicté apparaîtra ici...
-                </p>
-              )}
-            </div>
+            {showJson && generatedJson ? (
+              <div className="bg-gray-900 rounded-lg p-4 overflow-auto max-h-96">
+                <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap break-words">
+                  {JSON.stringify(generatedJson, null, 2)}
+                </pre>
+              </div>
+            ) : (
+              <div className="text-gray-700 whitespace-pre-wrap break-words">
+                {transcript}
+                {interimTranscript && (
+                  <span className="text-gray-400 italic">{interimTranscript}</span>
+                )}
+                {!transcript && !interimTranscript && (
+                  <p className="text-gray-400 italic">
+                    Le texte dicté apparaîtra ici...
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
