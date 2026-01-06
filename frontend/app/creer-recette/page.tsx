@@ -495,8 +495,60 @@ export default function CreerRecettePage() {
     }
   };
 
+  // Fonction pour compresser une image
+  const compressImage = (file: File, maxWidth: number = 1920, quality: number = 0.8): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Redimensionner si nécessaire
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Impossible de créer le contexte canvas'));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Erreur lors de la compression'));
+                return;
+              }
+              const compressedFile = new File([blob], file.name, {
+                type: file.type,
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            },
+            file.type,
+            quality
+          );
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  };
+
   // Gérer la sélection d'image
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -506,20 +558,36 @@ export default function CreerRecettePage() {
       return;
     }
 
-    // Vérifier la taille (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Image trop volumineuse (max 10MB)');
+    // Vérifier la taille (max 20MB avant compression)
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Image trop volumineuse (max 20MB)');
       return;
     }
 
-    setSelectedImage(file);
+    try {
+      // Compresser l'image si elle fait plus de 2MB
+      let processedFile = file;
+      if (file.size > 2 * 1024 * 1024) {
+        toast.info('Compression de l\'image en cours...');
+        processedFile = await compressImage(file, 1920, 0.85);
+        const originalSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        const compressedSizeMB = (processedFile.size / (1024 * 1024)).toFixed(2);
+        console.log(`[Image] Compression: ${originalSizeMB}MB → ${compressedSizeMB}MB`);
+        toast.success(`Image compressée: ${originalSizeMB}MB → ${compressedSizeMB}MB`);
+      }
 
-    // Créer un aperçu
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+      setSelectedImage(processedFile);
+
+      // Créer un aperçu
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(processedFile);
+    } catch (error) {
+      console.error('Erreur lors du traitement de l\'image:', error);
+      toast.error('Erreur lors du traitement de l\'image');
+    }
   };
 
   // Réinitialiser l'image
