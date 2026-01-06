@@ -15,6 +15,11 @@ export default function CreerRecettePage() {
   const lastProcessedIndexRef = useRef<number>(0);
   const processedResultsRef = useRef<Set<string>>(new Set());
   
+  // État pour Google Speech API (alternative)
+  const [useGoogleSpeech, setUseGoogleSpeech] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  
   // État pour l'image
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -185,8 +190,98 @@ export default function CreerRecettePage() {
     };
   }, []);
 
-  // Démarrer/arrêter la dictée
-  const toggleListening = () => {
+  // Démarrer/arrêter la dictée avec Google Speech API
+  const toggleListeningGoogle = async () => {
+    if (isListening) {
+      // Arrêter l'enregistrement
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      // Demander l'accès au microphone
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Créer un MediaRecorder
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus',
+      });
+      
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = async () => {
+        // Arrêter le stream
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Créer un blob et envoyer à l'API
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        try {
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.webm');
+          
+          const response = await fetch('/api/speech/transcribe', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          const result = await response.json();
+          
+          if (result.success && result.transcript) {
+            setTranscript((prev) => {
+              const newText = result.transcript.trim();
+              if (!prev.trim()) {
+                return newText + ' ';
+              }
+              // Ajouter avec un espace si ce n'est pas une répétition
+              const prevWords = prev.trim().split(/\s+/);
+              const newWords = newText.split(/\s+/);
+              
+              // Vérifier si les 3 derniers mots sont identiques aux 3 premiers
+              if (prevWords.length >= 3 && newWords.length >= 3) {
+                const lastThree = prevWords.slice(-3).join(' ').toLowerCase();
+                const firstThree = newWords.slice(0, 3).join(' ').toLowerCase();
+                if (lastThree === firstThree) {
+                  return prev + ' ' + newWords.slice(3).join(' ') + ' ';
+                }
+              }
+              
+              return prev + ' ' + newText + ' ';
+            });
+            toast.success('Transcription ajoutée');
+          } else {
+            toast.error(result.message || 'Aucune transcription disponible');
+          }
+        } catch (error) {
+          console.error('Erreur lors de la transcription:', error);
+          toast.error('Erreur lors de la transcription');
+        }
+        
+        audioChunksRef.current = [];
+      };
+      
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsListening(true);
+      toast.info('Enregistrement en cours...');
+    } catch (error) {
+      console.error('Erreur au démarrage:', error);
+      toast.error('Impossible d\'accéder au microphone');
+      setIsListening(false);
+    }
+  };
+
+  // Démarrer/arrêter la dictée avec Web Speech API (native)
+  const toggleListeningNative = () => {
     if (!recognitionRef.current) {
       toast.error('Reconnaissance vocale non disponible');
       return;
@@ -202,6 +297,15 @@ export default function CreerRecettePage() {
         console.error('Erreur au démarrage:', error);
         toast.error('Impossible de démarrer la dictée');
       }
+    }
+  };
+
+  // Toggle général qui choisit l'API
+  const toggleListening = () => {
+    if (useGoogleSpeech) {
+      toggleListeningGoogle();
+    } else {
+      toggleListeningNative();
     }
   };
 
@@ -317,6 +421,28 @@ export default function CreerRecettePage() {
           <p className="text-gray-600 text-sm">
             Dictez votre recette ou prenez une photo
           </p>
+        </div>
+
+        {/* Sélecteur d'API */}
+        <div className="mb-4">
+          <div className="bg-white rounded-xl p-3 shadow-md">
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="text-sm font-medium text-gray-700">
+                Utiliser Google Speech (plus précis)
+              </span>
+              <input
+                type="checkbox"
+                checked={useGoogleSpeech}
+                onChange={(e) => setUseGoogleSpeech(e.target.checked)}
+                className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
+              />
+            </label>
+            {useGoogleSpeech && (
+              <p className="text-xs text-gray-500 mt-2">
+                ⚠️ Nécessite une clé API Google (60 min gratuites/mois)
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Bouton Dictée */}
