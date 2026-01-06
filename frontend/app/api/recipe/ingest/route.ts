@@ -212,10 +212,22 @@ async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): 
       }
     }
 
+    // Générer un slug à partir du titre (Strapi le génère normalement, mais on l'aide)
+    const generateSlug = (title: string): string => {
+      return title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Enlever les accents
+        .replace(/[^a-z0-9]+/g, '-') // Remplacer les caractères spéciaux par des tirets
+        .replace(/^-+|-+$/g, '') // Enlever les tirets en début/fin
+        .substring(0, 100); // Limiter la longueur
+    };
+
     // Préparer les données pour Strapi (format exact du schéma)
     const recipeData: any = {
       data: {
         titre: parsedRecipe.titre,
+        slug: generateSlug(parsedRecipe.titre), // Générer le slug explicitement
         description: parsedRecipe.description || parsedRecipe.titre,
         ingredients: ingredientsFormatted, // JSON array (strings ou objets {quantite, ingredient})
         etapes: etapesHtml, // RichText (HTML)
@@ -305,14 +317,17 @@ export async function POST(request: NextRequest) {
     let parsedRecipe;
     if (text?.trim()) {
       try {
-        // Appeler l'API de parsing IA
-        const parseResponse = await fetch(`${request.nextUrl.origin}/api/recipe/parse-ai`, {
+        // Appeler directement la fonction POST de l'API parse-ai (évite les problèmes SSL/fetch)
+        const { POST: parseAIPost } = await import('@/app/api/recipe/parse-ai/route');
+        const parseRequest = new NextRequest(new URL('/api/recipe/parse-ai', request.url), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ text: text.trim() }),
         });
+        
+        const parseResponse = await parseAIPost(parseRequest);
 
         if (parseResponse.ok) {
           const parseResult = await parseResponse.json();

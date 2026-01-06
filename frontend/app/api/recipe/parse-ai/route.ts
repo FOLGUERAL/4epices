@@ -85,7 +85,7 @@ ${text.trim()}
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini', // ou 'gpt-3.5-turbo' pour économiser
+        model: 'gpt-3.5-turbo', // Utiliser 3.5-turbo pour éviter les rate limits (gpt-4o-mini a seulement 3 RPM en gratuit)
         messages: [
           {
             role: 'system',
@@ -98,6 +98,7 @@ ${text.trim()}
         ],
         temperature: 0.3, // Plus bas pour plus de cohérence
         response_format: { type: 'json_object' }, // Force le format JSON
+        max_retries: 2, // Réessayer en cas d'erreur
       }),
     });
 
