@@ -32,12 +32,41 @@ module.exports = ({ env }) => [
     config: {
       enabled: true,
       headers: '*',
-      origin: [
-        'http://localhost:3000',
-        'http://localhost:3001',
-        env('FRONTEND_URL', 'http://localhost:3000'),
-        env('FRONTEND_URL')?.replace('http://', 'https://'),
-      ].filter(Boolean),
+      origin: (() => {
+        const origins = [
+          'http://localhost:3000',
+          'http://localhost:3001',
+        ];
+        
+        const frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+        if (frontendUrl) {
+          // Ajouter l'URL telle quelle
+          origins.push(frontendUrl);
+          
+          // Ajouter la version HTTPS si c'est HTTP
+          if (frontendUrl.startsWith('http://')) {
+            origins.push(frontendUrl.replace('http://', 'https://'));
+          }
+          
+          // Ajouter la version avec www si elle n'a pas www
+          if (!frontendUrl.includes('www.')) {
+            origins.push(frontendUrl.replace('://', '://www.'));
+            if (frontendUrl.startsWith('http://')) {
+              origins.push(frontendUrl.replace('http://', 'https://www.'));
+            }
+          }
+          
+          // Ajouter la version sans www si elle a www
+          if (frontendUrl.includes('www.')) {
+            origins.push(frontendUrl.replace('://www.', '://'));
+            if (frontendUrl.startsWith('http://')) {
+              origins.push(frontendUrl.replace('http://www.', 'https://'));
+            }
+          }
+        }
+        
+        return origins.filter(Boolean);
+      })(),
     },
   },
   'strapi::poweredBy',
