@@ -496,7 +496,7 @@ export default function CreerRecettePage() {
   };
 
   // Fonction pour compresser une image
-  const compressImage = (file: File, maxWidth: number = 1920, quality: number = 0.8): Promise<File> => {
+  const compressImage = (file: File, maxWidth: number = 1600, quality: number = 0.75): Promise<File> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -523,21 +523,28 @@ export default function CreerRecettePage() {
             return;
           }
 
+          // Améliorer la qualité de rendu
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
 
+          // Utiliser image/jpeg pour une meilleure compression même si l'original est PNG
+          const outputType = 'image/jpeg';
+          
           canvas.toBlob(
             (blob) => {
               if (!blob) {
                 reject(new Error('Erreur lors de la compression'));
                 return;
               }
-              const compressedFile = new File([blob], file.name, {
-                type: file.type,
+              const fileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+              const compressedFile = new File([blob], fileName, {
+                type: outputType,
                 lastModified: Date.now(),
               });
               resolve(compressedFile);
             },
-            file.type,
+            outputType,
             quality
           );
         };
@@ -565,15 +572,18 @@ export default function CreerRecettePage() {
     }
 
     try {
-      // Compresser l'image si elle fait plus de 2MB
+      // Compresser l'image si elle fait plus de 500KB pour éviter les erreurs 413
       let processedFile = file;
-      if (file.size > 2 * 1024 * 1024) {
+      if (file.size > 500 * 1024) {
         toast.info('Compression de l\'image en cours...');
-        processedFile = await compressImage(file, 1920, 0.85);
+        processedFile = await compressImage(file, 1600, 0.75);
         const originalSizeMB = (file.size / (1024 * 1024)).toFixed(2);
         const compressedSizeMB = (processedFile.size / (1024 * 1024)).toFixed(2);
-        console.log(`[Image] Compression: ${originalSizeMB}MB → ${compressedSizeMB}MB`);
-        toast.success(`Image compressée: ${originalSizeMB}MB → ${compressedSizeMB}MB`);
+        const reduction = ((1 - processedFile.size / file.size) * 100).toFixed(0);
+        console.log(`[Image] Compression: ${originalSizeMB}MB → ${compressedSizeMB}MB (${reduction}% de réduction)`);
+        toast.success(`Image compressée: ${originalSizeMB}MB → ${compressedSizeMB}MB (-${reduction}%)`);
+      } else {
+        console.log(`[Image] Image de ${(file.size / 1024).toFixed(0)}KB, pas de compression nécessaire`);
       }
 
       setSelectedImage(processedFile);
