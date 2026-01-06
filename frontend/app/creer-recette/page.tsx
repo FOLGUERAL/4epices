@@ -810,19 +810,33 @@ export default function CreerRecettePage() {
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="text-gray-700 whitespace-pre-wrap break-words">
-                {transcript}
-                {interimTranscript && (
-                  <span className="text-gray-400 italic">{interimTranscript}</span>
-                )}
-                {!transcript && !interimTranscript && (
-                  <p className="text-gray-400 italic">
-                    Le texte dicté apparaîtra ici...
-                  </p>
-                )}
-              </div>
-            )}
+             ) : (
+               <div className="relative">
+                 <textarea
+                   value={transcript}
+                   onChange={(e) => setTranscript(e.target.value)}
+                   onBlur={() => {
+                     // Arrêter la dictée si elle est active lors de l'édition
+                     if (isListening) {
+                       toggleListening();
+                     }
+                   }}
+                   placeholder="Le texte dicté apparaîtra ici... Vous pouvez aussi taper directement."
+                   className="w-full min-h-[200px] p-4 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-y"
+                   rows={10}
+                 />
+                 {interimTranscript && (
+                   <div className="mt-2 text-sm text-gray-400 italic">
+                     En cours : {interimTranscript}
+                   </div>
+                 )}
+                 {!transcript && !interimTranscript && (
+                   <div className="absolute top-4 left-4 text-gray-400 pointer-events-none">
+                     Le texte dicté apparaîtra ici... Vous pouvez aussi taper directement.
+                   </div>
+                 )}
+               </div>
+             )}
           </div>
         </div>
 
