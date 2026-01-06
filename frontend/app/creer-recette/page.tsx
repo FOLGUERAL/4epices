@@ -16,6 +16,7 @@ export default function CreerRecettePage() {
   const processedResultsRef = useRef<Set<string>>(new Set());
   const lastWordsRef = useRef<string[]>([]); // Garder les 20 derniers mots pour comparaison
   const seenSequencesRef = useRef<Set<string>>(new Set()); // Séquences déjà vues
+  const shouldAutoRestartRef = useRef<boolean>(false); // Flag pour savoir si on doit redémarrer automatiquement
   
   // État pour Google Speech API (alternative)
   const [useGoogleSpeech, setUseGoogleSpeech] = useState(false);
@@ -45,11 +46,13 @@ export default function CreerRecettePage() {
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'fr-FR';
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = true; // Continue même après une pause
+    recognition.interimResults = true; // Affiche les résultats intermédiaires
+    // Note: maxAlternatives n'est pas nécessaire, on garde le premier résultat
 
     recognition.onstart = () => {
       setIsListening(true);
+      shouldAutoRestartRef.current = true; // Autoriser le redémarrage automatique
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -238,7 +241,28 @@ export default function CreerRecettePage() {
     };
 
     recognition.onend = () => {
-      setIsListening(false);
+      // La Web Speech API s'arrête automatiquement après un silence
+      // Redémarrer automatiquement seulement si l'utilisateur est toujours en mode écoute
+      if (shouldAutoRestartRef.current && recognitionRef.current) {
+        try {
+          // Petit délai avant de redémarrer pour éviter les boucles
+          setTimeout(() => {
+            if (shouldAutoRestartRef.current && recognitionRef.current) {
+              try {
+                recognitionRef.current.start();
+              } catch (error) {
+                // Si erreur (ex: déjà démarré), ne rien faire
+                console.log('Reconnaissance déjà active ou erreur:', error);
+              }
+            }
+          }, 300);
+        } catch (error) {
+          console.error('Erreur au redémarrage:', error);
+        }
+      } else {
+        // L'utilisateur a arrêté manuellement
+        setIsListening(false);
+      }
     };
 
     recognitionRef.current = recognition;
@@ -355,14 +379,18 @@ export default function CreerRecettePage() {
     }
 
     if (isListening) {
+      // Arrêter manuellement : désactiver le redémarrage automatique
+      shouldAutoRestartRef.current = false;
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
       try {
+        shouldAutoRestartRef.current = true; // Autoriser le redémarrage automatique
         recognitionRef.current.start();
       } catch (error) {
         console.error('Erreur au démarrage:', error);
         toast.error('Impossible de démarrer la dictée');
+        shouldAutoRestartRef.current = false;
       }
     }
   };
