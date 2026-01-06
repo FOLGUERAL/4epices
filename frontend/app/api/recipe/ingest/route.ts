@@ -24,6 +24,7 @@ async function uploadImageToStrapi(imageFile: File): Promise<number | null> {
     const strapiUrl = getStrapiUrl();
     const apiToken = getStrapiApiToken();
     
+    // Créer un FormData et ajouter le fichier directement
     const formData = new FormData();
     formData.append('files', imageFile);
 
@@ -31,6 +32,15 @@ async function uploadImageToStrapi(imageFile: File): Promise<number | null> {
     if (apiToken) {
       headers['Authorization'] = `Bearer ${apiToken}`;
     }
+    // Ne pas définir Content-Type, laissez fetch le faire automatiquement pour FormData
+    // Cela permet à fetch de définir le bon boundary pour multipart/form-data
+
+    console.log('[Upload] Envoi de l\'image à Strapi:', {
+      fileName: imageFile.name,
+      fileSize: imageFile.size,
+      fileType: imageFile.type,
+      strapiUrl: `${strapiUrl}/api/upload`,
+    });
 
     const response = await fetch(`${strapiUrl}/api/upload`, {
       method: 'POST',
@@ -40,18 +50,26 @@ async function uploadImageToStrapi(imageFile: File): Promise<number | null> {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Erreur upload image:', errorText);
+      console.error('[Upload] Erreur upload image:', errorText);
+      console.error('[Upload] Status:', response.status);
+      console.error('[Upload] StatusText:', response.statusText);
       return null;
     }
 
     const data = await response.json();
+    console.log('[Upload] Réponse Strapi:', data);
+    
     if (data && data.length > 0) {
       return data[0].id;
     }
 
     return null;
   } catch (error) {
-    console.error('Erreur lors de l\'upload de l\'image:', error);
+    console.error('[Upload] Erreur lors de l\'upload de l\'image:', error);
+    if (error instanceof Error) {
+      console.error('[Upload] Message d\'erreur:', error.message);
+      console.error('[Upload] Stack:', error.stack);
+    }
     return null;
   }
 }
