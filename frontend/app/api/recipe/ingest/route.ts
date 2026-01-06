@@ -24,6 +24,19 @@ async function uploadImageToStrapi(imageFile: File): Promise<number | null> {
     const strapiUrl = getStrapiUrl();
     const apiToken = getStrapiApiToken();
     
+    console.log('[Upload] Début upload image:', {
+      fileName: imageFile.name,
+      fileSize: imageFile.size,
+      fileType: imageFile.type,
+      strapiUrl: `${strapiUrl}/api/upload`,
+      hasToken: !!apiToken,
+    });
+
+    // Vérifier que le fichier est valide
+    if (!imageFile || imageFile.size === 0) {
+      throw new Error('Le fichier image est vide ou invalide');
+    }
+
     // Créer un FormData et ajouter le fichier directement
     const formData = new FormData();
     formData.append('files', imageFile);
@@ -33,36 +46,38 @@ async function uploadImageToStrapi(imageFile: File): Promise<number | null> {
       headers['Authorization'] = `Bearer ${apiToken}`;
     }
     // Ne pas définir Content-Type, laissez fetch le faire automatiquement pour FormData
-    // Cela permet à fetch de définir le bon boundary pour multipart/form-data
 
-    console.log('[Upload] Envoi de l\'image à Strapi:', {
-      fileName: imageFile.name,
-      fileSize: imageFile.size,
-      fileType: imageFile.type,
-      strapiUrl: `${strapiUrl}/api/upload`,
-    });
-
+    console.log('[Upload] Envoi de la requête à Strapi...');
+    
     const response = await fetch(`${strapiUrl}/api/upload`, {
       method: 'POST',
       headers,
       body: formData,
     });
 
+    console.log('[Upload] Réponse reçue:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+    });
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Upload] Erreur upload image:', errorText);
-      console.error('[Upload] Status:', response.status);
-      console.error('[Upload] StatusText:', response.statusText);
-      return null;
+      console.error('[Upload] Erreur upload image - Status:', response.status);
+      console.error('[Upload] Erreur upload image - Body:', errorText);
+      throw new Error(`Erreur upload Strapi (${response.status}): ${errorText.substring(0, 200)}`);
     }
 
     const data = await response.json();
-    console.log('[Upload] Réponse Strapi:', data);
+    console.log('[Upload] Réponse Strapi:', JSON.stringify(data, null, 2));
     
-    if (data && data.length > 0) {
-      return data[0].id;
+    if (data && Array.isArray(data) && data.length > 0) {
+      const imageId = data[0].id;
+      console.log('[Upload] Image uploadée avec succès, ID:', imageId);
+      return imageId;
     }
 
+    console.error('[Upload] Format de réponse inattendu:', data);
     return null;
   } catch (error) {
     console.error('[Upload] Erreur lors de l\'upload de l\'image:', error);
@@ -70,7 +85,7 @@ async function uploadImageToStrapi(imageFile: File): Promise<number | null> {
       console.error('[Upload] Message d\'erreur:', error.message);
       console.error('[Upload] Stack:', error.stack);
     }
-    return null;
+    throw error; // Propager l'erreur pour qu'elle soit visible
   }
 }
 
@@ -318,13 +333,24 @@ async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): 
  * - slug?: string (si la recette a été créée)
  */
 export async function POST(request: NextRequest) {
+  console.log('[Ingest] Début de la requête POST');
   try {
     const formData = await request.formData();
     const text = formData.get('text') as string | null;
     const image = formData.get('image') as File | null;
 
+    console.log('[Ingest] Données reçues:', {
+      hasText: !!text?.trim(),
+      textLength: text?.length || 0,
+      hasImage: !!image,
+      imageName: image?.name,
+      imageSize: image?.size,
+      imageType: image?.type,
+    });
+
     // Vérifier qu'on a au moins du texte ou une image
     if (!text?.trim() && !image) {
+      console.error('[Ingest] Erreur: Texte ou image requis');
       return NextResponse.json(
         { success: false, message: 'Texte ou image requis' },
         { status: 400 }
@@ -397,9 +423,25 @@ export async function POST(request: NextRequest) {
     // Uploader l'image si présente
     let imageId: number | null = null;
     if (image) {
-      imageId = await uploadImageToStrapi(image);
-      if (!imageId) {
-        console.warn('Impossible d\'uploader l\'image, création de la recette sans image');
+      console.log('[Ingest] Upload de l\'image...', {
+        name: image.name,
+        size: image.size,
+        type: image.type,
+      });
+      try {
+        imageId = await uploadImageToStrapi(image);
+        if (!imageId) {
+          console.warn('[Ingest] Impossible d\'uploader l\'image, création de la recette sans image');
+        } else {
+          console.log('[Ingest] Image uploadée avec succès, ID:', imageId);
+        }
+      } catch (uploadError) {
+        console.error('[Ingest] Erreur lors de l\'upload de l\'image:', uploadError);
+        // Si l'image est requise, on échoue
+        // Sinon, on continue sans image
+        if (image.size > 0) {
+          throw new Error(`Erreur lors de l'upload de l'image: ${uploadError instanceof Error ? uploadError.message : 'Erreur inconnue'}`);
+        }
       }
     }
 
@@ -423,11 +465,15 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[API /recipe/ingest] Erreur:', error);
+    console.error('[Ingest] Erreur globale:', error);
+    if (error instanceof Error) {
+      console.error('[Ingest] Message:', error.message);
+      console.error('[Ingest] Stack:', error.stack);
+    }
     return NextResponse.json(
       {
         success: false,
-        message: error instanceof Error ? error.message : 'Erreur serveur',
+        message: error instanceof Error ? error.message : 'Erreur serveur inconnue',
       },
       { status: 500 }
     );

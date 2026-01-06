@@ -560,14 +560,36 @@ export default function CreerRecettePage() {
         formData.append('image', selectedImage);
       }
 
+      console.log('[Client] Envoi de la requête...', {
+        hasText: !!transcript.trim(),
+        hasImage: !!selectedImage,
+        imageName: selectedImage?.name,
+        imageSize: selectedImage?.size,
+      });
+
       const response = await fetch('/api/recipe/ingest', {
         method: 'POST',
         body: formData,
       });
 
+      console.log('[Client] Réponse reçue:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Erreur inconnue' }));
-        throw new Error(error.message || `Erreur ${response.status}`);
+        let errorMessage = `Erreur ${response.status}`;
+        try {
+          const error = await response.json();
+          errorMessage = error.message || errorMessage;
+          console.error('[Client] Erreur détaillée:', error);
+        } catch (e) {
+          const errorText = await response.text().catch(() => 'Erreur inconnue');
+          errorMessage = errorText || errorMessage;
+          console.error('[Client] Erreur (texte):', errorText);
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
