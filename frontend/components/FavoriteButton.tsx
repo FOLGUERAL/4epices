@@ -34,7 +34,7 @@ export default function FavoriteButton({ recette, className = '' }: FavoriteButt
     if (newState) {
       toast.success('Recette ajoutée aux favoris');
     } else {
-      toast.info('Recette retirée des favoris');
+      toast.success('Recette supprimée des favoris');
     }
   };
 
