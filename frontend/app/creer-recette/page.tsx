@@ -83,99 +83,75 @@ export default function CreerRecettePage() {
               return newText + ' ';
             }
             
-            // Normaliser les textes pour comparaison (minuscules, sans ponctuation)
+            // Normaliser les textes pour comparaison (minuscules, sans ponctuation, sans accents)
             const normalize = (text: string) => 
-              text.toLowerCase().replace(/[.,!?;:]/g, '').trim();
+              text
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '') // Enlever les accents
+                .replace(/[.,!?;:]/g, '')
+                .trim();
             
             const prevNormalized = normalize(prevText);
             const newNormalized = normalize(newText);
             
             // Si le nouveau texte est déjà complètement contenu dans le précédent, ignorer
-            if (prevNormalized.includes(newNormalized) && newNormalized.length > 5) {
+            if (prevNormalized.includes(newNormalized) && newNormalized.length > 3) {
               return prev;
             }
             
-            // Diviser en mots
+            // Diviser en mots et normaliser
             const prevWords = prevText.split(/\s+/).filter(w => w.length > 0);
             const newWords = newText.split(/\s+/).filter(w => w.length > 0);
             
             if (newWords.length === 0) return prev;
             
-            // Vérifier les répétitions de séquences de mots
-            // Comparer les 2-4 derniers mots du texte précédent avec les 2-4 premiers du nouveau
-            for (let seqLen = 4; seqLen >= 2; seqLen--) {
-              if (prevWords.length >= seqLen && newWords.length >= seqLen) {
-                const lastSeq = prevWords.slice(-seqLen).join(' ').toLowerCase();
-                const firstSeq = newWords.slice(0, seqLen).join(' ').toLowerCase();
-                
-                if (lastSeq === firstSeq) {
-                  // Répétition détectée, ne prendre que les mots après la séquence
-                  const remaining = newWords.slice(seqLen);
-                  if (remaining.length > 0) {
-                    return prev + ' ' + remaining.join(' ') + ' ';
-                  }
-                  return prev;
-                }
+            // APPROCHE AGRESSIVE : Comparer chaque nouveau mot avec les derniers mots
+            // Ne garder que les mots qui ne sont pas déjà présents dans les 10 derniers mots
+            const lastWords = prevWords.slice(-10).map(w => normalize(w));
+            const uniqueNewWords: string[] = [];
+            
+            for (let i = 0; i < newWords.length; i++) {
+              const word = newWords[i];
+              const normalizedWord = normalize(word);
+              
+              // Vérifier si ce mot est déjà dans les derniers mots
+              const isDuplicate = lastWords.includes(normalizedWord);
+              
+              // Vérifier aussi si c'est une répétition consécutive du mot précédent
+              const isConsecutiveRepeat = i > 0 && normalize(newWords[i - 1]) === normalizedWord;
+              
+              // Vérifier si c'est identique au dernier mot du texte précédent
+              const isLastWordRepeat = prevWords.length > 0 && 
+                normalize(prevWords[prevWords.length - 1]) === normalizedWord;
+              
+              if (!isDuplicate && !isConsecutiveRepeat && !isLastWordRepeat) {
+                uniqueNewWords.push(word);
+              } else if (i === 0 && isLastWordRepeat) {
+                // Si le premier mot est une répétition du dernier, on le saute mais on continue
+                continue;
               }
             }
             
-            // Vérifier les répétitions de mots individuels consécutifs
-            // Si les 2-3 derniers mots sont identiques aux 2-3 premiers, c'est une répétition
-            if (prevWords.length >= 2 && newWords.length >= 2) {
-              const lastTwo = prevWords.slice(-2).map(w => w.toLowerCase());
-              const firstTwo = newWords.slice(0, 2).map(w => w.toLowerCase());
+            // Si on a trouvé des mots uniques, les ajouter
+            if (uniqueNewWords.length > 0) {
+              return prev + ' ' + uniqueNewWords.join(' ') + ' ';
+            }
+            
+            // Si aucun mot unique, vérifier s'il y a vraiment du nouveau contenu
+            // en comparant des séquences plus longues
+            if (newWords.length >= 3) {
+              const lastThree = prevWords.slice(-3).map(w => normalize(w)).join(' ');
+              const firstThree = newWords.slice(0, 3).map(w => normalize(w)).join(' ');
               
-              if (lastTwo[0] === firstTwo[0] && lastTwo[1] === firstTwo[1]) {
-                // Les 2 premiers mots sont identiques aux 2 derniers, sauter les 2 premiers
-                const remaining = newWords.slice(2);
-                if (remaining.length > 0) {
-                  return prev + ' ' + remaining.join(' ') + ' ';
-                }
-                return prev;
-              }
-              
-              // Vérifier si le dernier mot est répété au début
-              if (prevWords.length > 0 && newWords.length > 0) {
-                const lastWord = prevWords[prevWords.length - 1].toLowerCase();
-                const firstWord = newWords[0].toLowerCase();
-                
-                if (lastWord === firstWord) {
-                  // Le premier mot est identique au dernier, le sauter
-                  const remaining = newWords.slice(1);
-                  if (remaining.length > 0) {
-                    return prev + ' ' + remaining.join(' ') + ' ';
-                  }
-                  return prev;
-                }
+              if (lastThree !== firstThree) {
+                // Les 3 premiers mots sont différents, prendre tout
+                return prev + ' ' + newText + ' ';
               }
             }
             
-            // Vérifier si le nouveau texte commence par des mots déjà présents à la fin
-            // Comparer les 5 derniers mots avec les 5 premiers
-            if (prevWords.length >= 5 && newWords.length >= 5) {
-              const lastFive = prevWords.slice(-5).map(w => w.toLowerCase());
-              const firstFive = newWords.slice(0, 5).map(w => w.toLowerCase());
-              
-              // Compter les correspondances
-              const matches = firstFive.filter((word, idx) => 
-                lastFive.includes(word) || word === lastFive[idx]
-              );
-              
-              // Si 4 mots ou plus correspondent, c'est probablement une répétition
-              if (matches.length >= 4) {
-                // Prendre seulement les mots vraiment nouveaux
-                const newUniqueWords = newWords.filter(word => 
-                  !lastFive.includes(word.toLowerCase())
-                );
-                if (newUniqueWords.length > 0) {
-                  return prev + ' ' + newUniqueWords.join(' ') + ' ';
-                }
-                return prev;
-              }
-            }
-            
-            // Aucune répétition détectée, ajouter le nouveau texte
-            return prev + ' ' + newText + ' ';
+            // Aucun nouveau contenu détecté
+            return prev;
           });
         }
       }
