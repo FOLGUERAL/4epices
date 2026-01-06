@@ -98,7 +98,6 @@ ${text.trim()}
         ],
         temperature: 0.3, // Plus bas pour plus de cohérence
         response_format: { type: 'json_object' }, // Force le format JSON
-        max_retries: 2, // Réessayer en cas d'erreur
       }),
     });
 
