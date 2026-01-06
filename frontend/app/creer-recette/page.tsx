@@ -37,40 +37,42 @@ export default function CreerRecettePage() {
   const [parsedRecipe, setParsedRecipe] = useState<any>(null);
   const [isParsing, setIsParsing] = useState(false);
 
-  // Parser le texte avec l'IA quand le transcript change
-  useEffect(() => {
+  // Fonction pour parser le texte avec l'IA (appelée manuellement via bouton)
+  const handleParseWithAI = async () => {
     if (!transcript.trim()) {
-      setParsedRecipe(null);
+      toast.warning('Aucun texte à parser. Dictez d\'abord votre recette.');
       return;
     }
 
-    // Délai pour éviter trop d'appels (debounce)
-    const timeoutId = setTimeout(async () => {
-      setIsParsing(true);
-      try {
-        const response = await fetch('/api/recipe/parse-ai', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ text: transcript.trim() }),
-        });
+    setIsParsing(true);
+    try {
+      const response = await fetch('/api/recipe/parse-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: transcript.trim() }),
+      });
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            setParsedRecipe(result.data);
-          }
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setParsedRecipe(result.data);
+          toast.success('Recette parsée avec succès !');
+        } else {
+          toast.error(result.message || 'Erreur lors du parsing');
         }
-      } catch (error) {
-        console.error('Erreur parsing IA:', error);
-      } finally {
-        setIsParsing(false);
+      } else {
+        const error = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+        toast.error(error.message || 'Erreur lors du parsing');
       }
-    }, 1000); // Attendre 1 seconde après la dernière modification
-
-    return () => clearTimeout(timeoutId);
-  }, [transcript]);
+    } catch (error) {
+      console.error('Erreur parsing IA:', error);
+      toast.error('Erreur lors de la connexion à l\'API');
+    } finally {
+      setIsParsing(false);
+    }
+  };
 
   // Calculer le JSON généré à partir du résultat de l'IA
   const generatedJson = useMemo(() => {
@@ -713,12 +715,39 @@ export default function CreerRecettePage() {
           </div>
         )}
 
+        {/* Bouton Créer JSON avec IA */}
+        {transcript.trim() && !parsedRecipe && (
+          <div className="mb-6">
+            <button
+              onClick={handleParseWithAI}
+              disabled={isParsing || isSubmitting}
+              className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all shadow-lg ${
+                isParsing || isSubmitting
+                  ? 'bg-gray-400 cursor-not-allowed text-white'
+                  : 'bg-purple-500 text-white hover:bg-purple-600 active:scale-95'
+              }`}
+            >
+              {isParsing ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Parsing en cours...
+                </>
+              ) : (
+                '🤖 Créer le JSON avec l\'IA'
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Aperçu recette brute */}
         <div className="mb-6">
           <div className="bg-white rounded-xl p-4 shadow-lg min-h-[200px]">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-gray-900">
-                Aperçu recette brute
+                {parsedRecipe ? 'Aperçu recette structurée' : 'Aperçu recette brute'}
               </h2>
               <div className="flex items-center gap-2">
                 {transcript && (
@@ -775,7 +804,7 @@ export default function CreerRecettePage() {
           </div>
         </div>
 
-        {/* Bouton Créer */}
+        {/* Bouton Envoyer à Strapi */}
         <button
           onClick={handleSubmit}
           disabled={isSubmitting || (!transcript.trim() && !selectedImage)}
@@ -794,7 +823,7 @@ export default function CreerRecettePage() {
               Création en cours...
             </span>
           ) : (
-            '🚀 Créer la recette'
+            '🚀 Envoyer la recette à Strapi'
           )}
         </button>
 
