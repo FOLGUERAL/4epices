@@ -301,10 +301,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parser le texte pour extraire les informations structurées
+    // Parser le texte avec l'IA
     let parsedRecipe;
     if (text?.trim()) {
-      parsedRecipe = parseRecipeText(text.trim());
+      try {
+        // Appeler l'API de parsing IA
+        const parseResponse = await fetch(`${request.nextUrl.origin}/api/recipe/parse-ai`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text: text.trim() }),
+        });
+
+        if (parseResponse.ok) {
+          const parseResult = await parseResponse.json();
+          if (parseResult.success && parseResult.data) {
+            parsedRecipe = parseResult.data;
+          } else {
+            throw new Error(parseResult.message || 'Erreur lors du parsing IA');
+          }
+        } else {
+          const error = await parseResponse.json().catch(() => ({ message: 'Erreur parsing IA' }));
+          throw new Error(error.message || 'Erreur lors du parsing IA');
+        }
+      } catch (error) {
+        console.error('Erreur parsing IA, fallback sur parser local:', error);
+        // Fallback sur le parser local si l'IA échoue
+        try {
+          const { parseRecipeText } = await import('@/lib/parseRecipeText');
+          const localParsed = parseRecipeText(text.trim());
+          // Adapter au format attendu
+          parsedRecipe = {
+            titre: localParsed.titre,
+            description: localParsed.description,
+            ingredients: localParsed.ingredients,
+            etapes: localParsed.etapes,
+            tempsPreparation: localParsed.tempsPreparation,
+            tempsCuisson: localParsed.tempsCuisson,
+            nombrePersonnes: localParsed.nombrePersonnes || 4,
+            difficulte: localParsed.difficulte || 'facile',
+            categories: [],
+            tags: [],
+          };
+        } catch (fallbackError) {
+          console.error('Erreur parser local:', fallbackError);
+          throw new Error('Impossible de parser la recette');
+        }
+      }
     } else {
       // Si pas de texte, créer une recette basique
       parsedRecipe = {
