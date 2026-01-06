@@ -70,16 +70,23 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
 
-    // Extraire la transcription
+    // Extraire la transcription et les métadonnées
     if (data.results && data.results.length > 0) {
       const transcript = data.results
         .map((result: any) => result.alternatives[0]?.transcript || '')
         .filter((t: string) => t.length > 0)
         .join(' ');
 
+      // Calculer la durée approximative (1 caractère ≈ 0.05 secondes de parole)
+      const estimatedDuration = Math.ceil(transcript.length * 0.05 / 60); // en minutes
+
       return NextResponse.json({
         success: true,
         transcript: transcript.trim(),
+        metadata: {
+          estimatedDurationMinutes: estimatedDuration,
+          characterCount: transcript.length,
+        },
       });
     }
 

@@ -14,6 +14,8 @@ export default function CreerRecettePage() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const lastProcessedIndexRef = useRef<number>(0);
   const processedResultsRef = useRef<Set<string>>(new Set());
+  const lastWordsRef = useRef<string[]>([]); // Garder les 20 derniers mots pour comparaison
+  const seenSequencesRef = useRef<Set<string>>(new Set()); // Séquences déjà vues
   
   // État pour Google Speech API (alternative)
   const [useGoogleSpeech, setUseGoogleSpeech] = useState(false);
@@ -54,17 +56,29 @@ export default function CreerRecettePage() {
       let interim = '';
       const newFinalParts: string[] = [];
 
+      // Fonction de normalisation améliorée
+      const normalize = (text: string): string => {
+        return text
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '') // Enlever les accents
+          .replace(/[.,!?;:()\[\]{}'"]/g, '') // Enlever toute la ponctuation
+          .replace(/\s+/g, ' ') // Normaliser les espaces
+          .trim();
+      };
+
       // Traiter uniquement les nouveaux résultats depuis resultIndex
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         const transcript = result[0].transcript.trim();
         
         if (result.isFinal && transcript) {
-          // Créer une clé unique pour ce résultat (index + texte)
-          const resultKey = `${i}-${transcript.toLowerCase()}`;
+          // Créer une clé unique pour ce résultat (index + texte normalisé)
+          const normalized = normalize(transcript);
+          const resultKey = `${i}-${normalized}`;
           
           // Ne traiter que si on ne l'a pas déjà vu
-          if (!processedResultsRef.current.has(resultKey)) {
+          if (!processedResultsRef.current.has(resultKey) && normalized.length > 0) {
             processedResultsRef.current.add(resultKey);
             newFinalParts.push(transcript);
           }
@@ -83,79 +97,125 @@ export default function CreerRecettePage() {
             const prevText = prev.trim();
             const newText = newFinal;
             
-            // Si pas de texte précédent, ajouter directement
+            // Si pas de texte précédent, ajouter directement et mettre à jour les refs
             if (!prevText) {
+              const words = newText.split(/\s+/).filter(w => w.length > 0);
+              lastWordsRef.current = words.slice(-20).map(w => normalize(w));
               return newText + ' ';
             }
-            
-            // Normaliser les textes pour comparaison (minuscules, sans ponctuation, sans accents)
-            const normalize = (text: string) => 
-              text
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '') // Enlever les accents
-                .replace(/[.,!?;:]/g, '')
-                .trim();
             
             const prevNormalized = normalize(prevText);
             const newNormalized = normalize(newText);
             
-            // Si le nouveau texte est déjà complètement contenu dans le précédent, ignorer
-            if (prevNormalized.includes(newNormalized) && newNormalized.length > 3) {
+            // Vérification 1: Si le nouveau texte est déjà complètement contenu dans le précédent
+            if (prevNormalized.includes(newNormalized) && newNormalized.length > 5) {
               return prev;
             }
             
-            // Diviser en mots et normaliser
+            // Diviser en mots
             const prevWords = prevText.split(/\s+/).filter(w => w.length > 0);
             const newWords = newText.split(/\s+/).filter(w => w.length > 0);
             
             if (newWords.length === 0) return prev;
             
-            // APPROCHE AGRESSIVE : Comparer chaque nouveau mot avec les derniers mots
-            // Ne garder que les mots qui ne sont pas déjà présents dans les 10 derniers mots
-            const lastWords = prevWords.slice(-10).map(w => normalize(w));
+            // Vérification 2: Créer des signatures de séquences pour détecter les répétitions
+            // Comparer les séquences de 2, 3, 4, 5 mots
+            const lastWordsNormalized = lastWordsRef.current.length > 0 
+              ? lastWordsRef.current 
+              : prevWords.slice(-20).map(w => normalize(w));
+            
+            let isRepetition = false;
+            
+            // Vérifier les séquences de 2 à 5 mots
+            for (let seqLen = 5; seqLen >= 2; seqLen--) {
+              if (lastWordsNormalized.length >= seqLen && newWords.length >= seqLen) {
+                const lastSeq = lastWordsNormalized.slice(-seqLen).join(' ');
+                const firstSeq = newWords.slice(0, seqLen).map(w => normalize(w)).join(' ');
+                
+                if (lastSeq === firstSeq) {
+                  // Répétition détectée, créer une signature
+                  const sequenceKey = `seq-${seqLen}-${firstSeq}`;
+                  if (seenSequencesRef.current.has(sequenceKey)) {
+                    isRepetition = true;
+                    break;
+                  }
+                  seenSequencesRef.current.add(sequenceKey);
+                  
+                  // Si c'est une répétition, ne prendre que les mots après la séquence
+                  const remaining = newWords.slice(seqLen);
+                  if (remaining.length > 0) {
+                    const remainingText = remaining.join(' ');
+                    // Mettre à jour les derniers mots
+                    const allWords = [...prevWords, ...remaining];
+                    lastWordsRef.current = allWords.slice(-20).map(w => normalize(w));
+                    return prev + ' ' + remainingText + ' ';
+                  }
+                  return prev;
+                }
+              }
+            }
+            
+            // Vérification 3: Comparer chaque mot individuellement avec une fenêtre glissante
             const uniqueNewWords: string[] = [];
+            const windowSize = 15; // Comparer avec les 15 derniers mots
             
             for (let i = 0; i < newWords.length; i++) {
               const word = newWords[i];
               const normalizedWord = normalize(word);
               
-              // Vérifier si ce mot est déjà dans les derniers mots
-              const isDuplicate = lastWords.includes(normalizedWord);
+              // Vérifier dans la fenêtre glissante
+              const window = lastWordsNormalized.slice(-windowSize);
+              const isInWindow = window.includes(normalizedWord);
               
-              // Vérifier aussi si c'est une répétition consécutive du mot précédent
+              // Vérifier les répétitions consécutives dans le nouveau texte
               const isConsecutiveRepeat = i > 0 && normalize(newWords[i - 1]) === normalizedWord;
               
-              // Vérifier si c'est identique au dernier mot du texte précédent
-              const isLastWordRepeat = prevWords.length > 0 && 
-                normalize(prevWords[prevWords.length - 1]) === normalizedWord;
+              // Vérifier si c'est identique au dernier mot
+              const isLastWordRepeat = lastWordsNormalized.length > 0 && 
+                lastWordsNormalized[lastWordsNormalized.length - 1] === normalizedWord;
               
-              if (!isDuplicate && !isConsecutiveRepeat && !isLastWordRepeat) {
+              // Vérifier si c'est une répétition de 2 mots consécutifs
+              const isTwoWordRepeat = i >= 1 && lastWordsNormalized.length >= 2 &&
+                lastWordsNormalized[lastWordsNormalized.length - 2] === normalize(newWords[i - 1]) &&
+                lastWordsNormalized[lastWordsNormalized.length - 1] === normalizedWord;
+              
+              // Ne garder que si ce n'est pas une répétition
+              if (!isInWindow && !isConsecutiveRepeat && !isLastWordRepeat && !isTwoWordRepeat) {
                 uniqueNewWords.push(word);
               } else if (i === 0 && isLastWordRepeat) {
-                // Si le premier mot est une répétition du dernier, on le saute mais on continue
+                // Si le premier mot répète le dernier, le sauter mais continuer
                 continue;
               }
             }
             
-            // Si on a trouvé des mots uniques, les ajouter
+            // Vérification 4: Si on a trouvé des mots uniques, les ajouter
             if (uniqueNewWords.length > 0) {
-              return prev + ' ' + uniqueNewWords.join(' ') + ' ';
+              const newTextToAdd = uniqueNewWords.join(' ');
+              // Mettre à jour les derniers mots
+              const allWords = [...prevWords, ...uniqueNewWords];
+              lastWordsRef.current = allWords.slice(-20).map(w => normalize(w));
+              return prev + ' ' + newTextToAdd + ' ';
             }
             
-            // Si aucun mot unique, vérifier s'il y a vraiment du nouveau contenu
-            // en comparant des séquences plus longues
-            if (newWords.length >= 3) {
-              const lastThree = prevWords.slice(-3).map(w => normalize(w)).join(' ');
-              const firstThree = newWords.slice(0, 3).map(w => normalize(w)).join(' ');
-              
-              if (lastThree !== firstThree) {
-                // Les 3 premiers mots sont différents, prendre tout
-                return prev + ' ' + newText + ' ';
-              }
+            // Vérification 5: Si aucun mot unique mais le texte est différent, vérifier la similarité
+            // Calculer un score de similarité (ratio de mots communs)
+            const newWordsNormalized = newWords.map(w => normalize(w));
+            const commonWords = newWordsNormalized.filter(w => lastWordsNormalized.includes(w));
+            const similarity = commonWords.length / Math.max(newWordsNormalized.length, 1);
+            
+            // Si plus de 80% des mots sont déjà présents, c'est probablement une répétition
+            if (similarity > 0.8) {
+              return prev;
             }
             
-            // Aucun nouveau contenu détecté
+            // Vérification 6: Si le texte est vraiment différent (similarité < 50%), l'ajouter
+            if (similarity < 0.5) {
+              const allWords = [...prevWords, ...newWords];
+              lastWordsRef.current = allWords.slice(-20).map(w => normalize(w));
+              return prev + ' ' + newText + ' ';
+            }
+            
+            // Par défaut, ne rien ajouter si on n'est pas sûr
             return prev;
           });
         }
@@ -257,7 +317,14 @@ export default function CreerRecettePage() {
               
               return prev + ' ' + newText + ' ';
             });
-            toast.success('Transcription ajoutée');
+            
+            // Afficher un message avec la durée estimée
+            if (result.metadata?.estimatedDurationMinutes) {
+              const duration = result.metadata.estimatedDurationMinutes;
+              toast.success(`Transcription ajoutée (~${duration} min utilisées)`);
+            } else {
+              toast.success('Transcription ajoutée');
+            }
           } else {
             toast.error(result.message || 'Aucune transcription disponible');
           }
@@ -353,6 +420,8 @@ export default function CreerRecettePage() {
     setInterimTranscript('');
     lastProcessedIndexRef.current = 0;
     processedResultsRef.current.clear();
+    lastWordsRef.current = [];
+    seenSequencesRef.current.clear();
   };
 
   // Envoyer la recette
