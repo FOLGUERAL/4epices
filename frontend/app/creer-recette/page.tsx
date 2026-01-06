@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/Toast';
-import { parseRecipeText, ParsedRecipe } from '@/lib/parseRecipeText';
 
 export default function CreerRecettePage() {
   const router = useRouter();
@@ -34,42 +33,91 @@ export default function CreerRecettePage() {
   // État pour afficher le JSON
   const [showJson, setShowJson] = useState(false);
   
-  // Calculer le JSON généré à partir du transcript
-  const generatedJson = useMemo(() => {
+  // État pour le JSON parsé par l'IA
+  const [parsedRecipe, setParsedRecipe] = useState<any>(null);
+  const [isParsing, setIsParsing] = useState(false);
+
+  // Parser le texte avec l'IA quand le transcript change
+  useEffect(() => {
     if (!transcript.trim()) {
+      setParsedRecipe(null);
+      return;
+    }
+
+    // Délai pour éviter trop d'appels (debounce)
+    const timeoutId = setTimeout(async () => {
+      setIsParsing(true);
+      try {
+        const response = await fetch('/api/recipe/parse-ai', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text: transcript.trim() }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setParsedRecipe(result.data);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur parsing IA:', error);
+      } finally {
+        setIsParsing(false);
+      }
+    }, 1000); // Attendre 1 seconde après la dernière modification
+
+    return () => clearTimeout(timeoutId);
+  }, [transcript]);
+
+  // Calculer le JSON généré à partir du résultat de l'IA
+  const generatedJson = useMemo(() => {
+    if (!parsedRecipe) {
       return null;
     }
     
     try {
-      const parsed = parseRecipeText(transcript.trim());
-      
+      // Les ingrédients peuvent être strings ou objets {quantite, ingredient}
+      // On les garde tels quels pour l'affichage (Strapi accepte les deux formats)
+      const ingredientsFormatted = parsedRecipe.ingredients || [];
+
       // Convertir les étapes en HTML (comme dans l'API)
-      const etapesHtml = parsed.etapes
-        .map((etape, index) => `<p><strong>Étape ${index + 1} :</strong> ${etape}</p>`)
+      const etapesHtml = parsedRecipe.etapes
+        .map((etape: string, index: number) => `<p><strong>Étape ${index + 1} :</strong> ${etape}</p>`)
         .join('\n');
       
       // Créer le JSON comme il sera envoyé à Strapi
-      const jsonData = {
+      const jsonData: any = {
         data: {
-          titre: parsed.titre,
-          description: parsed.description || parsed.titre,
-          ingredients: parsed.ingredients,
+          titre: parsedRecipe.titre,
+          description: parsedRecipe.description || parsedRecipe.titre,
+          ingredients: ingredientsFormatted,
           etapes: etapesHtml,
-          tempsPreparation: parsed.tempsPreparation,
-          tempsCuisson: parsed.tempsCuisson,
-          nombrePersonnes: parsed.nombrePersonnes || 4,
-          difficulte: parsed.difficulte || 'facile',
+          tempsPreparation: parsedRecipe.tempsPreparation || null,
+          tempsCuisson: parsedRecipe.tempsCuisson || null,
+          nombrePersonnes: parsedRecipe.nombrePersonnes || 4,
+          difficulte: parsedRecipe.difficulte || 'facile',
           publishedAt: new Date().toISOString(),
           ...(selectedImage && { imagePrincipale: '[ID de l\'image après upload]' }),
         },
       };
+
+      // Ajouter les catégories et tags (seront convertis en IDs lors de l'envoi)
+      if (parsedRecipe.categories && parsedRecipe.categories.length > 0) {
+        jsonData.data.categories = parsedRecipe.categories.map((c: string) => `[ID de "${c}"]`);
+      }
+      if (parsedRecipe.tags && parsedRecipe.tags.length > 0) {
+        jsonData.data.tags = parsedRecipe.tags.map((t: string) => `[ID de "${t}"]`);
+      }
       
       return jsonData;
     } catch (error) {
-      console.error('Erreur lors du parsing:', error);
+      console.error('Erreur lors de la génération du JSON:', error);
       return null;
     }
-  }, [transcript, selectedImage]);
+  }, [parsedRecipe, selectedImage]);
 
   // Initialiser la reconnaissance vocale
   useEffect(() => {
@@ -691,11 +739,25 @@ export default function CreerRecettePage() {
                 )}
               </div>
             </div>
-            {showJson && generatedJson ? (
+            {showJson ? (
               <div className="bg-gray-900 rounded-lg p-4 overflow-auto max-h-96">
-                <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap break-words">
-                  {JSON.stringify(generatedJson, null, 2)}
-                </pre>
+                {isParsing ? (
+                  <div className="text-green-400 text-sm flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    ⏳ Analyse en cours par l'IA...
+                  </div>
+                ) : generatedJson ? (
+                  <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap break-words">
+                    {JSON.stringify(generatedJson, null, 2)}
+                  </pre>
+                ) : (
+                  <div className="text-yellow-400 text-sm">
+                    ⚠️ Impossible de parser le texte. Vérifiez votre configuration OpenAI.
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-gray-700 whitespace-pre-wrap break-words">

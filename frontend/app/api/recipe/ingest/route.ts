@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseRecipeText } from '@/lib/parseRecipeText';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,9 +57,117 @@ async function uploadImageToStrapi(imageFile: File): Promise<number | null> {
 }
 
 /**
+ * Trouver ou créer une catégorie par nom
+ */
+async function findOrCreateCategory(categoryName: string): Promise<number | null> {
+  try {
+    const strapiUrl = getStrapiUrl();
+    const apiToken = getStrapiApiToken();
+    
+    if (!apiToken) return null;
+
+    // Chercher la catégorie existante
+    const searchResponse = await fetch(
+      `${strapiUrl}/api/categories?filters[nom][$eq]=${encodeURIComponent(categoryName)}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+        },
+      }
+    );
+
+    if (searchResponse.ok) {
+      const searchData = await searchResponse.json();
+      if (searchData.data && searchData.data.length > 0) {
+        return searchData.data[0].id;
+      }
+    }
+
+    // Créer la catégorie si elle n'existe pas
+    const createResponse = await fetch(`${strapiUrl}/api/categories`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify({
+        data: {
+          nom: categoryName,
+          publishedAt: new Date().toISOString(),
+        },
+      }),
+    });
+
+    if (createResponse.ok) {
+      const createData = await createResponse.json();
+      return createData.data?.id || null;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Erreur lors de la recherche/création de catégorie:', error);
+    return null;
+  }
+}
+
+/**
+ * Trouver ou créer un tag par nom
+ */
+async function findOrCreateTag(tagName: string): Promise<number | null> {
+  try {
+    const strapiUrl = getStrapiUrl();
+    const apiToken = getStrapiApiToken();
+    
+    if (!apiToken) return null;
+
+    // Chercher le tag existant
+    const searchResponse = await fetch(
+      `${strapiUrl}/api/tags?filters[nom][$eq]=${encodeURIComponent(tagName)}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+        },
+      }
+    );
+
+    if (searchResponse.ok) {
+      const searchData = await searchResponse.json();
+      if (searchData.data && searchData.data.length > 0) {
+        return searchData.data[0].id;
+      }
+    }
+
+    // Créer le tag s'il n'existe pas
+    const createResponse = await fetch(`${strapiUrl}/api/tags`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify({
+        data: {
+          nom: tagName,
+          publishedAt: new Date().toISOString(),
+        },
+      }),
+    });
+
+    if (createResponse.ok) {
+      const createData = await createResponse.json();
+      return createData.data?.id || null;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Erreur lors de la recherche/création de tag:', error);
+    return null;
+  }
+}
+
+/**
  * Créer une recette dans Strapi
  */
-async function createRecipeInStrapi(parsedRecipe: ReturnType<typeof parseRecipeText>, imageId: number | null): Promise<{ slug: string } | null> {
+async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): Promise<{ slug: string } | null> {
   try {
     const strapiUrl = getStrapiUrl();
     const apiToken = getStrapiApiToken();
@@ -70,20 +177,50 @@ async function createRecipeInStrapi(parsedRecipe: ReturnType<typeof parseRecipeT
       throw new Error('STRAPI_API_TOKEN non configuré. Veuillez configurer le token API dans les variables d\'environnement.');
     }
     
+    // Les ingrédients peuvent être strings ou objets {quantite, ingredient}
+    // On les garde tels quels (Strapi accepte les deux formats dans le champ JSON)
+    const ingredientsFormatted = parsedRecipe.ingredients || [];
+
     // Convertir les étapes en HTML (richtext)
     const etapesHtml = parsedRecipe.etapes
-      .map((etape, index) => `<p><strong>Étape ${index + 1} :</strong> ${etape}</p>`)
+      .map((etape: string, index: number) => `<p><strong>Étape ${index + 1} :</strong> ${etape}</p>`)
       .join('\n');
 
-    // Préparer les données pour Strapi
+    // Trouver ou créer les catégories
+    const categoryIds: number[] = [];
+    if (parsedRecipe.categories && Array.isArray(parsedRecipe.categories)) {
+      for (const categoryName of parsedRecipe.categories) {
+        if (categoryName && categoryName.trim()) {
+          const categoryId = await findOrCreateCategory(categoryName.trim());
+          if (categoryId) {
+            categoryIds.push(categoryId);
+          }
+        }
+      }
+    }
+
+    // Trouver ou créer les tags
+    const tagIds: number[] = [];
+    if (parsedRecipe.tags && Array.isArray(parsedRecipe.tags)) {
+      for (const tagName of parsedRecipe.tags) {
+        if (tagName && tagName.trim()) {
+          const tagId = await findOrCreateTag(tagName.trim());
+          if (tagId) {
+            tagIds.push(tagId);
+          }
+        }
+      }
+    }
+
+    // Préparer les données pour Strapi (format exact du schéma)
     const recipeData: any = {
       data: {
         titre: parsedRecipe.titre,
         description: parsedRecipe.description || parsedRecipe.titre,
-        ingredients: parsedRecipe.ingredients, // JSON array
+        ingredients: ingredientsFormatted, // JSON array (strings ou objets {quantite, ingredient})
         etapes: etapesHtml, // RichText (HTML)
-        tempsPreparation: parsedRecipe.tempsPreparation,
-        tempsCuisson: parsedRecipe.tempsCuisson,
+        tempsPreparation: parsedRecipe.tempsPreparation || null,
+        tempsCuisson: parsedRecipe.tempsCuisson || null,
         nombrePersonnes: parsedRecipe.nombrePersonnes || 4,
         difficulte: parsedRecipe.difficulte || 'facile',
         publishedAt: new Date().toISOString(), // Publier immédiatement
@@ -93,6 +230,14 @@ async function createRecipeInStrapi(parsedRecipe: ReturnType<typeof parseRecipeT
     // Si on a une image, l'ajouter
     if (imageId) {
       recipeData.data.imagePrincipale = imageId;
+    }
+
+    // Ajouter les relations (catégories et tags) - Strapi attend des arrays d'IDs
+    if (categoryIds.length > 0) {
+      recipeData.data.categories = categoryIds;
+    }
+    if (tagIds.length > 0) {
+      recipeData.data.tags = tagIds;
     }
 
     // Créer la recette avec authentification
