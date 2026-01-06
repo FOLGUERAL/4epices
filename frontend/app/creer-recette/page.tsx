@@ -45,18 +45,66 @@ export default function CreerRecettePage() {
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = '';
-      let final = '';
+      let newFinal = '';
 
+      // Traiter uniquement les nouveaux résultats depuis resultIndex
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          final += transcript + ' ';
-        } else {
-          interim += transcript;
+        const result = event.results[i];
+        const transcript = result[0].transcript.trim();
+        
+        if (result.isFinal && transcript) {
+          newFinal += transcript + ' ';
+        } else if (transcript) {
+          // Pour les résultats intermédiaires, prendre seulement le dernier
+          interim = transcript;
         }
       }
 
-      setTranscript((prev) => prev + final);
+      // Ajouter seulement les nouveaux résultats finaux en évitant les répétitions
+      if (newFinal) {
+        setTranscript((prev) => {
+          const prevText = prev.trim();
+          const newText = newFinal.trim();
+          
+          // Si le nouveau texte est déjà contenu dans le texte précédent, ne pas l'ajouter
+          if (prevText && prevText.includes(newText)) {
+            return prev;
+          }
+          
+          // Vérifier si les derniers mots du texte précédent sont identiques aux premiers mots du nouveau texte
+          const prevWords = prevText.split(/\s+/);
+          const newWords = newText.split(/\s+/);
+          
+          // Si les 3 derniers mots du texte précédent correspondent aux 3 premiers du nouveau, c'est une répétition
+          if (prevWords.length >= 3 && newWords.length >= 3) {
+            const lastThree = prevWords.slice(-3).join(' ').toLowerCase();
+            const firstThree = newWords.slice(0, 3).join(' ').toLowerCase();
+            
+            if (lastThree === firstThree) {
+              // C'est une répétition, ne prendre que les mots après les 3 premiers
+              const remainingWords = newWords.slice(3);
+              if (remainingWords.length > 0) {
+                return prev + remainingWords.join(' ') + ' ';
+              }
+              return prev;
+            }
+          }
+          
+          // Vérifier les répétitions de mots individuels à la fin
+          if (prevWords.length > 0 && newWords.length > 0) {
+            const lastWord = prevWords[prevWords.length - 1].toLowerCase();
+            const firstWord = newWords[0].toLowerCase();
+            
+            // Si le premier mot du nouveau texte est identique au dernier mot existant, le sauter
+            if (lastWord === firstWord && newWords.length > 1) {
+              return prev + newWords.slice(1).join(' ') + ' ';
+            }
+          }
+          
+          return prev + newFinal;
+        });
+      }
+      
       setInterimTranscript(interim);
     };
 
