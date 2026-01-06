@@ -12,6 +12,8 @@ export default function CreerRecettePage() {
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const lastProcessedIndexRef = useRef<number>(0);
+  const processedResultsRef = useRef<Set<string>>(new Set());
   
   // État pour l'image
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -45,7 +47,7 @@ export default function CreerRecettePage() {
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = '';
-      let newFinal = '';
+      const newFinalParts: string[] = [];
 
       // Traiter uniquement les nouveaux résultats depuis resultIndex
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -53,7 +55,14 @@ export default function CreerRecettePage() {
         const transcript = result[0].transcript.trim();
         
         if (result.isFinal && transcript) {
-          newFinal += transcript + ' ';
+          // Créer une clé unique pour ce résultat (index + texte)
+          const resultKey = `${i}-${transcript.toLowerCase()}`;
+          
+          // Ne traiter que si on ne l'a pas déjà vu
+          if (!processedResultsRef.current.has(resultKey)) {
+            processedResultsRef.current.add(resultKey);
+            newFinalParts.push(transcript);
+          }
         } else if (transcript) {
           // Pour les résultats intermédiaires, prendre seulement le dernier
           interim = transcript;
@@ -61,48 +70,114 @@ export default function CreerRecettePage() {
       }
 
       // Ajouter seulement les nouveaux résultats finaux en évitant les répétitions
-      if (newFinal) {
-        setTranscript((prev) => {
-          const prevText = prev.trim();
-          const newText = newFinal.trim();
-          
-          // Si le nouveau texte est déjà contenu dans le texte précédent, ne pas l'ajouter
-          if (prevText && prevText.includes(newText)) {
-            return prev;
-          }
-          
-          // Vérifier si les derniers mots du texte précédent sont identiques aux premiers mots du nouveau texte
-          const prevWords = prevText.split(/\s+/);
-          const newWords = newText.split(/\s+/);
-          
-          // Si les 3 derniers mots du texte précédent correspondent aux 3 premiers du nouveau, c'est une répétition
-          if (prevWords.length >= 3 && newWords.length >= 3) {
-            const lastThree = prevWords.slice(-3).join(' ').toLowerCase();
-            const firstThree = newWords.slice(0, 3).join(' ').toLowerCase();
+      if (newFinalParts.length > 0) {
+        const newFinal = newFinalParts.join(' ').trim();
+        
+        if (newFinal) {
+          setTranscript((prev) => {
+            const prevText = prev.trim();
+            const newText = newFinal;
             
-            if (lastThree === firstThree) {
-              // C'est une répétition, ne prendre que les mots après les 3 premiers
-              const remainingWords = newWords.slice(3);
-              if (remainingWords.length > 0) {
-                return prev + remainingWords.join(' ') + ' ';
-              }
+            // Si pas de texte précédent, ajouter directement
+            if (!prevText) {
+              return newText + ' ';
+            }
+            
+            // Normaliser les textes pour comparaison (minuscules, sans ponctuation)
+            const normalize = (text: string) => 
+              text.toLowerCase().replace(/[.,!?;:]/g, '').trim();
+            
+            const prevNormalized = normalize(prevText);
+            const newNormalized = normalize(newText);
+            
+            // Si le nouveau texte est déjà complètement contenu dans le précédent, ignorer
+            if (prevNormalized.includes(newNormalized) && newNormalized.length > 5) {
               return prev;
             }
-          }
-          
-          // Vérifier les répétitions de mots individuels à la fin
-          if (prevWords.length > 0 && newWords.length > 0) {
-            const lastWord = prevWords[prevWords.length - 1].toLowerCase();
-            const firstWord = newWords[0].toLowerCase();
             
-            // Si le premier mot du nouveau texte est identique au dernier mot existant, le sauter
-            if (lastWord === firstWord && newWords.length > 1) {
-              return prev + newWords.slice(1).join(' ') + ' ';
+            // Diviser en mots
+            const prevWords = prevText.split(/\s+/).filter(w => w.length > 0);
+            const newWords = newText.split(/\s+/).filter(w => w.length > 0);
+            
+            if (newWords.length === 0) return prev;
+            
+            // Vérifier les répétitions de séquences de mots
+            // Comparer les 2-4 derniers mots du texte précédent avec les 2-4 premiers du nouveau
+            for (let seqLen = 4; seqLen >= 2; seqLen--) {
+              if (prevWords.length >= seqLen && newWords.length >= seqLen) {
+                const lastSeq = prevWords.slice(-seqLen).join(' ').toLowerCase();
+                const firstSeq = newWords.slice(0, seqLen).join(' ').toLowerCase();
+                
+                if (lastSeq === firstSeq) {
+                  // Répétition détectée, ne prendre que les mots après la séquence
+                  const remaining = newWords.slice(seqLen);
+                  if (remaining.length > 0) {
+                    return prev + ' ' + remaining.join(' ') + ' ';
+                  }
+                  return prev;
+                }
+              }
             }
-          }
-          
-          return prev + newFinal;
-        });
+            
+            // Vérifier les répétitions de mots individuels consécutifs
+            // Si les 2-3 derniers mots sont identiques aux 2-3 premiers, c'est une répétition
+            if (prevWords.length >= 2 && newWords.length >= 2) {
+              const lastTwo = prevWords.slice(-2).map(w => w.toLowerCase());
+              const firstTwo = newWords.slice(0, 2).map(w => w.toLowerCase());
+              
+              if (lastTwo[0] === firstTwo[0] && lastTwo[1] === firstTwo[1]) {
+                // Les 2 premiers mots sont identiques aux 2 derniers, sauter les 2 premiers
+                const remaining = newWords.slice(2);
+                if (remaining.length > 0) {
+                  return prev + ' ' + remaining.join(' ') + ' ';
+                }
+                return prev;
+              }
+              
+              // Vérifier si le dernier mot est répété au début
+              if (prevWords.length > 0 && newWords.length > 0) {
+                const lastWord = prevWords[prevWords.length - 1].toLowerCase();
+                const firstWord = newWords[0].toLowerCase();
+                
+                if (lastWord === firstWord) {
+                  // Le premier mot est identique au dernier, le sauter
+                  const remaining = newWords.slice(1);
+                  if (remaining.length > 0) {
+                    return prev + ' ' + remaining.join(' ') + ' ';
+                  }
+                  return prev;
+                }
+              }
+            }
+            
+            // Vérifier si le nouveau texte commence par des mots déjà présents à la fin
+            // Comparer les 5 derniers mots avec les 5 premiers
+            if (prevWords.length >= 5 && newWords.length >= 5) {
+              const lastFive = prevWords.slice(-5).map(w => w.toLowerCase());
+              const firstFive = newWords.slice(0, 5).map(w => w.toLowerCase());
+              
+              // Compter les correspondances
+              const matches = firstFive.filter((word, idx) => 
+                lastFive.includes(word) || word === lastFive[idx]
+              );
+              
+              // Si 4 mots ou plus correspondent, c'est probablement une répétition
+              if (matches.length >= 4) {
+                // Prendre seulement les mots vraiment nouveaux
+                const newUniqueWords = newWords.filter(word => 
+                  !lastFive.includes(word.toLowerCase())
+                );
+                if (newUniqueWords.length > 0) {
+                  return prev + ' ' + newUniqueWords.join(' ') + ' ';
+                }
+                return prev;
+              }
+            }
+            
+            // Aucune répétition détectée, ajouter le nouveau texte
+            return prev + ' ' + newText + ' ';
+          });
+        }
       }
       
       setInterimTranscript(interim);
@@ -185,15 +260,19 @@ export default function CreerRecettePage() {
   const handleRemoveImage = () => {
     setSelectedImage(null);
     setImagePreview(null);
-    // Réinitialiser l'input file
-    const input = document.getElementById('image-input') as HTMLInputElement;
-    if (input) input.value = '';
+    // Réinitialiser les inputs file
+    const inputCamera = document.getElementById('image-input-camera') as HTMLInputElement;
+    const inputGallery = document.getElementById('image-input-gallery') as HTMLInputElement;
+    if (inputCamera) inputCamera.value = '';
+    if (inputGallery) inputGallery.value = '';
   };
 
   // Réinitialiser la dictée
   const handleClearTranscript = () => {
     setTranscript('');
     setInterimTranscript('');
+    lastProcessedIndexRef.current = 0;
+    processedResultsRef.current.clear();
   };
 
   // Envoyer la recette
@@ -232,8 +311,10 @@ export default function CreerRecettePage() {
       setInterimTranscript('');
       setSelectedImage(null);
       setImagePreview(null);
-      const input = document.getElementById('image-input') as HTMLInputElement;
-      if (input) input.value = '';
+      const inputCamera = document.getElementById('image-input-camera') as HTMLInputElement;
+      const inputGallery = document.getElementById('image-input-gallery') as HTMLInputElement;
+      if (inputCamera) inputCamera.value = '';
+      if (inputGallery) inputGallery.value = '';
 
       // Rediriger vers la recette créée si un slug est retourné
       if (result.slug) {
@@ -284,10 +365,10 @@ export default function CreerRecettePage() {
           </button>
         </div>
 
-        {/* Bouton Photo */}
-        <div className="mb-6">
+        {/* Boutons Photo */}
+        <div className="mb-6 space-y-3">
           <label
-            htmlFor="image-input"
+            htmlFor="image-input-camera"
             className={`block w-full py-4 px-6 rounded-xl font-semibold text-lg text-center cursor-pointer transition-all ${
               selectedImage
                 ? 'bg-green-500 text-white hover:bg-green-600'
@@ -297,10 +378,25 @@ export default function CreerRecettePage() {
             {selectedImage ? '📸 Changer la photo' : '📸 Prendre une photo'}
           </label>
           <input
-            id="image-input"
+            id="image-input-camera"
             type="file"
             accept="image/*"
             capture="environment"
+            onChange={handleImageSelect}
+            disabled={isSubmitting}
+            className="hidden"
+          />
+          
+          <label
+            htmlFor="image-input-gallery"
+            className="block w-full py-4 px-6 rounded-xl font-semibold text-lg text-center cursor-pointer transition-all bg-purple-500 text-white hover:bg-purple-600 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            🖼️ Choisir depuis la galerie
+          </label>
+          <input
+            id="image-input-gallery"
+            type="file"
+            accept="image/*"
             onChange={handleImageSelect}
             disabled={isSubmitting}
             className="hidden"
