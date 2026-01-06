@@ -496,7 +496,8 @@ export default function CreerRecettePage() {
   };
 
   // Fonction pour compresser une image
-  const compressImage = (file: File, maxWidth: number = 1600, quality: number = 0.75): Promise<File> => {
+  // Standards web : 1920px max, qualité 80-85% pour JPEG
+  const compressImage = (file: File, maxWidth: number = 1920, quality: number = 0.82): Promise<File> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -508,7 +509,7 @@ export default function CreerRecettePage() {
           let width = img.width;
           let height = img.height;
 
-          // Redimensionner si nécessaire
+          // Redimensionner si nécessaire (1920px est le standard pour les images web)
           if (width > maxWidth) {
             height = (height * maxWidth) / width;
             width = maxWidth;
@@ -528,8 +529,10 @@ export default function CreerRecettePage() {
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Utiliser image/jpeg pour une meilleure compression même si l'original est PNG
+          // Pour les photos de recettes, JPEG est toujours préférable (meilleure compression)
+          // Standards web : JPEG à 82% de qualité offre un excellent équilibre qualité/taille
           const outputType = 'image/jpeg';
+          const fileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
           
           canvas.toBlob(
             (blob) => {
@@ -537,7 +540,6 @@ export default function CreerRecettePage() {
                 reject(new Error('Erreur lors de la compression'));
                 return;
               }
-              const fileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
               const compressedFile = new File([blob], fileName, {
                 type: outputType,
                 lastModified: Date.now(),
@@ -573,15 +575,16 @@ export default function CreerRecettePage() {
 
     try {
       // Compresser l'image si elle fait plus de 500KB pour éviter les erreurs 413
+      // Standards web : qualité 82%, max 1920px (bon équilibre qualité/taille)
       let processedFile = file;
       if (file.size > 500 * 1024) {
-        toast.info('Compression de l\'image en cours...');
-        processedFile = await compressImage(file, 1600, 0.75);
+        toast.info('Optimisation de l\'image en cours...');
+        processedFile = await compressImage(file, 1920, 0.82);
         const originalSizeMB = (file.size / (1024 * 1024)).toFixed(2);
         const compressedSizeMB = (processedFile.size / (1024 * 1024)).toFixed(2);
         const reduction = ((1 - processedFile.size / file.size) * 100).toFixed(0);
         console.log(`[Image] Compression: ${originalSizeMB}MB → ${compressedSizeMB}MB (${reduction}% de réduction)`);
-        toast.success(`Image compressée: ${originalSizeMB}MB → ${compressedSizeMB}MB (-${reduction}%)`);
+        toast.success(`Image optimisée: ${originalSizeMB}MB → ${compressedSizeMB}MB (-${reduction}%)`);
       } else {
         console.log(`[Image] Image de ${(file.size / 1024).toFixed(0)}KB, pas de compression nécessaire`);
       }
