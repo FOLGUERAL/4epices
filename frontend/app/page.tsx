@@ -1,106 +1,108 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { getRecettes, Recette } from '@/lib/strapi';
-import RecetteCard from '@/components/RecetteCard';
+import { getRecettes, getCategories, getRecettesByCategory, Recette, Categorie } from '@/lib/strapi';
+import HeroRecipe from '@/components/HeroRecipe';
+import HorizontalCarousel from '@/components/HorizontalCarousel';
 
 export default async function Home() {
-  let recettesPopulaires: Recette[] = [];
+  let recetteVedette: Recette | null = null;
   let recettesRecent: Recette[] = [];
-  let toutesRecettes: Recette[] = [];
+  let categories: Categorie[] = [];
+  let recettesParCategorie: { [key: string]: Recette[] } = {};
 
   try {
-    // Récupérer les recettes populaires et récentes
-    // Pour l'instant, on utilise les plus récentes comme populaires
-    // On pourrait améliorer avec un système de popularité basé sur les vues ou likes
-    const toutesResponse = await getRecettes({ pageSize: 12 });
-    const toutes = toutesResponse.data || [];
-    
-    // Les 3 premières sont les populaires
-    recettesPopulaires = toutes.slice(0, 3);
-    // Les 3 suivantes sont les récentes (ou on peut prendre les mêmes si moins de 6 recettes)
-    recettesRecent = toutes.length > 3 ? toutes.slice(3, 6) : toutes.slice(0, 3);
-    toutesRecettes = toutes;
+    // Récupérer la recette vedette (la plus récente)
+    const vedetteResponse = await getRecettes({ pageSize: 1 });
+    recetteVedette = vedetteResponse.data?.[0] || null;
+
+    // Récupérer les recettes récentes
+    const recentResponse = await getRecettes({ pageSize: 10 });
+    recettesRecent = recentResponse.data || [];
+
+    // Récupérer toutes les catégories
+    const categoriesResponse = await getCategories();
+    categories = categoriesResponse.data || [];
+
+    // Récupérer les recettes par catégorie
+    for (const categorie of categories) {
+      try {
+        const recettesResponse = await getRecettesByCategory(categorie.attributes.slug, { pageSize: 10 });
+        if (recettesResponse.data && recettesResponse.data.length > 0) {
+          recettesParCategorie[categorie.attributes.slug] = recettesResponse.data;
+        }
+      } catch (error) {
+        console.error(`Erreur lors de la récupération des recettes pour ${categorie.attributes.nom}:`, error);
+      }
+    }
   } catch (error) {
-    console.error('Erreur lors de la récupération des recettes:', error);
+    console.error('Erreur lors de la récupération des données:', error);
   }
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 text-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 right-10 w-96 h-96 bg-white rounded-full blur-3xl"></div>
-          <div className="absolute bottom-10 left-10 w-96 h-96 bg-orange-300 rounded-full blur-3xl"></div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-32 relative z-10">
-          <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold mb-6 text-white animate-slide-up">
-              Des recettes simples, rapides et savoureuses
-            </h1>
-            <p className="text-lg sm:text-xl lg:text-2xl mb-8 text-orange-100 max-w-3xl mx-auto animate-slide-up">
-              Découvrez une collection de recettes culinaires faciles à réaliser, 
-              avec des ingrédients accessibles et des instructions claires.
-            </p>
-            <Link
-              href="/#recettes"
-              className="inline-block bg-white text-orange-600 font-bold px-8 sm:px-10 py-3 sm:py-4 rounded-full hover:bg-orange-50 transition-all shadow-2xl hover:shadow-3xl hover:-translate-y-1 duration-300 text-base sm:text-lg"
-            >
-              Voir les recettes
-            </Link>
+      {/* Hero Section avec Recette Vedette */}
+      {recetteVedette ? (
+        <section className="mb-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+            <HeroRecipe recette={recetteVedette} />
           </div>
-        </div>
-      </section>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
-        {/* Section Recettes Populaires */}
-        {recettesPopulaires.length > 0 && (
-          <section className="mb-16 sm:mb-20 lg:mb-24 animate-fade-in" id="recettes">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-10">
-              <div>
-                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Recettes populaires</h2>
-                <p className="text-gray-600 font-medium">Les recettes les plus appréciées</p>
-              </div>
+        </section>
+      ) : (
+        <section className="bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 text-white relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 right-10 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+            <div className="absolute bottom-10 left-10 w-96 h-96 bg-orange-300 rounded-full blur-3xl"></div>
+          </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-32 relative z-10">
+            <div className="text-center">
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold mb-6 text-white animate-slide-up">
+                Des recettes simples, rapides et savoureuses
+              </h1>
+              <p className="text-lg sm:text-xl lg:text-2xl mb-8 text-orange-100 max-w-3xl mx-auto animate-slide-up">
+                Découvrez une collection de recettes culinaires faciles à réaliser, 
+                avec des ingrédients accessibles et des instructions claires.
+              </p>
               <Link
-                href="/recettes"
-                className="text-orange-600 hover:text-orange-700 font-semibold transition-colors duration-200 text-sm sm:text-base whitespace-nowrap flex items-center gap-2"
+                href="/#recettes"
+                className="inline-block bg-white text-orange-600 font-bold px-8 sm:px-10 py-3 sm:py-4 rounded-full hover:bg-orange-50 transition-all shadow-2xl hover:shadow-3xl hover:-translate-y-1 duration-300 text-base sm:text-lg"
               >
-                Voir tout <span className="text-lg">→</span>
+                Voir les recettes
               </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-7">
-              {recettesPopulaires.map((recette) => (
-                <RecetteCard key={recette.id} recette={recette} />
-              ))}
-            </div>
-          </section>
-        )}
+          </div>
+        </section>
+      )}
 
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" id="recettes">
         {/* Section Recettes Récentes */}
         {recettesRecent.length > 0 && (
-          <section className="mb-16 sm:mb-20 lg:mb-24 animate-fade-in">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-10">
-              <div>
-                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Recettes récentes</h2>
-                <p className="text-gray-600 font-medium">Les dernières recettes ajoutées</p>
-              </div>
-              <Link
-                href="/recettes"
-                className="text-orange-600 hover:text-orange-700 font-semibold transition-colors duration-200 text-sm sm:text-base whitespace-nowrap flex items-center gap-2"
-              >
-                Voir tout <span className="text-lg">→</span>
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-7">
-              {recettesRecent.map((recette) => (
-                <RecetteCard key={recette.id} recette={recette} />
-              ))}
-            </div>
-          </section>
+          <HorizontalCarousel
+            title="Recettes récentes"
+            subtitle="Les dernières recettes ajoutées"
+            recettes={recettesRecent}
+            seeAllLink="/recettes"
+          />
         )}
 
+        {/* Carrousels par Catégorie */}
+        {categories.map((categorie) => {
+          const recettesCategorie = recettesParCategorie[categorie.attributes.slug] || [];
+          if (recettesCategorie.length === 0) return null;
+
+          return (
+            <HorizontalCarousel
+              key={categorie.id}
+              title={categorie.attributes.nom}
+              subtitle={categorie.attributes.description}
+              recettes={recettesCategorie}
+              seeAllLink={`/categories/${categorie.attributes.slug}`}
+            />
+          );
+        })}
+
         {/* Section Pourquoi 4épices ? */}
-        <section className="bg-gradient-to-br from-gray-50 to-orange-50 rounded-3xl shadow-lg p-6 sm:p-8 md:p-12 lg:p-16 mb-16 sm:mb-20 lg:mb-24 border border-gray-100 animate-fade-in">
+        <section className="bg-gradient-to-br from-gray-50 to-orange-50 rounded-3xl shadow-lg p-6 sm:p-8 md:p-12 lg:p-16 mb-16 sm:mb-20 lg:mb-24 border border-gray-100 mt-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-10 sm:mb-12 text-center">
             Pourquoi 4épices ?
           </h2>
@@ -138,24 +140,7 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Section Toutes les recettes */}
-        {toutesRecettes.length > 0 && (
-          <section className="animate-fade-in">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-10">
-              <div>
-                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Toutes nos recettes</h2>
-                <p className="text-gray-600 font-medium">Explorez notre collection complète</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-7">
-              {toutesRecettes.map((recette) => (
-                <RecetteCard key={recette.id} recette={recette} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {toutesRecettes.length === 0 && (
+        {recettesRecent.length === 0 && categories.length === 0 && (
           <div className="text-center py-16 sm:py-20">
             <p className="text-gray-500 text-lg sm:text-xl font-medium">Aucune recette disponible pour le moment.</p>
             <p className="text-gray-400 text-sm sm:text-base mt-2">Créez votre première recette dans Strapi !</p>
