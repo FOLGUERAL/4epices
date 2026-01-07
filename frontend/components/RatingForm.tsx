@@ -106,7 +106,7 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
             id="author"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white font-medium transition-all duration-200"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black bg-white font-medium transition-all duration-200 placeholder:text-gray-500"
             placeholder="Votre nom"
           />
         </div>
@@ -120,7 +120,7 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={4}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white font-medium transition-all duration-200 resize-none"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black bg-white font-medium transition-all duration-200 resize-none placeholder:text-gray-500"
             placeholder="Partagez votre expérience avec cette recette..."
           />
         </div>

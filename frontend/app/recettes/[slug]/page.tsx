@@ -143,7 +143,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
   });
 
   return (
-    <article className="min-h-screen bg-gray-50">
+    <article className="min-h-screen bg-white">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

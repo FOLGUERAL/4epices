@@ -13,7 +13,7 @@ export default async function Navigation() {
   }
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40 backdrop-blur-sm bg-white/95">
+    <nav className="bg-gray-50 shadow-sm border-b border-gray-100 sticky top-0 z-40 backdrop-blur-sm bg-gray-50/95">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         <div className="flex justify-between items-center h-16 gap-2 sm:gap-4">
           <Link href="/" className="flex items-center h-16 hover:opacity-80 transition-opacity flex-shrink-0 group">
@@ -47,18 +47,6 @@ export default async function Navigation() {
           )}
 
           <div className="flex items-center gap-2 sm:gap-5 lg:gap-8 flex-shrink-0">
-            <Link 
-              href="/" 
-              className="text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base duration-200"
-            >
-              Accueil
-            </Link>
-            <Link 
-              href="/recettes" 
-              className="text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base duration-200"
-            >
-              Recettes
-            </Link>
             <Link 
               href="/favoris" 
               className="text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1.5 duration-200"
