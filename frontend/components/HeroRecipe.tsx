@@ -17,26 +17,25 @@ export default function HeroRecipe({ recette }: HeroRecipeProps) {
       href={`/recettes/${recette.attributes.slug}`}
       className="block group"
     >
-      <div className="relative h-[500px] sm:h-[600px] lg:h-[700px] rounded-2xl overflow-hidden shadow-2xl">
+      <div className="relative min-h-[500px] h-[500px] sm:min-h-[600px] sm:h-[600px] lg:min-h-[700px] lg:h-[700px] rounded-2xl overflow-hidden shadow-2xl">
         {/* Image de fond */}
         {imageUrl && (
-          <div className="absolute inset-0">
-            <OptimizedImage
-              src={imageUrl}
-              alt={recette.attributes.titre}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-700"
-              priority
-              sizes="100vw"
-            />
-          </div>
+          <OptimizedImage
+            src={imageUrl}
+            alt={recette.attributes.titre}
+            fill
+            disableAspectRatio
+            className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
+            priority
+            sizes="100vw"
+          />
         )}
 
         {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10" />
 
         {/* Contenu */}
-        <div className="absolute bottom-0 left-0 right-0 p-8 sm:p-12 lg:p-16 text-white">
+        <div className="absolute bottom-0 left-0 right-0 p-8 sm:p-12 lg:p-16 text-white z-20">
           <div className="max-w-4xl">
             {/* Badge Catégorie */}
             {recette.attributes.categories?.data && recette.attributes.categories.data.length > 0 && (

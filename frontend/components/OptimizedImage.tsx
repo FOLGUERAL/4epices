@@ -13,6 +13,7 @@ interface OptimizedImageProps {
   priority?: boolean;
   sizes?: string;
   aspectRatio?: string; // Permet de personnaliser le ratio (ex: "4/3", "16/9", etc.)
+  disableAspectRatio?: boolean; // Désactive le wrapper aspect-ratio pour utiliser fill dans un conteneur déjà dimensionné
 }
 
 // Génère un blur placeholder base64 simple (gris clair)
@@ -44,6 +45,7 @@ export default function OptimizedImage({
   priority = false,
   sizes,
   aspectRatio = '4/3',
+  disableAspectRatio = false,
 }: OptimizedImageProps) {
   // Image de fallback
   const fallbackImage = '/placeholder-recipe.svg';
@@ -57,8 +59,32 @@ export default function OptimizedImage({
   const defaultAspectRatio = 4 / 3;
   const calculatedHeight = width ? Math.round(width / defaultAspectRatio) : height;
 
-  // Si fill est utilisé, on utilise un conteneur avec aspect-ratio
+  // Si fill est utilisé, on utilise un conteneur avec aspect-ratio (sauf si désactivé)
   if (fill) {
+    // Si disableAspectRatio est true, retourner directement l'Image sans wrapper
+    if (disableAspectRatio) {
+      return (
+        <Image
+          src={imageUrl}
+          alt={alt}
+          fill
+          className={className}
+          placeholder="blur"
+          blurDataURL={blurDataURL}
+          priority={priority}
+          sizes={sizes || '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'}
+          onError={(e) => {
+            // En cas d'erreur, utiliser le fallback
+            const target = e.target as HTMLImageElement;
+            if (target.src !== fallbackImage) {
+              target.src = fallbackImage;
+            }
+          }}
+        />
+      );
+    }
+    
+    // Sinon, utiliser le wrapper avec aspect-ratio
     return (
       <div className={`relative ${className}`} style={{ aspectRatio }}>
         <Image
