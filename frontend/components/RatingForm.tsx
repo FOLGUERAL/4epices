@@ -48,16 +48,16 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
   };
 
   return (
-    <div className="bg-gray-50 rounded-lg p-6">
-      <h3 className="text-xl font-semibold text-gray-900 mb-4">Donner votre avis</h3>
+    <div className="card-base p-6 sm:p-8 bg-gradient-to-br from-gray-50 to-orange-50 border border-orange-100">
+      <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Donner votre avis</h3>
       
       {submitted && (
-        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm animate-in fade-in">
-          Merci pour votre avis !
+        <div className="mb-4 p-4 bg-success-100 text-success-700 rounded-lg text-sm font-medium animate-slide-up">
+          ✨ Merci pour votre avis !
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Note *
@@ -98,7 +98,7 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
         </div>
 
         <div>
-          <label htmlFor="author" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="author" className="block text-sm font-semibold text-gray-700 mb-2.5">
             Nom (optionnel)
           </label>
           <input
@@ -106,13 +106,13 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
             id="author"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white font-medium transition-all duration-200"
             placeholder="Votre nom"
           />
         </div>
 
         <div>
-          <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="comment" className="block text-sm font-semibold text-gray-700 mb-2.5">
             Commentaire (optionnel)
           </label>
           <textarea
@@ -120,7 +120,7 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white font-medium transition-all duration-200 resize-none"
             placeholder="Partagez votre expérience avec cette recette..."
           />
         </div>
@@ -128,9 +128,9 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
         <button
           type="submit"
           disabled={rating === 0}
-          className="w-full bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="w-full bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-3 rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all duration-200 font-bold disabled:bg-gray-300 disabled:cursor-not-allowed disabled:from-gray-300 disabled:to-gray-300 shadow-md hover:shadow-lg transform hover:scale-105"
         >
-          Publier mon avis
+          ✨ Publier mon avis
         </button>
       </form>
     </div>

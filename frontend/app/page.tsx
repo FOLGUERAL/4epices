@@ -26,21 +26,25 @@ export default async function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-orange-500 to-red-500 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      <section className="bg-gradient-to-br from-orange-500 via-red-500 to-orange-600 text-white relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 right-10 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+          <div className="absolute bottom-10 left-10 w-96 h-96 bg-orange-300 rounded-full blur-3xl"></div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-32 relative z-10">
           <div className="text-center">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold mb-6 text-white animate-slide-up">
               Des recettes simples, rapides et savoureuses
             </h1>
-            <p className="text-xl md:text-2xl mb-8 text-orange-100 max-w-2xl mx-auto">
+            <p className="text-lg sm:text-xl lg:text-2xl mb-8 text-orange-100 max-w-3xl mx-auto animate-slide-up">
               Découvrez une collection de recettes culinaires faciles à réaliser, 
               avec des ingrédients accessibles et des instructions claires.
             </p>
             <Link
               href="/#recettes"
-              className="inline-block bg-white text-orange-600 font-semibold px-8 py-4 rounded-lg hover:bg-orange-50 transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200"
+              className="inline-block bg-white text-orange-600 font-bold px-8 sm:px-10 py-3 sm:py-4 rounded-full hover:bg-orange-50 transition-all shadow-2xl hover:shadow-3xl hover:-translate-y-1 duration-300 text-base sm:text-lg"
             >
               Voir les recettes
             </Link>
@@ -48,23 +52,23 @@ export default async function Home() {
         </div>
       </section>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
         {/* Section Recettes Populaires */}
         {recettesPopulaires.length > 0 && (
-          <section className="mb-16" id="recettes">
-            <div className="flex justify-between items-center mb-8">
+          <section className="mb-16 sm:mb-20 lg:mb-24 animate-fade-in" id="recettes">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-10">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Recettes populaires</h2>
-                <p className="text-gray-600">Les recettes les plus appréciées</p>
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Recettes populaires</h2>
+                <p className="text-gray-600 font-medium">Les recettes les plus appréciées</p>
               </div>
               <Link
                 href="/recettes"
-                className="text-orange-600 hover:text-orange-700 font-medium transition-colors"
+                className="text-orange-600 hover:text-orange-700 font-semibold transition-colors duration-200 text-sm sm:text-base whitespace-nowrap flex items-center gap-2"
               >
-                Voir tout →
+                Voir tout <span className="text-lg">→</span>
               </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-7">
               {recettesPopulaires.map((recette) => (
                 <RecetteCard key={recette.id} recette={recette} />
               ))}
@@ -74,20 +78,20 @@ export default async function Home() {
 
         {/* Section Recettes Récentes */}
         {recettesRecent.length > 0 && (
-          <section className="mb-16">
-            <div className="flex justify-between items-center mb-8">
+          <section className="mb-16 sm:mb-20 lg:mb-24 animate-fade-in">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-10">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Recettes récentes</h2>
-                <p className="text-gray-600">Les dernières recettes ajoutées</p>
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Recettes récentes</h2>
+                <p className="text-gray-600 font-medium">Les dernières recettes ajoutées</p>
               </div>
               <Link
                 href="/recettes"
-                className="text-orange-600 hover:text-orange-700 font-medium transition-colors"
+                className="text-orange-600 hover:text-orange-700 font-semibold transition-colors duration-200 text-sm sm:text-base whitespace-nowrap flex items-center gap-2"
               >
-                Voir tout →
+                Voir tout <span className="text-lg">→</span>
               </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-7">
               {recettesRecent.map((recette) => (
                 <RecetteCard key={recette.id} recette={recette} />
               ))}
@@ -96,37 +100,37 @@ export default async function Home() {
         )}
 
         {/* Section Pourquoi 4épices ? */}
-        <section className="bg-white rounded-lg shadow-lg p-8 md:p-12 mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+        <section className="bg-gradient-to-br from-gray-50 to-orange-50 rounded-3xl shadow-lg p-6 sm:p-8 md:p-12 lg:p-16 mb-16 sm:mb-20 lg:mb-24 border border-gray-100 animate-fade-in">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-10 sm:mb-12 text-center">
             Pourquoi 4épices ?
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">⚡</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
+            <div className="text-center group">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-md">
+                <span className="text-4xl sm:text-5xl">⚡</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Rapide</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">Rapide</h3>
+              <p className="text-gray-600 leading-relaxed text-sm sm:text-base">
                 Des recettes conçues pour être réalisées rapidement, 
                 sans compromettre le goût ni la qualité.
               </p>
             </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">👨‍🍳</span>
+            <div className="text-center group">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-accent-100 to-accent-200 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-md">
+                <span className="text-4xl sm:text-5xl">👨‍🍳</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Simple</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">Simple</h3>
+              <p className="text-gray-600 leading-relaxed text-sm sm:text-base">
                 Des instructions claires et des ingrédients faciles à trouver, 
                 pour tous les niveaux de cuisine.
               </p>
             </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">😋</span>
+            <div className="text-center group">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-success-100 to-success-200 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-md">
+                <span className="text-4xl sm:text-5xl">😋</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Savoureux</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">Savoureux</h3>
+              <p className="text-gray-600 leading-relaxed text-sm sm:text-base">
                 Des recettes testées et approuvées, garantissant des résultats 
                 délicieux à chaque fois.
               </p>
@@ -136,14 +140,14 @@ export default async function Home() {
 
         {/* Section Toutes les recettes */}
         {toutesRecettes.length > 0 && (
-          <section>
-            <div className="flex justify-between items-center mb-8">
+          <section className="animate-fade-in">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-10">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Toutes nos recettes</h2>
-                <p className="text-gray-600">Explorez notre collection complète</p>
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Toutes nos recettes</h2>
+                <p className="text-gray-600 font-medium">Explorez notre collection complète</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-7">
               {toutesRecettes.map((recette) => (
                 <RecetteCard key={recette.id} recette={recette} />
               ))}
@@ -152,9 +156,9 @@ export default async function Home() {
         )}
 
         {toutesRecettes.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">Aucune recette disponible pour le moment.</p>
-            <p className="text-gray-400 text-sm mt-2">Créez votre première recette dans Strapi !</p>
+          <div className="text-center py-16 sm:py-20">
+            <p className="text-gray-500 text-lg sm:text-xl font-medium">Aucune recette disponible pour le moment.</p>
+            <p className="text-gray-400 text-sm sm:text-base mt-2">Créez votre première recette dans Strapi !</p>
           </div>
         )}
       </main>

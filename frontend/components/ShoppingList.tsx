@@ -120,20 +120,23 @@ export default function ShoppingList() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-6 right-6 z-50">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-orange-600 text-white rounded-full p-4 shadow-lg hover:bg-orange-700 transition-colors relative"
+        className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full p-4 shadow-lg hover:shadow-2xl hover:scale-110 transition-all duration-300 relative group"
         aria-label="Liste de courses"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
         {uncheckedCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-7 h-7 flex items-center justify-center shadow-md animate-bounce-soft">
             {uncheckedCount}
           </span>
         )}
+        <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-white bg-gray-900 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+          Liste de courses
+        </div>
       </button>
 
       {isOpen && (

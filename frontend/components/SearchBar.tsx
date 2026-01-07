@@ -31,9 +31,9 @@ function SearchBarContent() {
           value={mounted ? query : ''}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Rechercher une recette..."
-          className="w-full px-3 sm:px-4 py-2.5 sm:py-2 pl-9 sm:pl-10 pr-9 sm:pr-10 text-base sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+          className="w-full px-3 sm:px-4 py-2.5 sm:py-2.5 pl-10 sm:pl-11 pr-10 sm:pr-11 text-base sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 font-medium placeholder-gray-500"
         />
-        <div className="absolute inset-y-0 left-0 flex items-center pl-2.5 sm:pl-3 pointer-events-none">
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 sm:pl-3.5 pointer-events-none">
           <svg
             className="w-5 h-5 text-gray-400"
             fill="none"
@@ -55,7 +55,7 @@ function SearchBarContent() {
               setQuery('');
               router.push('/recherche');
             }}
-            className="absolute inset-y-0 right-0 flex items-center pr-2.5 sm:pr-3 text-gray-400 hover:text-gray-600"
+            className="absolute inset-y-0 right-0 flex items-center pr-3 sm:pr-3.5 text-gray-400 hover:text-gray-600 transition-colors duration-200"
           >
             <svg
               className="w-5 h-5"

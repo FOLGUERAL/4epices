@@ -126,15 +126,15 @@ export default function IngredientsAdjuster({ ingredients, basePortions }: Ingre
 
   return (
     <div className="mb-8">
-      <div className="flex items-center gap-4 mb-4 pb-4 border-b">
-        <label htmlFor="portions" className="text-sm font-medium text-gray-700">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6 pb-6 border-b border-gray-200">
+        <label htmlFor="portions" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
           Nombre de personnes :
         </label>
         <select
           id="portions"
           value={selectedPortions}
           onChange={(e) => setSelectedPortions(Number(e.target.value))}
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white"
+          className="px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 bg-white font-medium transition-all duration-200 w-full sm:w-auto"
         >
           {portionOptions.map((num) => (
             <option key={num} value={num}>
@@ -145,7 +145,7 @@ export default function IngredientsAdjuster({ ingredients, basePortions }: Ingre
         {selectedPortions !== basePortions && (
           <button
             onClick={() => setSelectedPortions(basePortions)}
-            className="text-sm text-orange-600 hover:text-orange-700 underline"
+            className="text-sm font-semibold text-orange-600 hover:text-orange-700 hover:bg-orange-50 px-3 py-2 rounded-lg transition-colors duration-200 whitespace-nowrap ml-auto"
           >
             Réinitialiser ({basePortions} pers.)
           </button>
@@ -153,8 +153,8 @@ export default function IngredientsAdjuster({ ingredients, basePortions }: Ingre
       </div>
       
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Ingrédients</h2>
-        <ul className="list-disc list-inside space-y-2 text-gray-700">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-5">Ingrédients</h2>
+        <ul className="space-y-3 text-gray-700 font-medium">
           {adjustedIngredients.map((ingredient: any, index: number) => {
             // Format simple (string)
             if (typeof ingredient === 'string') {
