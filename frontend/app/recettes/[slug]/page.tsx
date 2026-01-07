@@ -9,6 +9,7 @@ import FavoriteButton from '@/components/FavoriteButton';
 import AddToShoppingListButton from '@/components/AddToShoppingListButton';
 import RatingForm from '@/components/RatingForm';
 import RatingList from '@/components/RatingList';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 const RatingDisplay = dynamic(() => import('@/components/RatingDisplay'), {
   ssr: false,
@@ -149,13 +150,19 @@ export default async function RecettePage({ params }: { params: { slug: string }
       />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <nav className="text-sm text-gray-500 mb-6">
-          <Link href="/" className="hover:text-gray-700">Accueil</Link>
-          <span className="mx-2">/</span>
-          <Link href="/" className="hover:text-gray-700">Recettes</Link>
-          <span className="mx-2">/</span>
-          <span className="text-gray-900">{recette.attributes.titre}</span>
-        </nav>
+        {/* Breadcrumbs */}
+        {(() => {
+          const crumbs: { label: string; href?: string }[] = [
+            { label: 'Accueil', href: '/' },
+            { label: 'Recettes', href: '/recettes' },
+          ];
+          if (recette.attributes.categories?.data && recette.attributes.categories.data.length > 0) {
+            const cat = recette.attributes.categories.data[0].attributes;
+            crumbs.push({ label: cat.nom, href: `/categories/${cat.slug}` });
+          }
+          crumbs.push({ label: recette.attributes.titre });
+          return <Breadcrumbs crumbs={crumbs} />;
+        })()}
 
         <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-12">
           <OptimizedImage

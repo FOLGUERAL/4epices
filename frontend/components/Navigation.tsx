@@ -28,7 +28,24 @@ export default async function Navigation() {
           </Link>
           
           <SearchBar />
-          
+
+          {categories.length > 0 && (
+            <div className="hidden md:flex items-center gap-2 ml-4 flex-shrink-0">
+              {categories.slice(0, 6).map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/categories/${c.attributes.slug}`}
+                  className="px-3 py-1 rounded-full text-sm bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 transition-colors"
+                >
+                  {c.attributes.nom}
+                </Link>
+              ))}
+              {categories.length > 6 && (
+                <Link href="/categories" className="px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">Plus</Link>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center gap-2 sm:gap-5 lg:gap-8 flex-shrink-0">
             <Link 
               href="/" 
