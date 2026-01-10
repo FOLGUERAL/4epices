@@ -192,31 +192,63 @@ module.exports = createCoreController('api::recette.recette', ({ strapi }) => ({
         return ctx.internalServerError('Configuration d\'authentification manquante');
       }
 
+      strapi.log.info(`Validation du token API. Token fourni (premiers 20 caractères): ${token.substring(0, 20)}...`);
+
       // Récupérer tous les tokens API
       const allTokens = await strapi.db.query('admin::api-token').findMany();
+      strapi.log.debug(`Nombre de tokens API trouvés dans la base: ${allTokens.length}`);
       
-      // Hasher le token fourni pour le comparer avec les tokens stockés
-      const tokenHash = crypto.createHmac('sha256', apiTokenSalt).update(token).digest('hex');
+      // Dans Strapi 4, le token doit être hashé avec le salt
+      // Le token fourni peut être soit le token complet (strapi_api_token_xxx) soit juste la partie après le préfixe
+      // Essayons les deux méthodes : hash du token complet et hash de la partie après le préfixe
+      
+      let matchingToken = null;
+      
+      // Méthode 1 : Hasher le token tel quel (avec préfixe si présent)
+      const tokenHash1 = crypto.createHmac('sha256', apiTokenSalt).update(token).digest('hex');
+      
+      // Méthode 2 : Si le token commence par "strapi_api_token_", essayer aussi sans le préfixe
+      let tokenHash2 = null;
+      if (token.startsWith('strapi_api_token_')) {
+        const tokenWithoutPrefix = token.replace('strapi_api_token_', '');
+        tokenHash2 = crypto.createHmac('sha256', apiTokenSalt).update(tokenWithoutPrefix).digest('hex');
+      }
       
       // Chercher un token correspondant
-      const matchingToken = allTokens.find(storedToken => {
-        // Comparer le hash
-        if (storedToken.accessKey !== tokenHash) {
-          return false;
+      for (const storedToken of allTokens) {
+        // Vérifier avec le hash complet du token
+        if (storedToken.accessKey === tokenHash1) {
+          matchingToken = storedToken;
+          strapi.log.debug(`Token trouvé avec méthode 1 (hash complet). Token ID: ${storedToken.id}, Name: ${storedToken.name}`);
+          break;
         }
         
-        // Vérifier l'expiration
-        if (storedToken.expiresAt && new Date(storedToken.expiresAt) < new Date()) {
-          return false; // Token expiré
+        // Vérifier avec le hash sans préfixe si applicable
+        if (tokenHash2 && storedToken.accessKey === tokenHash2) {
+          matchingToken = storedToken;
+          strapi.log.debug(`Token trouvé avec méthode 2 (hash sans préfixe). Token ID: ${storedToken.id}, Name: ${storedToken.name}`);
+          break;
         }
-        
-        return true;
-      });
+      }
+      
+      // Si aucun token n'a été trouvé, essayer de comparer directement avec les accessKeys stockés
+      // (au cas où Strapi stockerait le token de manière différente)
+      if (!matchingToken && allTokens.length > 0) {
+        strapi.log.debug('Aucun token trouvé avec les méthodes de hashage. Vérification des accessKeys stockés...');
+        for (const storedToken of allTokens) {
+          strapi.log.debug(`Token stocké - ID: ${storedToken.id}, Name: ${storedToken.name}, AccessKey (premiers 20): ${storedToken.accessKey?.substring(0, 20)}...`);
+        }
+      }
 
       if (!matchingToken) {
-        strapi.log.warn(`Tentative d'accès avec un token API invalide ou expiré. Token hash: ${tokenHash.substring(0, 20)}...`);
-        strapi.log.debug(`Nombre de tokens API dans la base: ${allTokens.length}`);
+        strapi.log.warn(`Tentative d'accès avec un token API invalide. Token hash 1: ${tokenHash1.substring(0, 20)}..., Token hash 2: ${tokenHash2 ? tokenHash2.substring(0, 20) + '...' : 'N/A'}`);
         return ctx.unauthorized('Token d\'authentification invalide ou expiré. Veuillez créer un token API dans Strapi (Settings > API Tokens) et vérifier que STRAPI_API_TOKEN est configuré dans le frontend.');
+      }
+      
+      // Vérifier l'expiration
+      if (matchingToken.expiresAt && new Date(matchingToken.expiresAt) < new Date()) {
+        strapi.log.warn(`Token API expiré: ${matchingToken.name} (ID: ${matchingToken.id})`);
+        return ctx.unauthorized('Token d\'authentification expiré. Veuillez créer un nouveau token API.');
       }
 
       // Mettre à jour la date de dernière utilisation
