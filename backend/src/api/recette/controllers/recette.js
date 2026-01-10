@@ -169,6 +169,67 @@ module.exports = createCoreController('api::recette.recette', ({ strapi }) => ({
    * Publier manuellement une recette sur Pinterest
    */
   async publishToPinterest(ctx) {
+    // Vérifier l'authentification via token API
+    const authHeader = ctx.request.header.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return ctx.unauthorized('Token d\'authentification requis');
+    }
+
+    const token = authHeader.replace('Bearer ', '').trim();
+
+    if (!token) {
+      return ctx.unauthorized('Token d\'authentification invalide');
+    }
+
+    // Valider le token API
+    try {
+      const crypto = require('crypto');
+      const apiTokenSalt = process.env.API_TOKEN_SALT || strapi.config.get('admin.apiToken.salt');
+      
+      if (!apiTokenSalt) {
+        strapi.log.error('API_TOKEN_SALT n\'est pas configuré dans les variables d\'environnement');
+        return ctx.internalServerError('Configuration d\'authentification manquante');
+      }
+
+      // Récupérer tous les tokens API
+      const allTokens = await strapi.db.query('admin::api-token').findMany();
+      
+      // Hasher le token fourni pour le comparer avec les tokens stockés
+      const tokenHash = crypto.createHmac('sha256', apiTokenSalt).update(token).digest('hex');
+      
+      // Chercher un token correspondant
+      const matchingToken = allTokens.find(storedToken => {
+        // Comparer le hash
+        if (storedToken.accessKey !== tokenHash) {
+          return false;
+        }
+        
+        // Vérifier l'expiration
+        if (storedToken.expiresAt && new Date(storedToken.expiresAt) < new Date()) {
+          return false; // Token expiré
+        }
+        
+        return true;
+      });
+
+      if (!matchingToken) {
+        strapi.log.warn('Tentative d\'accès avec un token API invalide ou expiré');
+        return ctx.unauthorized('Token d\'authentification invalide ou expiré. Veuillez créer un token API dans Strapi (Settings > API Tokens)');
+      }
+
+      // Mettre à jour la date de dernière utilisation
+      await strapi.db.query('admin::api-token').update({
+        where: { id: matchingToken.id },
+        data: { lastUsedAt: new Date() },
+      });
+      
+      strapi.log.debug(`Token API valide utilisé: ${matchingToken.name || matchingToken.id}`);
+    } catch (error) {
+      strapi.log.error('Erreur lors de la vérification du token API:', error);
+      return ctx.unauthorized('Erreur lors de la vérification de l\'authentification');
+    }
+
     const { id } = ctx.params;
 
     const recette = await strapi.entityService.findOne('api::recette.recette', id, {
