@@ -45,8 +45,9 @@ services:
     container_name: 4epices_frontend
     restart: unless-stopped
     environment:
-      # URL pour les requêtes serveur (SSR) - utilise le service Docker
-      STRAPI_URL: http://backend:1337
+      # URL pour les requêtes serveur (SSR) - utiliser l'URL publique en production
+      # En production, utiliser l'URL publique car elle est accessible depuis le container
+      STRAPI_URL: ${STRAPI_URL:-${NEXT_PUBLIC_STRAPI_URL:-http://backend:1337}}
       # URL publique pour le client (déjà dans NEXT_PUBLIC_STRAPI_URL)
       # Token API Strapi pour authentifier les requêtes serveur
       STRAPI_API_TOKEN: ${STRAPI_API_TOKEN:-}
