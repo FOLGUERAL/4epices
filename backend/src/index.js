@@ -17,6 +17,19 @@ module.exports = {
    * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }) {
+    // Ajouter la route personnalisée pour publier sur Pinterest
+    strapi.server.routes([
+      {
+        method: 'POST',
+        path: '/api/recettes/:id/publish-pinterest',
+        handler: 'api::recette.recette.publishToPinterest',
+        config: {
+          policies: [],
+          middlewares: [],
+        },
+      },
+    ]);
+
     // Configurer automatiquement les permissions publiques au démarrage
     try {
       const publicRole = await strapi
