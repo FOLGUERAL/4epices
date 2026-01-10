@@ -18,7 +18,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const strapiUrl = process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+    // En production, utiliser l'URL publique de l'API Strapi
+    // En développement, utiliser l'URL interne Docker ou localhost
+    // Priorité : STRAPI_URL > NEXT_PUBLIC_STRAPI_URL > localhost
+    let strapiUrl = process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+    
+    // Si STRAPI_URL pointe vers l'URL interne Docker (backend:1337) et que nous avons une URL publique,
+    // utiliser l'URL publique en production (plus fiable)
+    if (strapiUrl.includes('backend:1337') && process.env.NEXT_PUBLIC_STRAPI_URL && process.env.NEXT_PUBLIC_STRAPI_URL.includes('https://')) {
+      strapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL;
+      console.log(`Utilisation de l'URL publique Strapi: ${strapiUrl}`);
+    }
+    
     const strapiApiToken = process.env.STRAPI_API_TOKEN;
 
     if (!strapiApiToken) {
