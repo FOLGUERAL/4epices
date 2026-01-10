@@ -171,7 +171,7 @@ async function findOrCreateTag(tagName: string): Promise<number | null> {
       }
     }
 
-    // Créer le tag s'il n'existe pas
+    // Créer le tag s'il n'existe pas (il sera automatiquement publié par le lifecycle)
     const createResponse = await fetch(`${strapiUrl}/api/tags`, {
       method: 'POST',
       headers: {
@@ -181,7 +181,7 @@ async function findOrCreateTag(tagName: string): Promise<number | null> {
       body: JSON.stringify({
         data: {
           nom: tagName,
-          publishedAt: new Date().toISOString(),
+          publishedAt: new Date().toISOString(), // Publier automatiquement lors de la création
         },
       }),
     });
