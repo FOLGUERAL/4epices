@@ -22,11 +22,14 @@ export async function POST(request: NextRequest) {
     const strapiApiToken = process.env.STRAPI_API_TOKEN;
 
     if (!strapiApiToken) {
+      console.error('STRAPI_API_TOKEN n\'est pas configuré dans les variables d\'environnement');
       return NextResponse.json(
-        { success: false, message: 'STRAPI_API_TOKEN non configuré' },
+        { success: false, message: 'STRAPI_API_TOKEN non configuré. Veuillez configurer cette variable dans docker-compose.yml ou .env.local' },
         { status: 500 }
       );
     }
+
+    console.log(`Tentative de publication Pinterest pour la recette ${recetteId} avec l'URL Strapi: ${strapiUrl}`);
 
     // Appeler l'API Strapi pour publier sur Pinterest
     const response = await fetch(`${strapiUrl}/api/recettes/${recetteId}/publish-pinterest`, {

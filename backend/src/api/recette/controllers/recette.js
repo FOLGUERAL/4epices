@@ -214,8 +214,9 @@ module.exports = createCoreController('api::recette.recette', ({ strapi }) => ({
       });
 
       if (!matchingToken) {
-        strapi.log.warn('Tentative d\'accès avec un token API invalide ou expiré');
-        return ctx.unauthorized('Token d\'authentification invalide ou expiré. Veuillez créer un token API dans Strapi (Settings > API Tokens)');
+        strapi.log.warn(`Tentative d'accès avec un token API invalide ou expiré. Token hash: ${tokenHash.substring(0, 20)}...`);
+        strapi.log.debug(`Nombre de tokens API dans la base: ${allTokens.length}`);
+        return ctx.unauthorized('Token d\'authentification invalide ou expiré. Veuillez créer un token API dans Strapi (Settings > API Tokens) et vérifier que STRAPI_API_TOKEN est configuré dans le frontend.');
       }
 
       // Mettre à jour la date de dernière utilisation
