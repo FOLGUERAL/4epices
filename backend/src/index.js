@@ -18,17 +18,33 @@ module.exports = {
    */
   async bootstrap({ strapi }) {
     // Ajouter la route personnalisée pour publier sur Pinterest
-    strapi.server.routes([
-      {
-        method: 'POST',
-        path: '/api/recettes/:id/publish-pinterest',
-        handler: 'api::recette.recette.publishToPinterest',
-        config: {
-          policies: [],
-          middlewares: [],
+    try {
+      strapi.log.info('🔵 Enregistrement de la route /api/recettes/:id/publish-pinterest');
+      
+      // Vérifier que le controller existe
+      const controller = strapi.controller('api::recette.recette');
+      if (controller && controller.publishToPinterest) {
+        strapi.log.info('✅ Controller publishToPinterest trouvé');
+      } else {
+        strapi.log.error('❌ Controller publishToPinterest NON trouvé');
+      }
+      
+      strapi.server.routes([
+        {
+          method: 'POST',
+          path: '/api/recettes/:id/publish-pinterest',
+          handler: 'api::recette.recette.publishToPinterest',
+          config: {
+            policies: [],
+            middlewares: [],
+          },
         },
-      },
-    ]);
+      ]);
+      
+      strapi.log.info('✅ Route personnalisée enregistrée');
+    } catch (error) {
+      strapi.log.error('❌ Erreur lors de l\'enregistrement de la route:', error);
+    }
 
     // Configurer automatiquement les permissions publiques au démarrage
     try {
