@@ -67,6 +67,8 @@ export interface Recette {
     publishedAt: string;
     metaTitle?: string;
     metaDescription?: string;
+    pinterestPinId?: string;
+    pinterestAutoPublish?: boolean;
   };
 }
 

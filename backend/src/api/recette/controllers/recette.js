@@ -6,12 +6,110 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 
+/**
+ * Trouver ou créer un tag par nom et retourner son ID
+ */
+async function findOrCreateTag(strapi, tagName) {
+  if (!tagName || typeof tagName !== 'string' || !tagName.trim()) {
+    return null;
+  }
+
+  const trimmedName = tagName.trim();
+
+  try {
+    // Chercher un tag existant par nom
+    const existingTags = await strapi.entityService.findMany('api::tag.tag', {
+      filters: { nom: { $eq: trimmedName } },
+      limit: 1,
+    });
+
+    if (existingTags && existingTags.length > 0) {
+      // Si le tag existe mais n'est pas publié, le publier
+      const existingTag = existingTags[0];
+      if (!existingTag.publishedAt) {
+        await strapi.entityService.update('api::tag.tag', existingTag.id, {
+          data: { publishedAt: new Date().toISOString() },
+        });
+      }
+      return existingTag.id;
+    }
+
+    // Créer un nouveau tag (sera automatiquement publié par le lifecycle)
+    const newTag = await strapi.entityService.create('api::tag.tag', {
+      data: {
+        nom: trimmedName,
+        publishedAt: new Date().toISOString(), // Sera géré par le lifecycle
+      },
+    });
+
+    strapi.log.info(`Tag "${trimmedName}" créé automatiquement depuis une recette`);
+    return newTag.id;
+  } catch (error) {
+    strapi.log.error(`Erreur lors de la recherche/création du tag "${trimmedName}":`, error);
+    return null;
+  }
+}
+
+/**
+ * Traiter les tags pour convertir les noms en IDs et créer les tags manquants
+ */
+async function processTags(strapi, tags) {
+  if (!tags || !Array.isArray(tags)) {
+    return tags;
+  }
+
+  const processedTags = [];
+
+  for (const tag of tags) {
+    // Si c'est déjà un ID numérique
+    if (typeof tag === 'number') {
+      processedTags.push(tag);
+    }
+    // Si c'est un objet avec un ID
+    else if (tag && typeof tag === 'object' && tag.id) {
+      processedTags.push(tag.id);
+    }
+    // Si c'est un objet avec un nom (création automatique)
+    else if (tag && typeof tag === 'object' && tag.nom) {
+      const tagId = await findOrCreateTag(strapi, tag.nom);
+      if (tagId) {
+        processedTags.push(tagId);
+      }
+    }
+    // Si c'est une chaîne de caractères (nom du tag)
+    else if (typeof tag === 'string') {
+      const tagId = await findOrCreateTag(strapi, tag);
+      if (tagId) {
+        processedTags.push(tagId);
+      }
+    }
+  }
+
+  return processedTags.length > 0 ? processedTags : undefined;
+}
+
 module.exports = createCoreController('api::recette.recette', ({ strapi }) => ({
   /**
    * Créer une recette et optionnellement publier sur Pinterest
    */
   async create(ctx) {
     const { data, meta } = ctx.request.body;
+    
+    // Traiter les tags pour créer automatiquement ceux qui n'existent pas
+    // Gérer les différents formats : data.tags, meta.connect, meta.set
+    if (data.tags) {
+      data.tags = await processTags(strapi, data.tags);
+    }
+    
+    // Gérer meta.connect pour les relations (format admin Strapi)
+    if (meta && meta.connect && meta.connect.tags) {
+      meta.connect.tags = await processTags(strapi, meta.connect.tags);
+    }
+    
+    // Gérer meta.set pour remplacer toutes les relations (format admin Strapi)
+    if (meta && meta.set && meta.set.tags) {
+      meta.set.tags = await processTags(strapi, meta.set.tags);
+    }
     
     // Vérifier si Pinterest auto-publish est activé
     const publishToPinterest = data.pinterestAutoPublish === true && data.publishedAt;
@@ -45,6 +143,24 @@ module.exports = createCoreController('api::recette.recette', ({ strapi }) => ({
    * Mettre à jour une recette
    */
   async update(ctx) {
+    const { data, meta } = ctx.request.body;
+    
+    // Traiter les tags pour créer automatiquement ceux qui n'existent pas
+    // Gérer les différents formats : data.tags, meta.connect, meta.set
+    if (data.tags !== undefined) {
+      data.tags = await processTags(strapi, data.tags);
+    }
+    
+    // Gérer meta.connect pour les relations (format admin Strapi)
+    if (meta && meta.connect && meta.connect.tags) {
+      meta.connect.tags = await processTags(strapi, meta.connect.tags);
+    }
+    
+    // Gérer meta.set pour remplacer toutes les relations (format admin Strapi)
+    if (meta && meta.set && meta.set.tags) {
+      meta.set.tags = await processTags(strapi, meta.set.tags);
+    }
+
     const response = await super.update(ctx);
     return response;
   },

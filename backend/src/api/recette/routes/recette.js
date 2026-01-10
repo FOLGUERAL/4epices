@@ -6,7 +6,7 @@
 
 const { createCoreRouter } = require('@strapi/strapi').factories;
 
-module.exports = createCoreRouter('api::recette.recette', {
+const defaultRouter = createCoreRouter('api::recette.recette', {
   config: {
     find: {
       middlewares: [],
@@ -25,4 +25,26 @@ module.exports = createCoreRouter('api::recette.recette', {
     },
   },
 });
+
+// Routes personnalisées
+const customRoutes = {
+  routes: [
+    {
+      method: 'POST',
+      path: '/recettes/:id/publish-pinterest',
+      handler: 'recette.publishToPinterest',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+  ],
+};
+
+module.exports = {
+  routes: [
+    ...defaultRouter.routes,
+    ...customRoutes.routes,
+  ],
+};
 

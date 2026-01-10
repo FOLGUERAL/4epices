@@ -10,6 +10,8 @@ import AddToShoppingListButton from '@/components/AddToShoppingListButton';
 import RatingForm from '@/components/RatingForm';
 import RatingList from '@/components/RatingList';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import PinterestBadge from '@/components/PinterestBadge';
+import PublishPinterestButton from '@/components/PublishPinterestButton';
 
 const RatingDisplay = dynamic(() => import('@/components/RatingDisplay'), {
   ssr: false,
@@ -180,7 +182,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
               <h1 className="text-4xl font-bold text-gray-900">
                 {recette.attributes.titre}
               </h1>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <Link
                   href={`/recettes/${recette.attributes.slug}/cuisine`}
                   className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
@@ -190,6 +192,10 @@ export default async function RecettePage({ params }: { params: { slug: string }
                   </svg>
                   <span className="hidden sm:inline">Mode cuisine</span>
                 </Link>
+                <PublishPinterestButton
+                  recetteId={recette.id}
+                  pinterestPinId={recette.attributes.pinterestPinId}
+                />
                 <FavoriteButton
                   recette={{
                     id: recette.id,
@@ -210,6 +216,16 @@ export default async function RecettePage({ params }: { params: { slug: string }
             <p className="text-xl text-gray-600 mb-6">
               {recette.attributes.description}
             </p>
+
+            {/* Badge Pinterest si publié */}
+            {recette.attributes.pinterestPinId && (
+              <div className="mb-6">
+                <PinterestBadge 
+                  pinterestPinId={recette.attributes.pinterestPinId}
+                  recetteId={recette.id}
+                />
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-4 mb-8 pb-8 border-b">
               {recette.attributes.tempsPreparation && (
