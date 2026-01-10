@@ -24,7 +24,7 @@ module.exports = {
         path: '/api/recettes/:id/publish-pinterest',
         handler: 'api::recette.recette.publishToPinterest',
         config: {
-          policies: ['api::recette.recette.api-token-auth'],
+          policies: [],
           middlewares: [],
         },
       },
