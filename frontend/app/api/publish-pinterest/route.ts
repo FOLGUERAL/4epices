@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+    
 
     console.log(`Tentative de publication Pinterest pour la recette ${recetteId} avec l'URL Strapi: ${strapiUrl}`);
 
