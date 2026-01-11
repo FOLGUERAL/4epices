@@ -7,36 +7,7 @@ module.exports = {
    *
    * This gives you an opportunity to extend code.
    */
-  register({ strapi }) {
-    // Enregistrer la route dans register() plutôt que bootstrap()
-    // pour qu'elle soit disponible avant que Strapi n'applique ses vérifications
-    try {
-      strapi.log.info('🔵 [REGISTER] Enregistrement de la route /api/recettes/:id/publish-pinterest');
-      
-      const controller = strapi.controller('api::recette.recette');
-      if (controller && controller.publishToPinterest) {
-        strapi.log.info('✅ [REGISTER] Controller publishToPinterest trouvé');
-      } else {
-        strapi.log.error('❌ [REGISTER] Controller publishToPinterest NON trouvé');
-      }
-      
-      strapi.server.routes([
-        {
-          method: 'POST',
-          path: '/api/recettes/:id/publish-pinterest',
-          handler: 'api::recette.recette.publishToPinterest',
-          config: {
-            policies: [],
-            middlewares: [],
-          },
-        },
-      ]);
-      
-      strapi.log.info('✅ [REGISTER] Route personnalisée enregistrée');
-    } catch (error) {
-      strapi.log.error('❌ [REGISTER] Erreur lors de l\'enregistrement de la route:', error);
-    }
-  },
+  register(/*{ strapi }*/) {},
 
   /**
    * An asynchronous bootstrap function that runs before
@@ -46,7 +17,43 @@ module.exports = {
    * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }) {
-    // La route personnalisée est maintenant enregistrée dans register()
+    // Enregistrer la route personnalisée pour publier sur Pinterest
+    // Utiliser bootstrap() car les controllers sont chargés à ce moment-là
+    try {
+      strapi.log.info('🔵 [BOOTSTRAP] Enregistrement de la route /api/recettes/:id/publish-pinterest');
+      
+      // Obtenir le controller directement
+      const controller = strapi.controller('api::recette.recette');
+      if (!controller) {
+        strapi.log.error('❌ [BOOTSTRAP] Controller api::recette.recette non trouvé');
+        return;
+      }
+      
+      if (!controller.publishToPinterest) {
+        strapi.log.error('❌ [BOOTSTRAP] Méthode publishToPinterest non trouvée dans le controller');
+        return;
+      }
+      
+      strapi.log.info('✅ [BOOTSTRAP] Controller et méthode trouvés');
+      
+      // Enregistrer la route avec un handler direct
+      strapi.server.routes([
+        {
+          method: 'POST',
+          path: '/api/recettes/:id/publish-pinterest',
+          handler: controller.publishToPinterest.bind(controller),
+          config: {
+            policies: [],
+            middlewares: [],
+          },
+        },
+      ]);
+      
+      strapi.log.info('✅ [BOOTSTRAP] Route personnalisée enregistrée avec handler direct');
+    } catch (error) {
+      strapi.log.error('❌ [BOOTSTRAP] Erreur lors de l\'enregistrement de la route:', error);
+      strapi.log.error(error.stack);
+    }
 
     // Configurer automatiquement les permissions publiques au démarrage
     try {
