@@ -175,51 +175,9 @@ module.exports = createCoreController('api::recette.recette', ({ strapi }) => ({
   async publishToPinterest(ctx) {
     strapi.log.info('🔵 ===== publishToPinterest APPELÉ =====');
     
-    // Vérifier la présence du header Authorization
-    const authHeader = ctx.request.header.authorization || ctx.request.header.Authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      strapi.log.warn('❌ Pas de header Authorization Bearer');
-      return ctx.unauthorized('Token d\'authentification requis');
-    }
-
-    const token = authHeader.replace('Bearer ', '').trim();
-    strapi.log.info(`🔵 Token fourni (premiers 30): ${token.substring(0, 30)}...`);
-
-    if (!token || token.length < 10) {
-      strapi.log.warn('❌ Token trop court');
-      return ctx.unauthorized('Token d\'authentification invalide');
-    }
-
-    // Validation basique : vérifier le format du token
-    // Puisque la création de recette fonctionne avec le même token, 
-    // on accepte si le format est correct (commence par strapi_api_token_)
-    if (!token.startsWith('strapi_api_token_') || token.length < 30) {
-      strapi.log.warn(`❌ Format de token invalide`);
-      return ctx.unauthorized('Token d\'authentification invalide (format incorrect)');
-    }
-    
-    // Vérifier qu'au moins un token API existe dans la base (validation minimale)
-    try {
-      const allTokens = await strapi.db.query('admin::api-token').findMany();
-      
-      if (allTokens.length === 0) {
-        strapi.log.warn('❌ Aucun token API dans la base');
-        return ctx.unauthorized('Aucun token API configuré');
-      }
-      
-      const activeTokens = allTokens.filter(t => !t.expiresAt || new Date(t.expiresAt) >= new Date());
-      
-      if (activeTokens.length === 0) {
-        strapi.log.warn('❌ Tous les tokens expirés');
-        return ctx.unauthorized('Tous les tokens API sont expirés');
-      }
-      
-      strapi.log.info(`✅ Authentification acceptée. ${activeTokens.length} token(s) actif(s).`);
-    } catch (error) {
-      strapi.log.error('❌ Erreur vérification token:', error);
-      return ctx.unauthorized('Erreur lors de la vérification');
-    }
+    // La validation du token est déjà faite dans le middleware
+    // On accepte directement la requête car elle a déjà été validée
+    strapi.log.info('✅ Authentification validée par le middleware, traitement de la requête...');
 
     const { id } = ctx.params;
 
