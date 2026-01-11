@@ -7,26 +7,17 @@ module.exports = {
    *
    * This gives you an opportunity to extend code.
    */
-  register(/*{ strapi }*/) {},
-
-  /**
-   * An asynchronous bootstrap function that runs before
-   * your application gets started.
-   *
-   * This gives you an opportunity to set up your data model,
-   * run jobs, or perform some special logic.
-   */
-  async bootstrap({ strapi }) {
-    // Ajouter la route personnalisée pour publier sur Pinterest
+  register({ strapi }) {
+    // Enregistrer la route dans register() plutôt que bootstrap()
+    // pour qu'elle soit disponible avant que Strapi n'applique ses vérifications
     try {
-      strapi.log.info('🔵 Enregistrement de la route /api/recettes/:id/publish-pinterest');
+      strapi.log.info('🔵 [REGISTER] Enregistrement de la route /api/recettes/:id/publish-pinterest');
       
-      // Vérifier que le controller existe
       const controller = strapi.controller('api::recette.recette');
       if (controller && controller.publishToPinterest) {
-        strapi.log.info('✅ Controller publishToPinterest trouvé');
+        strapi.log.info('✅ [REGISTER] Controller publishToPinterest trouvé');
       } else {
-        strapi.log.error('❌ Controller publishToPinterest NON trouvé');
+        strapi.log.error('❌ [REGISTER] Controller publishToPinterest NON trouvé');
       }
       
       strapi.server.routes([
@@ -41,10 +32,21 @@ module.exports = {
         },
       ]);
       
-      strapi.log.info('✅ Route personnalisée enregistrée');
+      strapi.log.info('✅ [REGISTER] Route personnalisée enregistrée');
     } catch (error) {
-      strapi.log.error('❌ Erreur lors de l\'enregistrement de la route:', error);
+      strapi.log.error('❌ [REGISTER] Erreur lors de l\'enregistrement de la route:', error);
     }
+  },
+
+  /**
+   * An asynchronous bootstrap function that runs before
+   * your application gets started.
+   *
+   * This gives you an opportunity to set up your data model,
+   * run jobs, or perform some special logic.
+   */
+  async bootstrap({ strapi }) {
+    // La route personnalisée est maintenant enregistrée dans register()
 
     // Configurer automatiquement les permissions publiques au démarrage
     try {
