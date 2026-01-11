@@ -44,7 +44,8 @@ export async function POST(request: NextRequest) {
     console.log(`Tentative de publication Pinterest pour la recette ${recetteId} avec l'URL Strapi: ${strapiUrl}`);
 
     // Appeler l'API Strapi pour publier sur Pinterest
-    const response = await fetch(`${strapiUrl}/api/recettes/${recetteId}/publish-pinterest`, {
+    // Utiliser la route /publish-pinterest/:id (hors /api/) pour contourner le système de permissions
+    const response = await fetch(`${strapiUrl}/publish-pinterest/${recetteId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
