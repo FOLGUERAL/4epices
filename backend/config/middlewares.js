@@ -1,6 +1,7 @@
 module.exports = ({ env }) => [
   'strapi::logger',
   'strapi::errors',
+  'global::publish-pinterest', // Middleware personnalisé pour /publish-pinterest
   {
     name: 'strapi::security',
     config: {

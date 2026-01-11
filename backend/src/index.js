@@ -36,21 +36,9 @@ module.exports = {
       
       strapi.log.info('✅ [BOOTSTRAP] Controller et méthode trouvés');
       
-      // Enregistrer la route avec un handler direct
-      // Utiliser un chemin hors /api/ pour contourner le système de permissions de Strapi
-      strapi.server.routes([
-        {
-          method: 'POST',
-          path: '/publish-pinterest/:id',
-          handler: controller.publishToPinterest.bind(controller),
-          config: {
-            policies: [],
-            middlewares: [],
-          },
-        },
-      ]);
-      
-      strapi.log.info('✅ [BOOTSTRAP] Route personnalisée enregistrée: POST /publish-pinterest/:id');
+      // La route est maintenant gérée par le middleware personnalisé
+      // Pas besoin d'enregistrer la route ici, le middleware l'intercepte
+      strapi.log.info('✅ [BOOTSTRAP] Route /publish-pinterest/:id sera gérée par le middleware personnalisé');
     } catch (error) {
       strapi.log.error('❌ [BOOTSTRAP] Erreur lors de l\'enregistrement de la route:', error);
       strapi.log.error(error.stack);
