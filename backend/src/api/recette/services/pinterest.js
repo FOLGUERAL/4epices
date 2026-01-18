@@ -94,7 +94,14 @@ module.exports = ({ strapi }) => ({
       }
 
       // Construire l'URL complète
-      const baseUrl = process.env.PUBLIC_URL || process.env.STRAPI_URL || `http://localhost:${process.env.PORT || 1337}`;
+      // En production, utiliser l'URL publique de l'API Strapi (accessible depuis l'extérieur)
+      // Priorité: PUBLIC_STRAPI_URL > PUBLIC_URL > STRAPI_PUBLIC_URL > fallback localhost
+      const baseUrl = process.env.PUBLIC_STRAPI_URL || 
+                      process.env.PUBLIC_URL || 
+                      process.env.STRAPI_PUBLIC_URL ||
+                      (process.env.NEXT_PUBLIC_STRAPI_URL && typeof process.env.NEXT_PUBLIC_STRAPI_URL !== 'undefined' ? process.env.NEXT_PUBLIC_STRAPI_URL : null) ||
+                      `http://localhost:${process.env.PORT || 1337}`;
+      
       const imageUrl = image.url || image.attributes?.url;
       
       if (!imageUrl) {
@@ -106,7 +113,11 @@ module.exports = ({ strapi }) => ({
         return imageUrl;
       }
 
-      return `${baseUrl}${imageUrl}`;
+      // Construire l'URL complète avec le baseUrl
+      const fullUrl = `${baseUrl}${imageUrl}`;
+      strapi.log.info(`🔵 URL image construite pour Pinterest: ${fullUrl}`);
+      
+      return fullUrl;
     } catch (error) {
       strapi.log.error('Erreur lors de la récupération de l\'image:', error);
       return null;
