@@ -257,6 +257,59 @@ async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): 
         .substring(0, 100); // Limiter la longueur
     };
 
+    // Fonction pour générer metaTitle (copie de la logique backend)
+    const generateMetaTitle = (titre: string): string => {
+      const trimmedTitre = (titre || '').trim();
+      if (!trimmedTitre) return 'Recette | 4épices';
+      if (trimmedTitre.length <= 60) return trimmedTitre;
+      return trimmedTitre.substring(0, 57) + '...';
+    };
+
+    // Fonction pour générer metaDescription (copie de la logique backend)
+    const generateMetaDescription = (parsed: any): string => {
+      const titre = (parsed.titre || '').trim();
+      const difficulte = parsed.difficulte || 'facile';
+      const tempsPrep = parsed.tempsPreparation || 0;
+      const tempsCuisson = parsed.tempsCuisson || 0;
+      const tempsTotal = tempsPrep + tempsCuisson;
+      const personnes = parsed.nombrePersonnes || 4;
+      
+      const adjectifs: Record<string, string[]> = {
+        facile: ['facile', 'simple', 'rapide'],
+        moyen: ['moyenne', 'traditionnelle'],
+        difficile: ['sophistiquée', 'gastronomique', 'traditionnelle']
+      };
+      
+      const adjectifsList = adjectifs[difficulte] || adjectifs.facile;
+      const adjectif = adjectifsList[Math.floor(Math.random() * adjectifsList.length)];
+      
+      let tempsText = '';
+      if (tempsTotal > 0) {
+        if (tempsPrep > 0 && tempsCuisson > 0) {
+          tempsText = `Préparation ${tempsPrep} min, cuisson ${tempsCuisson} min`;
+        } else if (tempsPrep > 0) {
+          tempsText = `Préparation ${tempsPrep} min`;
+        } else if (tempsCuisson > 0) {
+          tempsText = `Cuisson ${tempsCuisson} min`;
+        }
+      }
+      
+      let metaDesc = '';
+      if (tempsText && tempsTotal <= 60) {
+        metaDesc = `${titre} : recette ${adjectif} ${tempsText}. Pour ${personnes} ${personnes === 1 ? 'personne' : 'personnes'}.`;
+      } else if (tempsTotal > 0) {
+        metaDesc = `${titre} : recette ${adjectif} en ${tempsTotal} minutes. Pour ${personnes} ${personnes === 1 ? 'personne' : 'personnes'}.`;
+      } else {
+        metaDesc = `${titre} : recette ${adjectif} pour ${personnes} ${personnes === 1 ? 'personne' : 'personnes'}.`;
+      }
+      
+      if (metaDesc.length > 160) {
+        metaDesc = metaDesc.substring(0, 157) + '...';
+      }
+      
+      return metaDesc;
+    };
+
     // Préparer les données pour Strapi (format exact du schéma)
     const recipeData: any = {
       data: {
@@ -270,6 +323,9 @@ async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): 
         nombrePersonnes: parsedRecipe.nombrePersonnes || 4,
         difficulte: parsedRecipe.difficulte || 'facile',
         publishedAt: new Date().toISOString(), // Publier immédiatement
+        // Générer metaTitle et metaDescription automatiquement
+        metaTitle: generateMetaTitle(parsedRecipe.titre),
+        metaDescription: generateMetaDescription(parsedRecipe),
       },
     };
 
