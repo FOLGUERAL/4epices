@@ -13,7 +13,12 @@ function generateMetaTitle(data) {
     return data.metaTitle;
   }
 
-  const titre = data.titre || '';
+  const titre = (data.titre || '').trim();
+  
+  // Si le titre est vide, retourner une valeur par défaut
+  if (!titre) {
+    return 'Recette | 4épices';
+  }
   
   // Le metaTitle est simplement le titre de la recette
   // Limité à 60 caractères (recommandation SEO)
@@ -21,8 +26,14 @@ function generateMetaTitle(data) {
     return titre;
   }
   
-  // Si trop long, on tronque intelligemment
-  return titre.substring(0, 57) + '...';
+  // Si trop long, on tronque intelligemment à un espace pour éviter de couper un mot
+  const truncated = titre.substring(0, 57);
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > 40) {
+    return truncated.substring(0, lastSpace) + '...';
+  }
+  
+  return truncated + '...';
 }
 
 /**
@@ -34,12 +45,17 @@ function generateMetaDescription(data) {
     return data.metaDescription;
   }
 
-  const titre = data.titre || '';
+  const titre = (data.titre || '').trim();
   const difficulte = data.difficulte || 'facile';
   const tempsPrep = data.tempsPreparation || 0;
   const tempsCuisson = data.tempsCuisson || 0;
   const tempsTotal = tempsPrep + tempsCuisson;
   const personnes = data.nombrePersonnes || 4;
+  
+  // Si le titre est vide, utiliser une description générique
+  if (!titre) {
+    return `Recette ${difficulte}${tempsTotal > 0 ? ` en ${tempsTotal} minutes` : ''} pour ${personnes} ${personnes === 1 ? 'personne' : 'personnes'}.`;
+  }
   
   // Adjectifs selon la difficulté
   const adjectifs = {
@@ -67,7 +83,7 @@ function generateMetaDescription(data) {
   // Construire la description selon un template
   let metaDesc = '';
   
-  // Template 1 : Avec temps détaillé
+  // Template 1 : Avec temps détaillé (priorité si temps total <= 60 min)
   if (tempsText && tempsTotal <= 60) {
     metaDesc = `${titre} : recette ${adjectif} ${tempsText}. Pour ${personnes} ${personnes === 1 ? 'personne' : 'personnes'}.`;
   }
@@ -80,18 +96,25 @@ function generateMetaDescription(data) {
     metaDesc = `${titre} : recette ${adjectif} pour ${personnes} ${personnes === 1 ? 'personne' : 'personnes'}.`;
   }
   
-  // Ajouter un élément distinctif si on a de la place
+  // Améliorer la description si on a de la place (< 120 caractères)
   if (metaDesc.length < 120) {
     if (tempsTotal > 0 && tempsTotal <= 30) {
-      metaDesc = metaDesc.replace('rapide', 'ultra rapide');
+      metaDesc = metaDesc.replace(/\brapide\b/, 'ultra rapide');
     } else if (tempsTotal > 120) {
-      metaDesc = metaDesc.replace('recette', 'recette mijotée');
+      metaDesc = metaDesc.replace(/\brecette\b/, 'recette mijotée');
     }
   }
   
-  // Limiter à 160 caractères
+  // Limiter à 160 caractères (optimisation SEO)
   if (metaDesc.length > 160) {
-    metaDesc = metaDesc.substring(0, 157) + '...';
+    // Essayer de couper à un espace plutôt qu'au milieu d'un mot
+    const truncated = metaDesc.substring(0, 157);
+    const lastSpace = truncated.lastIndexOf(' ');
+    if (lastSpace > 140) {
+      metaDesc = truncated.substring(0, lastSpace) + '...';
+    } else {
+      metaDesc = truncated + '...';
+    }
   }
   
   return metaDesc;
