@@ -36,7 +36,7 @@ module.exports = ({ strapi }) => ({
     const recipeUrl = `${frontendUrl}/recettes/${recetteData.slug}`;
 
     try {
-      const response = await fetch('https://api.pinterest.com/v5/pins', {
+      const response = await fetch('https://api-sandbox.pinterest.com/v5/pins', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
