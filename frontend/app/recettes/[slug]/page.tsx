@@ -119,7 +119,9 @@ export default async function RecettePage({ params }: { params: { slug: string }
     return String(ing);
   });
 
-  const tempsTotal = (recette.attributes.tempsPreparation || 0) + (recette.attributes.tempsCuisson || 0);
+  const tempsPrep = recette.attributes.tempsPreparation || 0;
+  const tempsCuisson = recette.attributes.tempsCuisson || 0;
+  const tempsTotal = tempsPrep + tempsCuisson;
   
   // Structured data pour le SEO (JSON-LD)
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
@@ -243,21 +245,21 @@ export default async function RecettePage({ params }: { params: { slug: string }
             )}
 
             <div className="flex flex-wrap gap-4 mb-8 pb-8 border-b">
-              {(recette.attributes.tempsPreparation || 0) > 0 && (
+              {tempsPrep > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">⏱️</span>
                   <div>
                     <div className="text-sm text-gray-700 font-medium">Préparation</div>
-                    <div className="font-semibold text-gray-900">{formatTime(recette.attributes.tempsPreparation || 0)}</div>
+                    <div className="font-semibold text-gray-900">{formatTime(tempsPrep)}</div>
                   </div>
                 </div>
               )}
-              {(recette.attributes.tempsCuisson || 0) > 0 && (
+              {tempsCuisson > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🔥</span>
                   <div>
                     <div className="text-sm text-gray-700 font-medium">Cuisson</div>
-                    <div className="font-semibold text-gray-900">{formatTime(recette.attributes.tempsCuisson || 0)}</div>
+                    <div className="font-semibold text-gray-900">{formatTime(tempsCuisson)}</div>
                   </div>
                 </div>
               )}
