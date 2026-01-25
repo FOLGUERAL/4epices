@@ -248,7 +248,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
                   <span className="text-2xl">⏱️</span>
                   <div>
                     <div className="text-sm text-gray-700 font-medium">Préparation</div>
-                    <div className="font-semibold text-gray-900">{formatTime(recette.attributes.tempsPreparation)}</div>
+                    <div className="font-semibold text-gray-900">{formatTime(recette.attributes.tempsPreparation || 0)}</div>
                   </div>
                 </div>
               )}
@@ -257,7 +257,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
                   <span className="text-2xl">🔥</span>
                   <div>
                     <div className="text-sm text-gray-700 font-medium">Cuisson</div>
-                    <div className="font-semibold text-gray-900">{formatTime(recette.attributes.tempsCuisson)}</div>
+                    <div className="font-semibold text-gray-900">{formatTime(recette.attributes.tempsCuisson || 0)}</div>
                   </div>
                 </div>
               )}
