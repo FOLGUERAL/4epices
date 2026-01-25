@@ -284,6 +284,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
                 <IngredientsAdjuster
                   ingredients={rawIngredients}
                   basePortions={recette.attributes.nombrePersonnes || 4}
+                  recipeSlug={recette.attributes.slug}
                 />
               </div>
             )}

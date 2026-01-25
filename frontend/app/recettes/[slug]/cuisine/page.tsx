@@ -14,6 +14,104 @@ export default function CuisineModePage() {
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [ingredients, setIngredients] = useState<string[]>([]);
+  const [selectedPortions, setSelectedPortions] = useState<number>(4);
+  
+  // Fonction pour récupérer le nombre de personnes sauvegardé
+  const getSavedPortions = (slug: string, basePortions: number): number => {
+    if (typeof window === 'undefined') return basePortions;
+    try {
+      const saved = localStorage.getItem(`recipe_portions_${slug}`);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed <= 12) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des portions:', error);
+    }
+    return basePortions;
+  };
+  
+  // Fonction pour parser une quantité
+  const parseQuantity = (quantite: string): number | null => {
+    if (!quantite || typeof quantite !== 'string') return null;
+    const trimmed = quantite.trim();
+    const fractionMatch = trimmed.match(/^(\d+)\/(\d+)$/);
+    if (fractionMatch) {
+      const num = parseFloat(fractionMatch[1]);
+      const den = parseFloat(fractionMatch[2]);
+      return den !== 0 ? num / den : null;
+    }
+    const numberMatch = trimmed.match(/^(\d+\.?\d*)/);
+    if (numberMatch) {
+      return parseFloat(numberMatch[1]);
+    }
+    return null;
+  };
+  
+  // Fonction pour formater une quantité
+  const formatQuantity = (value: number, originalQuantite: string): string => {
+    if (Number.isInteger(value)) {
+      return value.toString();
+    }
+    const commonFractions: { [key: number]: string } = {
+      0.25: '1/4',
+      0.5: '1/2',
+      0.75: '3/4',
+      1.5: '1.5',
+      2.5: '2.5',
+    };
+    if (commonFractions[value]) {
+      return commonFractions[value];
+    }
+    return value.toFixed(1).replace(/\.0$/, '');
+  };
+  
+  // Fonction pour ajuster les ingrédients selon le nombre de personnes
+  const adjustIngredients = (rawIngredients: any[], basePortions: number, selectedPortions: number): string[] => {
+    const ratio = selectedPortions / basePortions;
+    
+    return rawIngredients.map((ing: any) => {
+      // Format simple (string)
+      if (typeof ing === 'string') {
+        const quantiteMatch = ing.match(/^([\d\.\/\s]+[a-z]*)\s*(.+)$/i);
+        if (quantiteMatch) {
+          const quantiteStr = quantiteMatch[1].trim();
+          const reste = quantiteMatch[2].trim();
+          const quantite = parseQuantity(quantiteStr);
+          
+          if (quantite !== null) {
+            const newQuantite = quantite * ratio;
+            const formattedQuantite = formatQuantity(newQuantite, quantiteStr);
+            const unitMatch = quantiteStr.match(/^\d+\.?\d*\s*([a-z]+)$/i);
+            const unit = unitMatch ? unitMatch[1] : '';
+            return unit ? `${formattedQuantite} ${unit} ${reste}`.trim() : `${formattedQuantite} ${reste}`.trim();
+          }
+        }
+        return ing;
+      }
+      
+      // Format structuré (objet)
+      if (typeof ing === 'object' && ing !== null) {
+        const quantiteStr = ing.quantite || '';
+        const ingredient = ing.ingredient || '';
+        const quantite = parseQuantity(quantiteStr);
+        
+        if (quantite !== null) {
+          const newQuantite = quantite * ratio;
+          const formattedQuantite = formatQuantity(newQuantite, quantiteStr);
+          const unitMatch = quantiteStr.match(/^\d+\.?\d*\s*([a-z]+)$/i);
+          const unit = unitMatch ? unitMatch[1] : '';
+          return `${formattedQuantite}${unit ? ' ' + unit : ''} ${ingredient}`.trim();
+        }
+        
+        return quantiteStr ? `${quantiteStr} ${ingredient}`.trim() : ingredient;
+      }
+      
+      return String(ing);
+    });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -36,22 +134,20 @@ export default function CuisineModePage() {
         if (response && response.data) {
           setRecette(response.data);
           
-          // Normaliser les ingrédients
+          // Récupérer les ingrédients bruts
           const rawIngredients = Array.isArray(response.data.attributes.ingredients)
             ? response.data.attributes.ingredients
             : [];
           
-          const normalized = rawIngredients.map((ing: any) => {
-            if (typeof ing === 'string') return ing;
-            if (typeof ing === 'object' && ing !== null) {
-              const quantite = ing.quantite || '';
-              const ingredient = ing.ingredient || '';
-              return quantite ? `${quantite} ${ingredient}`.trim() : ingredient;
-            }
-            return String(ing);
-          });
+          // Récupérer le nombre de personnes sauvegardé
+          const basePortions = response.data.attributes.nombrePersonnes || 4;
+          const savedPortions = getSavedPortions(slug, basePortions);
+          setSelectedPortions(savedPortions);
           
-          setIngredients(normalized);
+          // Ajuster les ingrédients selon le nombre de personnes
+          const adjusted = adjustIngredients(rawIngredients, basePortions, savedPortions);
+          
+          setIngredients(adjusted);
           setLoading(false);
         } else {
           // Ne pas rediriger immédiatement, laisser l'utilisateur voir l'erreur
@@ -223,7 +319,9 @@ export default function CuisineModePage() {
 
             {/* Ingrédients */}
             <div className="mb-8 print:mb-4">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Ingrédients</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                Ingrédients <span className="text-lg font-normal text-gray-600">({selectedPortions} {selectedPortions === 1 ? 'personne' : 'personnes'})</span>
+              </h2>
               <ul className="space-y-2">
                 {ingredients.map((ing, index) => (
                   <li key={index} className="flex items-start gap-2">

@@ -10,6 +10,7 @@ interface Ingredient {
 interface IngredientsAdjusterProps {
   ingredients: any[]; // Peut être string[] ou Ingredient[]
   basePortions: number;
+  recipeSlug?: string; // Slug de la recette pour sauvegarder les préférences
 }
 
 // Fonction pour parser une quantité (ex: "200g", "3", "1/2", "1.5")
@@ -68,8 +69,37 @@ function extractUnit(quantite: string): string {
   return unitMatch ? unitMatch[1].trim() : '';
 }
 
-export default function IngredientsAdjuster({ ingredients, basePortions }: IngredientsAdjusterProps) {
-  const [selectedPortions, setSelectedPortions] = useState(basePortions);
+export default function IngredientsAdjuster({ ingredients, basePortions, recipeSlug }: IngredientsAdjusterProps) {
+  // Récupérer le nombre de personnes sauvegardé depuis localStorage
+  const getSavedPortions = (): number => {
+    if (typeof window === 'undefined' || !recipeSlug) return basePortions;
+    try {
+      const saved = localStorage.getItem(`recipe_portions_${recipeSlug}`);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed <= 12) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des portions:', error);
+    }
+    return basePortions;
+  };
+
+  const [selectedPortions, setSelectedPortions] = useState(getSavedPortions);
+
+  // Sauvegarder le nombre de personnes dans localStorage
+  const handlePortionsChange = (newPortions: number) => {
+    setSelectedPortions(newPortions);
+    if (typeof window !== 'undefined' && recipeSlug) {
+      try {
+        localStorage.setItem(`recipe_portions_${recipeSlug}`, newPortions.toString());
+      } catch (error) {
+        console.error('Erreur lors de la sauvegarde des portions:', error);
+      }
+    }
+  };
 
   const adjustedIngredients = useMemo(() => {
     const ratio = selectedPortions / basePortions;
@@ -133,7 +163,7 @@ export default function IngredientsAdjuster({ ingredients, basePortions }: Ingre
         <select
           id="portions"
           value={selectedPortions}
-          onChange={(e) => setSelectedPortions(Number(e.target.value))}
+          onChange={(e) => handlePortionsChange(Number(e.target.value))}
           className="px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black bg-white font-medium transition-all duration-200 w-full sm:w-auto"
         >
           {portionOptions.map((num) => (
@@ -144,7 +174,7 @@ export default function IngredientsAdjuster({ ingredients, basePortions }: Ingre
         </select>
         {selectedPortions !== basePortions && (
           <button
-            onClick={() => setSelectedPortions(basePortions)}
+            onClick={() => handlePortionsChange(basePortions)}
             className="text-sm font-semibold text-orange-600 hover:text-orange-700 hover:bg-orange-50 px-3 py-2 rounded-lg transition-colors duration-200 whitespace-nowrap ml-auto"
           >
             Réinitialiser ({basePortions} pers.)
