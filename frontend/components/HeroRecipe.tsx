@@ -22,7 +22,9 @@ function formatTime(minutes: number): string {
 
 export default function HeroRecipe({ recette }: HeroRecipeProps) {
   const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url || null;
-  const tempsTotal = (recette.attributes.tempsPreparation || 0) + (recette.attributes.tempsCuisson || 0);
+  const tempsPrep = recette.attributes.tempsPreparation || 0;
+  const tempsCuisson = recette.attributes.tempsCuisson || 0;
+  const tempsTotal = tempsPrep + tempsCuisson;
 
   return (
     <Link
@@ -70,16 +72,16 @@ export default function HeroRecipe({ recette }: HeroRecipeProps) {
 
             {/* Infos */}
             <div className="flex flex-wrap gap-4 mb-6">
-              {(recette.attributes.tempsPreparation || 0) > 0 && (
+              {tempsPrep > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">⏱️</span>
-                  <span className="font-medium">{formatTime(recette.attributes.tempsPreparation)}</span>
+                  <span className="font-medium">{formatTime(tempsPrep)}</span>
                 </div>
               )}
-              {(recette.attributes.tempsCuisson || 0) > 0 && (
+              {tempsCuisson > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🔥</span>
-                  <span className="font-medium">{formatTime(recette.attributes.tempsCuisson)}</span>
+                  <span className="font-medium">{formatTime(tempsCuisson)}</span>
                 </div>
               )}
               {tempsTotal > 0 && (
