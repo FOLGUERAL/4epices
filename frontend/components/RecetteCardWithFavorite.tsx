@@ -28,6 +28,8 @@ function formatTime(minutes: number): string {
 export default function RecetteCardWithFavorite({ recette }: RecetteCardWithFavoriteProps) {
   const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url || null;
   const imageUrlForFavorite = imageUrl ? getStrapiMediaUrl(imageUrl) : undefined;
+  const tempsPrep = recette.attributes.tempsPreparation || 0;
+  const tempsCuisson = recette.attributes.tempsCuisson || 0;
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl hover:bg-orange-50 transition-all group relative">
@@ -52,16 +54,16 @@ export default function RecetteCardWithFavorite({ recette }: RecetteCardWithFavo
             {recette.attributes.description}
           </p>
           <div className="flex items-center gap-4 text-sm text-gray-700 mb-3">
-            {(recette.attributes.tempsPreparation || 0) > 0 && (
+            {tempsPrep > 0 && (
               <span className="flex items-center gap-1 font-medium">
                 <span>⏱️</span>
-                <span>{formatTime(recette.attributes.tempsPreparation)}</span>
+                <span>{formatTime(tempsPrep)}</span>
               </span>
             )}
-            {(recette.attributes.tempsCuisson || 0) > 0 && (
+            {tempsCuisson > 0 && (
               <span className="flex items-center gap-1 font-medium">
                 <span>🔥</span>
-                <span>{formatTime(recette.attributes.tempsCuisson)}</span>
+                <span>{formatTime(tempsCuisson)}</span>
               </span>
             )}
             {recette.attributes.difficulte && (

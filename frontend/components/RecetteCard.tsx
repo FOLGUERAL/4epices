@@ -30,6 +30,8 @@ function formatTime(minutes: number): string {
 
 export default function RecetteCard({ recette }: RecetteCardProps) {
   const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url || null;
+  const tempsPrep = recette.attributes.tempsPreparation || 0;
+  const tempsCuisson = recette.attributes.tempsCuisson || 0;
 
   return (
     <Link
@@ -53,16 +55,16 @@ export default function RecetteCard({ recette }: RecetteCardProps) {
           {recette.attributes.description}
         </p>
         <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700 mb-4 gap-y-2">
-          {(recette.attributes.tempsPreparation || 0) > 0 && (
+          {tempsPrep > 0 && (
             <span className="flex items-center gap-1.5 font-medium bg-orange-50 px-3 py-1.5 rounded-full">
               <span>⏱️</span>
-              <span>{formatTime(recette.attributes.tempsPreparation)}</span>
+              <span>{formatTime(tempsPrep)}</span>
             </span>
           )}
-          {(recette.attributes.tempsCuisson || 0) > 0 && (
+          {tempsCuisson > 0 && (
             <span className="flex items-center gap-1.5 font-medium bg-orange-50 px-3 py-1.5 rounded-full">
               <span>🔥</span>
-              <span>{formatTime(recette.attributes.tempsCuisson)}</span>
+              <span>{formatTime(tempsCuisson)}</span>
             </span>
           )}
           {recette.attributes.difficulte && (
