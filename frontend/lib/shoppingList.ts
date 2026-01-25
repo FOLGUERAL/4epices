@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Gestion de la liste de courses
  */
 
@@ -10,6 +10,7 @@ export interface ShoppingListItem {
 }
 
 const SHOPPING_LIST_KEY = '4epices_shopping_list';
+const SHOPPING_LIST_RECIPES_KEY = '4epices_shopping_list_recipes';
 
 export function getShoppingList(): ShoppingListItem[] {
   if (typeof window === 'undefined') return [];
@@ -33,9 +34,142 @@ export function saveShoppingList(items: ShoppingListItem[]): void {
   }
 }
 
-export function addIngredientsToShoppingList(ingredients: any[]): ShoppingListItem[] {
+/**
+ * Récupère la liste des IDs de recettes ajoutées à la liste de courses
+ */
+function getShoppingListRecipes(): number[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(SHOPPING_LIST_RECIPES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Erreur lors de la récupération des recettes de la liste:', error);
+    return [];
+  }
+}
+
+/**
+ * Sauvegarde la liste des IDs de recettes
+ */
+function saveShoppingListRecipes(recipeIds: number[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(SHOPPING_LIST_RECIPES_KEY, JSON.stringify(recipeIds));
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde des recettes de la liste:', error);
+  }
+}
+
+/**
+ * Vérifie si une recette est déjà dans la liste de courses
+ */
+export function isRecipeInShoppingList(recipeId: number): boolean {
+  const recipeIds = getShoppingListRecipes();
+  return recipeIds.includes(recipeId);
+}
+
+/**
+ * Normalise le nom d'un ingrédient pour la comparaison (enlève pluriels, accents, etc.)
+ */
+function normalizeIngredientName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    // Enlever les pluriels courants
+    .replace(/s$/, '')
+    .replace(/x$/, '')
+    // Normaliser les accents
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * Parse une quantité et retourne sa valeur numérique (si possible)
+ */
+function parseQuantity(quantity: string): { value: number | null; unit: string; original: string } {
+  if (!quantity) {
+    return { value: null, unit: '', original: '' };
+  }
+
+  const trimmed = quantity.trim();
+  
+  // Gérer les fractions simples (1/2, 1/4, 3/4, etc.)
+  const fractionMatch = trimmed.match(/^(\d+)\/(\d+)$/);
+  if (fractionMatch) {
+    const num = parseFloat(fractionMatch[1]);
+    const den = parseFloat(fractionMatch[2]);
+    return { value: num / den, unit: '', original: trimmed };
+  }
+
+  // Gérer les nombres avec unités (2 cuillères, 3 gousses, etc.)
+  const numberMatch = trimmed.match(/^([\d\.,]+)\s*(.*)$/);
+  if (numberMatch) {
+    const numStr = numberMatch[1].replace(',', '.');
+    const num = parseFloat(numStr);
+    const unit = numberMatch[2] || '';
+    return { value: isNaN(num) ? null : num, unit: unit.trim(), original: trimmed };
+  }
+
+  // Gérer les nombres simples
+  const simpleNumber = parseFloat(trimmed.replace(',', '.'));
+  if (!isNaN(simpleNumber)) {
+    return { value: simpleNumber, unit: '', original: trimmed };
+  }
+
+  return { value: null, unit: '', original: trimmed };
+}
+
+/**
+ * Formate une quantité pour l'affichage
+ */
+function formatQuantity(value: number | null, unit: string, original: string): string {
+  if (value === null) {
+    return original || '';
+  }
+
+  // Si c'est une fraction simple, garder le format original
+  if (original.includes('/')) {
+    return original;
+  }
+
+  // Si la valeur est un entier, l'afficher sans décimales
+  if (Number.isInteger(value)) {
+    return unit ? `${value} ${unit}` : `${value}`;
+  }
+
+  // Sinon, garder 1-2 décimales
+  const rounded = Math.round(value * 100) / 100;
+  return unit ? `${rounded} ${unit}` : `${rounded}`;
+}
+
+/**
+ * Additionne deux quantités
+ */
+function addQuantities(qty1: string | undefined, qty2: string): string {
+  if (!qty1) return qty2;
+
+  const parsed1 = parseQuantity(qty1);
+  const parsed2 = parseQuantity(qty2);
+
+  // Si les deux ont des valeurs numériques et la même unité (ou pas d'unité)
+  if (parsed1.value !== null && parsed2.value !== null) {
+    // Vérifier que les unités sont compatibles (même unité ou aucune unité)
+    const unit1 = parsed1.unit.toLowerCase();
+    const unit2 = parsed2.unit.toLowerCase();
+    
+    if (unit1 === unit2 || (unit1 === '' && unit2 === '')) {
+      const sum = parsed1.value + parsed2.value;
+      return formatQuantity(sum, parsed1.unit || parsed2.unit, '');
+    }
+  }
+
+  // Si on ne peut pas additionner, concaténer avec un +
+  return `${qty1} + ${qty2}`;
+}
+
+export function addIngredientsToShoppingList(ingredients: any[], recipeId?: number): ShoppingListItem[] {
   const currentList = getShoppingList();
-  const newItems: ShoppingListItem[] = [];
+  const updatedList = [...currentList];
 
   ingredients.forEach((ing) => {
     let ingredientText = '';
@@ -58,13 +192,26 @@ export function addIngredientsToShoppingList(ingredients: any[]): ShoppingListIt
       ingredientText = match[2].trim();
     }
 
-    // Vérifier si l'ingrédient existe déjà
-    const existingItem = currentList.find(
-      item => item.ingredient.toLowerCase() === ingredientText.toLowerCase()
+    // Normaliser le nom pour la comparaison
+    const normalizedName = normalizeIngredientName(ingredientText);
+
+    // Chercher un ingrédient similaire dans la liste
+    const existingItemIndex = updatedList.findIndex(
+      item => normalizeIngredientName(item.ingredient) === normalizedName
     );
 
-    if (!existingItem) {
-      newItems.push({
+    if (existingItemIndex >= 0) {
+      // L'ingrédient existe déjà, additionner les quantités
+      const existingItem = updatedList[existingItemIndex];
+      const newQuantity = addQuantities(existingItem.quantity, quantity);
+      
+      updatedList[existingItemIndex] = {
+        ...existingItem,
+        quantity: newQuantity || undefined,
+      };
+    } else {
+      // Nouvel ingrédient, l'ajouter
+      updatedList.push({
         id: `${Date.now()}-${Math.random()}`,
         ingredient: ingredientText,
         quantity: quantity || undefined,
@@ -73,8 +220,17 @@ export function addIngredientsToShoppingList(ingredients: any[]): ShoppingListIt
     }
   });
 
-  const updatedList = [...currentList, ...newItems];
   saveShoppingList(updatedList);
+  
+  // Si un ID de recette est fourni, l'ajouter à la liste des recettes
+  if (recipeId) {
+    const recipeIds = getShoppingListRecipes();
+    if (!recipeIds.includes(recipeId)) {
+      recipeIds.push(recipeId);
+      saveShoppingListRecipes(recipeIds);
+    }
+  }
+  
   return updatedList;
 }
 
@@ -97,5 +253,144 @@ export function removeShoppingListItem(id: string): ShoppingListItem[] {
 export function clearShoppingList(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(SHOPPING_LIST_KEY);
+  localStorage.removeItem(SHOPPING_LIST_RECIPES_KEY);
+}
+
+/**
+ * Vérifie si tous les ingrédients d'une recette sont présents dans la liste
+ */
+export function areIngredientsInList(ingredients: any[]): boolean {
+  const currentList = getShoppingList();
+  if (currentList.length === 0) return false;
+
+  let allPresent = true;
+
+  ingredients.forEach((ing) => {
+    let ingredientText = '';
+    let quantity = '';
+
+    if (typeof ing === 'string') {
+      ingredientText = ing;
+    } else if (typeof ing === 'object' && ing !== null) {
+      quantity = ing.quantite || '';
+      const ingredient = ing.ingredient || '';
+      ingredientText = quantity ? `${quantity} ${ingredient}`.trim() : ingredient;
+    } else {
+      ingredientText = String(ing);
+    }
+
+    // Extraire la quantité et l'ingrédient
+    const match = ingredientText.match(/^([\d\s\/\.]+[a-z]*)\s+(.+)$/i);
+    if (match) {
+      quantity = match[1].trim();
+      ingredientText = match[2].trim();
+    }
+
+    const normalizedName = normalizeIngredientName(ingredientText);
+    const exists = currentList.some(
+      item => normalizeIngredientName(item.ingredient) === normalizedName
+    );
+
+    if (!exists) {
+      allPresent = false;
+    }
+  });
+
+  return allPresent;
+}
+
+/**
+ * Soustrait une quantité d'une autre
+ */
+function subtractQuantities(qty1: string | undefined, qty2: string): string | null {
+  if (!qty1) return null; // Si pas de quantité existante, on ne peut pas soustraire
+
+  const parsed1 = parseQuantity(qty1);
+  const parsed2 = parseQuantity(qty2);
+
+  // Si les deux ont des valeurs numériques et la même unité
+  if (parsed1.value !== null && parsed2.value !== null) {
+    const unit1 = parsed1.unit.toLowerCase();
+    const unit2 = parsed2.unit.toLowerCase();
+    
+    if (unit1 === unit2 || (unit1 === '' && unit2 === '')) {
+      const diff = parsed1.value - parsed2.value;
+      
+      // Si le résultat est négatif ou zéro, retourner null pour supprimer l'ingrédient
+      if (diff <= 0) {
+        return null;
+      }
+      
+      return formatQuantity(diff, parsed1.unit || parsed2.unit, '');
+    }
+  }
+
+  // Si on ne peut pas soustraire proprement, retourner null pour supprimer
+  return null;
+}
+
+/**
+ * Retire les ingrédients d'une recette de la liste de courses
+ */
+export function removeIngredientsFromShoppingList(ingredients: any[], recipeId?: number): ShoppingListItem[] {
+  const currentList = getShoppingList();
+  const updatedList = [...currentList];
+
+  ingredients.forEach((ing) => {
+    let ingredientText = '';
+    let quantity = '';
+
+    if (typeof ing === 'string') {
+      ingredientText = ing;
+    } else if (typeof ing === 'object' && ing !== null) {
+      quantity = ing.quantite || '';
+      const ingredient = ing.ingredient || '';
+      ingredientText = quantity ? `${quantity} ${ingredient}`.trim() : ingredient;
+    } else {
+      ingredientText = String(ing);
+    }
+
+    // Extraire la quantité et l'ingrédient
+    const match = ingredientText.match(/^([\d\s\/\.]+[a-z]*)\s+(.+)$/i);
+    if (match) {
+      quantity = match[1].trim();
+      ingredientText = match[2].trim();
+    }
+
+    // Normaliser le nom pour la comparaison
+    const normalizedName = normalizeIngredientName(ingredientText);
+
+    // Chercher l'ingrédient dans la liste
+    const existingItemIndex = updatedList.findIndex(
+      item => normalizeIngredientName(item.ingredient) === normalizedName
+    );
+
+    if (existingItemIndex >= 0) {
+      const existingItem = updatedList[existingItemIndex];
+      const newQuantity = subtractQuantities(existingItem.quantity, quantity);
+
+      if (newQuantity === null) {
+        // Supprimer l'ingrédient si la quantité devient 0 ou négative
+        updatedList.splice(existingItemIndex, 1);
+      } else {
+        // Mettre à jour la quantité
+        updatedList[existingItemIndex] = {
+          ...existingItem,
+          quantity: newQuantity || undefined,
+        };
+      }
+    }
+  });
+
+  saveShoppingList(updatedList);
+  
+  // Si un ID de recette est fourni, le retirer de la liste des recettes
+  if (recipeId) {
+    const recipeIds = getShoppingListRecipes();
+    const filteredIds = recipeIds.filter(id => id !== recipeId);
+    saveShoppingListRecipes(filteredIds);
+  }
+  
+  return updatedList;
 }
 

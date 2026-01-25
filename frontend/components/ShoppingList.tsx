@@ -62,8 +62,8 @@ export default function ShoppingList() {
   };
 
   const handleExportPDF = () => {
-    const checkedItems = items.filter(item => !item.checked);
-    const uncheckedItems = items.filter(item => item.checked);
+    const checkedItems = items.filter(item => item.checked);
+    const uncheckedItems = items.filter(item => !item.checked);
     
     const content = `
       <!DOCTYPE html>

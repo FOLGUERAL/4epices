@@ -85,9 +85,11 @@ export function toggleFavorite(recette: {
   imageUrl?: string;
 }): boolean {
   if (isFavorite(recette.id)) {
-    return removeFavorite(recette.id);
+    removeFavorite(recette.id);
+    return false; // Retourne l'état final : plus en favoris
   } else {
-    return addFavorite(recette);
+    addFavorite(recette);
+    return true; // Retourne l'état final : maintenant en favoris
   }
 }
 

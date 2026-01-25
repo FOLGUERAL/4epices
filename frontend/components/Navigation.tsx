@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getCategories, Categorie } from '@/lib/strapi';
 import SearchBar from './SearchBar';
+import WhiskIcon from './WhiskIcon';
 
 export default async function Navigation() {
   let categories: Categorie[] = [];
@@ -32,9 +33,10 @@ export default async function Navigation() {
           <div className="flex items-center gap-2 sm:gap-5 lg:gap-8 flex-shrink-0">
             <Link 
               href="/recettes" 
-              className="text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base duration-200"
+              className="text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1.5 duration-200"
             >
-              Recettes
+              <WhiskIcon />
+              <span className="hidden sm:inline">Recettes</span>
             </Link>
             <Link 
               href="/favoris" 

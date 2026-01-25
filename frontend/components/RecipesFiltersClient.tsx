@@ -33,30 +33,23 @@ export default function RecipesFiltersClient({ recettes }: Props) {
 
   return (
     <div>
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} className="rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500">
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} className="rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500 !text-black bg-white">
           <option value="any">Temps (tous)</option>
           <option value="<=15">≤ 15 min</option>
           <option value="<=30">≤ 30 min</option>
           <option value="<=60">≤ 60 min</option>
         </select>
 
-        <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500">
+        <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500 !text-black bg-white">
           <option value="any">Difficulté (tous)</option>
           <option value="facile">Facile</option>
           <option value="moyen">Moyen</option>
           <option value="difficile">Difficile</option>
         </select>
 
-        <select value={diet} onChange={(e) => setDiet(e.target.value)} className="rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500">
-          <option value="any">Régime (tous)</option>
-          <option value="vege">Végétarien</option>
-          <option value="vegan">Vegan</option>
-          <option value="sans-gluten">Sans gluten</option>
-        </select>
-
         <div className="flex items-center">
-          <button onClick={() => { setTimeFilter('any'); setDifficulty('any'); setDiet('any'); }} className="ml-auto rounded-xl px-4 py-2 bg-gray-100 hover:bg-gray-200">Réinitialiser</button>
+          <button onClick={() => { setTimeFilter('any'); setDifficulty('any'); setDiet('any'); }} className="ml-auto rounded-xl px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold transition-colors">Réinitialiser</button>
         </div>
       </div>
 
