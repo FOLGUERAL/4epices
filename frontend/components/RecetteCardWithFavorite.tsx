@@ -11,6 +11,9 @@ interface RecetteCardWithFavoriteProps {
 }
 
 function formatTime(minutes: number): string {
+  if (minutes <= 0) {
+    return '';
+  }
   if (minutes < 60) {
     return `${minutes} min`;
   }
@@ -49,19 +52,16 @@ export default function RecetteCardWithFavorite({ recette }: RecetteCardWithFavo
             {recette.attributes.description}
           </p>
           <div className="flex items-center gap-4 text-sm text-gray-700 mb-3">
-            {(() => {
-              const tempsTotal = (recette.attributes.tempsPreparation || 0) + (recette.attributes.tempsCuisson || 0);
-              return tempsTotal > 0 ? (
-                <span className="flex items-center gap-1 font-medium">
-                  <span>⏱️</span>
-                  <span>{formatTime(tempsTotal)}</span>
-                </span>
-              ) : null;
-            })()}
-            {recette.attributes.nombrePersonnes && (
+            {(recette.attributes.tempsPreparation || 0) > 0 && (
               <span className="flex items-center gap-1 font-medium">
-                <span>👥</span>
-                <span>{recette.attributes.nombrePersonnes} pers.</span>
+                <span>⏱️</span>
+                <span>{formatTime(recette.attributes.tempsPreparation)}</span>
+              </span>
+            )}
+            {(recette.attributes.tempsCuisson || 0) > 0 && (
+              <span className="flex items-center gap-1 font-medium">
+                <span>🔥</span>
+                <span>{formatTime(recette.attributes.tempsCuisson)}</span>
               </span>
             )}
             {recette.attributes.difficulte && (

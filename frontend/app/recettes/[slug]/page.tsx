@@ -13,6 +13,21 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 import PinterestBadge from '@/components/PinterestBadge';
 import PublishPinterestButton from '@/components/PublishPinterestButton';
 
+function formatTime(minutes: number): string {
+  if (minutes <= 0) {
+    return '';
+  }
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (mins === 0) {
+    return `${hours}h`;
+  }
+  return `${hours}h ${mins}min`;
+}
+
 const RatingDisplay = dynamic(() => import('@/components/RatingDisplay'), {
   ssr: false,
 });
@@ -228,21 +243,21 @@ export default async function RecettePage({ params }: { params: { slug: string }
             )}
 
             <div className="flex flex-wrap gap-4 mb-8 pb-8 border-b">
-              {recette.attributes.tempsPreparation && (
+              {(recette.attributes.tempsPreparation || 0) > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">⏱️</span>
                   <div>
                     <div className="text-sm text-gray-700 font-medium">Préparation</div>
-                    <div className="font-semibold text-gray-900">{recette.attributes.tempsPreparation} min</div>
+                    <div className="font-semibold text-gray-900">{formatTime(recette.attributes.tempsPreparation)}</div>
                   </div>
                 </div>
               )}
-              {recette.attributes.tempsCuisson && (
+              {(recette.attributes.tempsCuisson || 0) > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🔥</span>
                   <div>
                     <div className="text-sm text-gray-700 font-medium">Cuisson</div>
-                    <div className="font-semibold text-gray-900">{recette.attributes.tempsCuisson} min</div>
+                    <div className="font-semibold text-gray-900">{formatTime(recette.attributes.tempsCuisson)}</div>
                   </div>
                 </div>
               )}
@@ -251,7 +266,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
                   <span className="text-2xl">⏰</span>
                   <div>
                     <div className="text-sm text-gray-700 font-medium">Total</div>
-                    <div className="font-semibold text-gray-900">{tempsTotal} min</div>
+                    <div className="font-semibold text-gray-900">{formatTime(tempsTotal)}</div>
                   </div>
                 </div>
               )}

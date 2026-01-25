@@ -8,6 +8,18 @@ interface HeroRecipeProps {
   recette: Recette;
 }
 
+function formatTime(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (mins === 0) {
+    return `${hours}h`;
+  }
+  return `${hours}h ${mins}min`;
+}
+
 export default function HeroRecipe({ recette }: HeroRecipeProps) {
   const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url || null;
   const tempsTotal = (recette.attributes.tempsPreparation || 0) + (recette.attributes.tempsCuisson || 0);
@@ -58,22 +70,28 @@ export default function HeroRecipe({ recette }: HeroRecipeProps) {
 
             {/* Infos */}
             <div className="flex flex-wrap gap-4 mb-6">
-              {recette.attributes.tempsPreparation && (
+              {(recette.attributes.tempsPreparation || 0) > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">⏱️</span>
-                  <span className="font-medium">{recette.attributes.tempsPreparation} min</span>
+                  <span className="font-medium">{formatTime(recette.attributes.tempsPreparation)}</span>
+                </div>
+              )}
+              {(recette.attributes.tempsCuisson || 0) > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🔥</span>
+                  <span className="font-medium">{formatTime(recette.attributes.tempsCuisson)}</span>
                 </div>
               )}
               {tempsTotal > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">⏰</span>
-                  <span className="font-medium">Total: {tempsTotal} min</span>
+                  <span className="font-medium">Total: {formatTime(tempsTotal)}</span>
                 </div>
               )}
-              {recette.attributes.nombrePersonnes && (
+              {recette.attributes.difficulte && (
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">👥</span>
-                  <span className="font-medium">{recette.attributes.nombrePersonnes} personnes</span>
+                  <span className="text-2xl">📊</span>
+                  <span className="font-medium capitalize">{recette.attributes.difficulte}</span>
                 </div>
               )}
             </div>
