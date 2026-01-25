@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { getCategories, Categorie } from '@/lib/strapi';
 import SearchBar from './SearchBar';
 import WhiskIcon from './WhiskIcon';
-import CategoriesIcon from './CategoriesIcon';
+import CategoriesDropdown from './CategoriesDropdown';
 
 export default async function Navigation() {
   let categories: Categorie[] = [];
@@ -50,27 +50,7 @@ export default async function Navigation() {
             </Link>
             
             {categories.length > 0 && (
-              <div className="relative group">
-                <button className="text-gray-700 hover:text-orange-600 font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap text-sm sm:text-base duration-200">
-                  <CategoriesIcon />
-                  <span className="hidden sm:inline">Catégories</span>
-                  <svg className="w-4 h-4 group-hover:rotate-180 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 border border-gray-100">
-                  {categories.map((categorie) => (
-                    <Link
-                      key={categorie.id}
-                      href={`/categories/${categorie.attributes.slug}`}
-                      className="block px-5 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors duration-200 font-medium"
-                    >
-                      {categorie.attributes.nom}
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              <CategoriesDropdown categories={categories} />
             )}
           </div>
         </div>
