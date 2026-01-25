@@ -9,16 +9,27 @@ interface Props {
 }
 
 export default function RecipesFiltersClient({ recettes }: Props) {
-  const [timeFilter, setTimeFilter] = useState<string>('any');
+  const [timeTotalFilter, setTimeTotalFilter] = useState<string>('any');
+  const [timePrepFilter, setTimePrepFilter] = useState<string>('any');
   const [difficulty, setDifficulty] = useState<string>('any');
   const [diet, setDiet] = useState<string>('any');
 
   const filtered = useMemo(() => {
     return recettes.filter((r) => {
-      const prep = r.attributes.tempsPreparation || 0;
-      if (timeFilter === '<=15' && prep > 15) return false;
-      if (timeFilter === '<=30' && prep > 30) return false;
-      if (timeFilter === '<=60' && prep > 60) return false;
+      const tempsTotal = (r.attributes.tempsPreparation || 0) + (r.attributes.tempsCuisson || 0);
+      const tempsPrep = r.attributes.tempsPreparation || 0;
+      
+      // Filtre temps total
+      if (timeTotalFilter === '<=15' && tempsTotal > 15) return false;
+      if (timeTotalFilter === '<=30' && tempsTotal > 30) return false;
+      if (timeTotalFilter === '<=60' && tempsTotal > 60) return false;
+      if (timeTotalFilter === '<=90' && tempsTotal > 90) return false;
+      if (timeTotalFilter === '<=120' && tempsTotal > 120) return false;
+      
+      // Filtre temps de préparation
+      if (timePrepFilter === '<=15' && tempsPrep > 15) return false;
+      if (timePrepFilter === '<=30' && tempsPrep > 30) return false;
+      if (timePrepFilter === '<=60' && tempsPrep > 60) return false;
 
       if (difficulty !== 'any' && r.attributes.difficulte !== difficulty) return false;
 
@@ -29,16 +40,27 @@ export default function RecipesFiltersClient({ recettes }: Props) {
 
       return true;
     });
-  }, [recettes, timeFilter, difficulty, diet]);
+  }, [recettes, timeTotalFilter, timePrepFilter, difficulty, diet]);
 
   return (
     <div>
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} className="rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500 !text-black bg-white">
-          <option value="any">Temps (tous)</option>
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3">
+        
+
+        <select value={timePrepFilter} onChange={(e) => setTimePrepFilter(e.target.value)} className="rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500 !text-black bg-white">
+          <option value="any">Temps de préparation (tous)</option>
           <option value="<=15">≤ 15 min</option>
           <option value="<=30">≤ 30 min</option>
           <option value="<=60">≤ 60 min</option>
+        </select>
+
+        <select value={timeTotalFilter} onChange={(e) => setTimeTotalFilter(e.target.value)} className="rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500 !text-black bg-white">
+          <option value="any">Temps total (tous)</option>
+          <option value="<=15">≤ 15 min</option>
+          <option value="<=30">≤ 30 min</option>
+          <option value="<=60">≤ 1h</option>
+          <option value="<=90">≤ 1h30</option>
+          <option value="<=120">≤ 2h</option>
         </select>
 
         <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500 !text-black bg-white">
@@ -49,7 +71,7 @@ export default function RecipesFiltersClient({ recettes }: Props) {
         </select>
 
         <div className="flex items-center">
-          <button onClick={() => { setTimeFilter('any'); setDifficulty('any'); setDiet('any'); }} className="ml-auto rounded-xl px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold transition-colors">Réinitialiser</button>
+          <button onClick={() => { setTimeTotalFilter('any'); setTimePrepFilter('any'); setDifficulty('any'); setDiet('any'); }} className="ml-auto rounded-xl px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-bold transition-colors">Réinitialiser</button>
         </div>
       </div>
 

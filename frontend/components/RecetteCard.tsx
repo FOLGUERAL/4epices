@@ -13,6 +13,18 @@ interface RecetteCardProps {
   recette: Recette;
 }
 
+function formatTime(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (mins === 0) {
+    return `${hours}h`;
+  }
+  return `${hours}h ${mins}min`;
+}
+
 export default function RecetteCard({ recette }: RecetteCardProps) {
   const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url || null;
 
@@ -38,12 +50,15 @@ export default function RecetteCard({ recette }: RecetteCardProps) {
           {recette.attributes.description}
         </p>
         <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700 mb-4 gap-y-2">
-          {recette.attributes.tempsPreparation && (
-            <span className="flex items-center gap-1.5 font-medium bg-orange-50 px-3 py-1.5 rounded-full">
-              <span>⏱️</span>
-              <span>{recette.attributes.tempsPreparation} min</span>
-            </span>
-          )}
+          {(() => {
+            const tempsTotal = (recette.attributes.tempsPreparation || 0) + (recette.attributes.tempsCuisson || 0);
+            return tempsTotal > 0 ? (
+              <span className="flex items-center gap-1.5 font-medium bg-orange-50 px-3 py-1.5 rounded-full">
+                <span>⏱️</span>
+                <span>{formatTime(tempsTotal)}</span>
+              </span>
+            ) : null;
+          })()}
           {recette.attributes.nombrePersonnes && (
             <span className="flex items-center gap-1.5 font-medium bg-accent-50 px-3 py-1.5 rounded-full">
               <span>👥</span>

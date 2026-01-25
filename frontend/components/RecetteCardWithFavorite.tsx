@@ -10,6 +10,18 @@ interface RecetteCardWithFavoriteProps {
   recette: Recette;
 }
 
+function formatTime(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (mins === 0) {
+    return `${hours}h`;
+  }
+  return `${hours}h ${mins}min`;
+}
+
 export default function RecetteCardWithFavorite({ recette }: RecetteCardWithFavoriteProps) {
   const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url || null;
   const imageUrlForFavorite = imageUrl ? getStrapiMediaUrl(imageUrl) : undefined;
@@ -37,12 +49,15 @@ export default function RecetteCardWithFavorite({ recette }: RecetteCardWithFavo
             {recette.attributes.description}
           </p>
           <div className="flex items-center gap-4 text-sm text-gray-700 mb-3">
-            {recette.attributes.tempsPreparation && (
-              <span className="flex items-center gap-1 font-medium">
-                <span>⏱️</span>
-                <span>{recette.attributes.tempsPreparation} min</span>
-              </span>
-            )}
+            {(() => {
+              const tempsTotal = (recette.attributes.tempsPreparation || 0) + (recette.attributes.tempsCuisson || 0);
+              return tempsTotal > 0 ? (
+                <span className="flex items-center gap-1 font-medium">
+                  <span>⏱️</span>
+                  <span>{formatTime(tempsTotal)}</span>
+                </span>
+              ) : null;
+            })()}
             {recette.attributes.nombrePersonnes && (
               <span className="flex items-center gap-1 font-medium">
                 <span>👥</span>

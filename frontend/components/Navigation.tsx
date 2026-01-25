@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { getCategories, Categorie } from '@/lib/strapi';
 import SearchBar from './SearchBar';
 import WhiskIcon from './WhiskIcon';
+import CategoriesIcon from './CategoriesIcon';
 
 export default async function Navigation() {
   let categories: Categorie[] = [];
@@ -51,7 +52,8 @@ export default async function Navigation() {
             {categories.length > 0 && (
               <div className="relative group">
                 <button className="text-gray-700 hover:text-orange-600 font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap text-sm sm:text-base duration-200">
-                  <span className="inline">Catégories</span>
+                  <CategoriesIcon />
+                  <span className="hidden sm:inline">Catégories</span>
                   <svg className="w-4 h-4 group-hover:rotate-180 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
