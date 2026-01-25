@@ -2,7 +2,7 @@ export default function RecetteCardSkeleton() {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
       {/* Image skeleton */}
-      <div className="relative h-64 w-full bg-gray-200" style={{ aspectRatio: '4/3' }} />
+      <div className="relative h-72 w-full bg-gray-200" style={{ aspectRatio: '4/3' }} />
       
       {/* Content skeleton */}
       <div className="p-6">

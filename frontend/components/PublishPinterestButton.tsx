@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from './Toast';
+import { isAdmin } from '@/lib/admin-auth';
 
 interface PublishPinterestButtonProps {
   recetteId: number;
@@ -18,6 +19,11 @@ export default function PublishPinterestButton({
   onSuccess 
 }: PublishPinterestButtonProps) {
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+
+  useEffect(() => {
+    setIsAdminUser(isAdmin());
+  }, []);
 
   const handlePublish = async () => {
     if (pinterestPinId) {
@@ -60,6 +66,11 @@ export default function PublishPinterestButton({
       setIsPublishing(false);
     }
   };
+
+  // Ne pas afficher le bouton si l'utilisateur n'est pas admin
+  if (!isAdminUser) {
+    return null;
+  }
 
   // Ne pas afficher le bouton si déjà publié
   if (pinterestPinId) {

@@ -11,6 +11,9 @@ const config: Config = {
       fontFamily: {
         sans: ["'Inter'", "'Segoe UI'", "Tahoma", "Geneva", "Verdana", "sans-serif"],
         serif: ["'Playfair Display'", "Georgia", "serif"],
+        script: ["'Satisfy'", "cursive"],
+        merriweather: ["'Merriweather'", "serif"],
+        lora: ["'Lora'", "serif"],
       },
       colors: {
         background: "var(--background)",

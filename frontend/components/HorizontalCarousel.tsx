@@ -105,7 +105,7 @@ export default function HorizontalCarousel({
             href={seeAllLink}
             className="text-orange-600 hover:text-orange-700 font-semibold transition-colors whitespace-nowrap flex items-center gap-2 text-sm sm:text-base"
           >
-            <span className="hidden sm:inline">Voir tout</span>
+            <span>Voir tout</span>
             <span className="text-lg">→</span>
           </Link>
         )}

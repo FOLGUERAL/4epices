@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/Toast';
+import AdminAuth from '@/components/AdminAuth';
 
-export default function CreerRecettePage() {
+function CreerRecettePageContent() {
   const router = useRouter();
   
   // État pour la dictée vocale
@@ -953,3 +954,10 @@ export default function CreerRecettePage() {
   );
 }
 
+export default function CreerRecettePage() {
+  return (
+    <AdminAuth>
+      <CreerRecettePageContent />
+    </AdminAuth>
+  );
+}

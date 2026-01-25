@@ -19,19 +19,19 @@ export default function RecetteCard({ recette }: RecetteCardProps) {
   return (
     <Link
       href={`/recettes/${recette.attributes.slug}`}
-      className="card-base card-hover group flex flex-col h-full"
+      className="card-base card-hover group/card flex flex-col h-full hover:bg-orange-50 transition-colors"
     >
-      <div className="relative w-full h-48 sm:h-56 overflow-hidden bg-gray-100">
+      <div className="relative w-full h-56 sm:h-64 overflow-hidden bg-gray-100">
         <OptimizedImage
           src={imageUrl}
           alt={recette.attributes.imagePrincipale?.data?.attributes?.alternativeText || recette.attributes.titre}
           fill
-          className="object-cover group-hover:scale-110 transition-transform duration-500"
+          className="object-cover group-hover/card:scale-110 transition-transform duration-500"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
       </div>
       <div className="p-5 sm:p-6 flex flex-col flex-grow">
-        <h3 className="text-lg sm:text-2xl font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2">
+        <h3 className="text-lg sm:text-2xl font-bold text-gray-900 mb-2 group-hover/card:text-orange-600 transition-colors line-clamp-2">
           {recette.attributes.titre}
         </h3>
         <p className="text-gray-600 text-sm line-clamp-2 mb-4 flex-grow">

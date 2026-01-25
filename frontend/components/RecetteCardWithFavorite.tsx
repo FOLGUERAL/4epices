@@ -15,12 +15,12 @@ export default function RecetteCardWithFavorite({ recette }: RecetteCardWithFavo
   const imageUrlForFavorite = imageUrl ? getStrapiMediaUrl(imageUrl) : undefined;
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow group relative">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl hover:bg-orange-50 transition-all group relative">
       <Link
         href={`/recettes/${recette.attributes.slug}`}
         className="block"
       >
-        <div className="relative h-64">
+        <div className="relative h-72">
           <OptimizedImage
             src={imageUrl}
             alt={recette.attributes.imagePrincipale?.data?.attributes?.alternativeText || recette.attributes.titre}
