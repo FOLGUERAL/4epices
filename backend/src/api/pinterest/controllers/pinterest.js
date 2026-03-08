@@ -172,9 +172,23 @@ module.exports = {
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         let returnUrl = ctx.query?.returnUrl || ctx.query?.state?.replace('return:', '') || `${frontendUrl}?pinterest=connected`;
         
+        // Décoder l'URL si elle est encodée
+        try {
+          returnUrl = decodeURIComponent(returnUrl);
+        } catch (e) {
+          // Si le décodage échoue, garder l'URL telle quelle
+        }
+        
         // Ajouter le sessionId à l'URL si présent (pour les utilisateurs anonymes)
         if (sessionId && !userId) {
-          const url = new URL(returnUrl, frontendUrl);
+          // Vérifier si returnUrl est déjà une URL absolue
+          let url;
+          if (returnUrl.startsWith('http://') || returnUrl.startsWith('https://')) {
+            url = new URL(returnUrl);
+          } else {
+            // URL relative, utiliser frontendUrl comme base
+            url = new URL(returnUrl, frontendUrl);
+          }
           url.searchParams.set('pinterest_session', sessionId);
           returnUrl = url.toString();
         }
