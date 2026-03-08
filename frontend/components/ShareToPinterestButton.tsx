@@ -188,7 +188,8 @@ export default function ShareToPinterestButton({
         setNewBoardName('');
         setNewBoardDescription('');
         
-        // Rafraîchir la liste des boards (avec un petit délai pour s'assurer que l'état est mis à jour)
+        // Attendre un peu pour que Pinterest propage le nouveau board, puis rafraîchir la liste
+        await new Promise(resolve => setTimeout(resolve, 800));
         const boardsList = await loadBoards();
         
         // Sélectionner le nouveau board créé
@@ -347,9 +348,9 @@ export default function ShareToPinterestButton({
                   </div>
                   {boards.length > 0 ? (
                     <select
-                      key={`board-select-${boards.length}-${selectedBoardId}`}
+                      key={`board-select-${boards.length}-${selectedBoardId || 'none'}`}
                       id="board-select"
-                      value={selectedBoardId}
+                      value={selectedBoardId || ''}
                       onChange={(e) => setSelectedBoardId(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                       disabled={isSharing || isCreatingBoard}
