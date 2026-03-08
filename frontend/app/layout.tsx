@@ -8,6 +8,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "4épices - Recettes Culinaires",
   description: "Découvrez nos délicieuses recettes culinaires",
+  icons: {
+    icon: "/logo_carre_favicon.png",
+    shortcut: "/logo_carre_favicon.png",
+    apple: "/logo_carre_favicon.png",
+  },
 };
 
 export default function RootLayout({

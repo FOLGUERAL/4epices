@@ -51,13 +51,15 @@ module.exports = {
     }
 
     try {
-      // IMPORTANT: Pinterest attend un body x-www-form-urlencoded
+      // IMPORTANT: Pinterest API v5 attend HTTP Basic Auth (client_id:client_secret en base64)
+      // Le body ne doit contenir QUE grant_type, code, et redirect_uri (sans client_id/client_secret)
       const form = new URLSearchParams();
-      form.set('client_id', clientId);
-      form.set('client_secret', clientSecret);
       form.set('grant_type', 'authorization_code');
       form.set('code', code);
       form.set('redirect_uri', redirectUri);
+
+      // HTTP Basic Auth: encoder client_id:client_secret en base64
+      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
       const tokenResponse = await axios.post(
         'https://api.pinterest.com/v5/oauth/token',
@@ -65,6 +67,7 @@ module.exports = {
         {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${basicAuth}`,
           },
           timeout: 15_000,
         }
@@ -110,14 +113,25 @@ module.exports = {
     } catch (e) {
       const status = e?.response?.status;
       const data = e?.response?.data;
+      const message = e?.message;
+
+      // Log détaillé pour le debug
+      strapi.log.error('❌ Erreur échange OAuth Pinterest:', {
+        status,
+        data,
+        message,
+        hasCode: !!code,
+        redirectUri,
+        clientIdLength: clientId?.length || 0,
+      });
 
       // En cas d'échec, on nettoie pour éviter un état incohérent.
       clearPinterestAuth();
 
-      return ctx.internalServerError('Erreur lors de l’échange OAuth Pinterest', {
+      return ctx.internalServerError('Erreur lors de l'échange OAuth Pinterest', {
         status,
         data,
-        message: e?.message,
+        message,
       });
     }
   },
