@@ -10,7 +10,6 @@ import AddToShoppingListButton from '@/components/AddToShoppingListButton';
 import RatingForm from '@/components/RatingForm';
 import RatingList from '@/components/RatingList';
 import Breadcrumbs from '@/components/Breadcrumbs';
-import PinterestBadge from '@/components/PinterestBadge';
 import PublishPinterestButton from '@/components/PublishPinterestButton';
 import ShareToPinterestButton from '@/components/ShareToPinterestButton';
 
@@ -241,16 +240,6 @@ export default async function RecettePage({ params }: { params: { slug: string }
             <p className="text-xl text-gray-600 mb-6">
               {recette.attributes.description}
             </p>
-
-            {/* Badge Pinterest si publié */}
-            {recette.attributes.pinterestPinId && (
-              <div className="mb-6">
-                <PinterestBadge 
-                  pinterestPinId={recette.attributes.pinterestPinId}
-                  recetteId={recette.id}
-                />
-              </div>
-            )}
 
             <div className="flex flex-wrap gap-4 mb-8 pb-8 border-b">
               {tempsPrep > 0 && (

@@ -26,11 +26,6 @@ export default function PublishPinterestButton({
   }, []);
 
   const handlePublish = async () => {
-    if (pinterestPinId) {
-      toast.info('Cette recette est déjà publiée sur Pinterest');
-      return;
-    }
-
     setIsPublishing(true);
 
     try {
@@ -69,11 +64,6 @@ export default function PublishPinterestButton({
 
   // Ne pas afficher le bouton si l'utilisateur n'est pas admin
   if (!isAdminUser) {
-    return null;
-  }
-
-  // Ne pas afficher le bouton si déjà publié
-  if (pinterestPinId) {
     return null;
   }
 
