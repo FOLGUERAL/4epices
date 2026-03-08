@@ -191,35 +191,36 @@ export default function ShareToPinterestButton({
       if (response.data.success && response.data.board) {
         const newBoardId = response.data.board.id;
         
+        toast.success('Board créé avec succès !');
+        
         // Masquer le formulaire de création
         setShowCreateBoard(false);
         setNewBoardName('');
         setNewBoardDescription('');
         
-        // Afficher un message informatif pendant l'attente
-        toast.success('Board créé avec succès !');
+        // Fermer la modale
+        setShowModal(false);
         
-        // Afficher un indicateur de chargement dans la modale
-        setIsLoading(true);
-        
-        // Attendre 5 secondes pour que Pinterest propage le nouveau board
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        
-        // Recharger les boards avec cache-busting pour éviter le cache
-        const boardsList = await loadBoards(true);
-        
-        // Sélectionner le nouveau board créé
-        if (newBoardId) {
-          const boardExists = boardsList.some((b: any) => b.id === newBoardId);
-          if (boardExists) {
-            setSelectedBoardId(newBoardId);
-          } else if (boardsList.length > 0) {
-            setSelectedBoardId(boardsList[0].id);
+        // Réouvrir la modale après un court délai pour forcer le rechargement
+        setTimeout(async () => {
+          setShowModal(true);
+          setIsLoading(true);
+          
+          // Recharger les boards avec cache-busting
+          const boardsList = await loadBoards(true);
+          
+          // Sélectionner le nouveau board créé
+          if (newBoardId) {
+            const boardExists = boardsList.some((b: any) => b.id === newBoardId);
+            if (boardExists) {
+              setSelectedBoardId(newBoardId);
+            } else if (boardsList.length > 0) {
+              setSelectedBoardId(boardsList[0].id);
+            }
           }
-        }
-        
-        // Masquer l'indicateur de chargement
-        setIsLoading(false);
+          
+          setIsLoading(false);
+        }, 300);
       } else {
         toast.error(response.data.message || 'Erreur lors de la création du board');
       }
