@@ -12,6 +12,7 @@ import RatingList from '@/components/RatingList';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import PinterestBadge from '@/components/PinterestBadge';
 import PublishPinterestButton from '@/components/PublishPinterestButton';
+import ShareToPinterestButton from '@/components/ShareToPinterestButton';
 import PinterestConnectPanel from '@/components/PinterestConnectPanel';
 
 function formatTime(minutes: number): string {
@@ -228,6 +229,13 @@ export default async function RecettePage({ params }: { params: { slug: string }
                   url={recetteUrl}
                   description={recette.attributes.description}
                   imageUrl={imageUrlForShare}
+                />
+                <ShareToPinterestButton
+                  recetteId={recette.id}
+                  recetteSlug={recette.attributes.slug}
+                  recetteTitle={recette.attributes.titre}
+                  recetteDescription={recette.attributes.description}
+                  recetteImageUrl={imageUrlForShare}
                 />
               </div>
             </div>

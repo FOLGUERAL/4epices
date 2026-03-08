@@ -26,6 +26,38 @@ module.exports = {
         auth: false, // pour la démo (UI admin déjà protégée côté frontend)
       },
     },
+    {
+      method: 'GET',
+      path: '/pinterest/status',
+      handler: 'pinterest.status',
+      config: {
+        auth: false, // Accessible à tous (utilisateurs connectés et anonymes)
+      },
+    },
+    {
+      method: 'POST',
+      path: '/pinterest/disconnect',
+      handler: 'pinterest.disconnect',
+      config: {
+        auth: false, // Accessible à tous
+      },
+    },
+    {
+      method: 'GET',
+      path: '/pinterest/boards',
+      handler: 'pinterest.boards',
+      config: {
+        auth: false, // Accessible à tous
+      },
+    },
+    {
+      method: 'POST',
+      path: '/pinterest/share',
+      handler: 'pinterest.share',
+      config: {
+        auth: false, // Accessible à tous
+      },
+    },
   ],
 };
 

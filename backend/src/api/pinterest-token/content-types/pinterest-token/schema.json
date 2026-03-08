@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pinterest_tokens",
+  "info": {
+    "singularName": "pinterest-token",
+    "pluralName": "pinterest-tokens",
+    "displayName": "Pinterest Token",
+    "description": "Tokens OAuth Pinterest par utilisateur"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "required": true,
+      "unique": true
+    },
+    "accessToken": {
+      "type": "string",
+      "required": true,
+      "private": true
+    },
+    "refreshToken": {
+      "type": "string",
+      "private": true
+    },
+    "expiresAt": {
+      "type": "datetime"
+    },
+    "username": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string",
+      "required": false
+    }
+  }
+}
