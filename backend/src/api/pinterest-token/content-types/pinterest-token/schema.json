@@ -20,12 +20,12 @@
       "unique": true
     },
     "accessToken": {
-      "type": "string",
+      "type": "text",
       "required": true,
       "private": true
     },
     "refreshToken": {
-      "type": "string",
+      "type": "text",
       "private": true
     },
     "expiresAt": {
