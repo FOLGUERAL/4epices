@@ -11,8 +11,7 @@ type PinterestMeResponse =
 
 function randomState(): string {
   // crypto.randomUUID est dispo dans la plupart des navigateurs modernes
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    // @ts-expect-error randomUUID n'est pas toujours dans les types TS selon la config
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
   return Math.random().toString(36).slice(2) + Date.now().toString(36);

@@ -69,8 +69,7 @@ function CreerRecettePageContent() {
         // Message spécial pour les erreurs de quota
         if (error.errorType === 'quota_exceeded' || response.status === 402) {
           toast.error(
-            'Quota OpenAI dépassé. Vérifiez votre plan sur https://platform.openai.com/account/billing',
-            { duration: 8000 }
+            'Quota OpenAI dépassé. Vérifiez votre plan sur https://platform.openai.com/account/billing'
           );
         } else {
           toast.error(error.message || 'Erreur lors du parsing');
