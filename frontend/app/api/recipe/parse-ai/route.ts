@@ -367,6 +367,7 @@ ${text.trim()}
     return NextResponse.json({
       success: true,
       data: normalizedRecipe,
+      provider: usedProvider, // Indiquer quel provider a été utilisé
     });
   } catch (error) {
     console.error('[API /recipe/parse-ai] Erreur:', error);

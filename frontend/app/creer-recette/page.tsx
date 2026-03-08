@@ -38,6 +38,7 @@ function CreerRecettePageContent() {
   // État pour le JSON parsé par l'IA
   const [parsedRecipe, setParsedRecipe] = useState<any>(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [usedProvider, setUsedProvider] = useState<string | null>(null);
 
   // Fonction pour parser le texte avec l'IA (appelée manuellement via bouton)
   const handleParseWithAI = async () => {
@@ -60,9 +61,20 @@ function CreerRecettePageContent() {
         const result = await response.json();
         if (result.success && result.data) {
           setParsedRecipe(result.data);
-          toast.success('Recette parsée avec succès !');
+          
+          // Stocker et afficher le provider utilisé
+          const provider = result.provider || 'unknown';
+          setUsedProvider(provider);
+          
+          const providerName = provider === 'groq' ? 'Groq' 
+            : provider === 'openai' ? 'OpenAI' 
+            : provider === 'ollama' ? 'Ollama' 
+            : 'IA';
+          
+          toast.success(`Recette parsée avec succès ! (${providerName})`);
         } else {
           toast.error(result.message || 'Erreur lors du parsing');
+          setUsedProvider(null);
         }
       } else {
         const error = await response.json().catch(() => ({ message: 'Erreur serveur' }));
@@ -627,6 +639,8 @@ function CreerRecettePageContent() {
   const handleClearTranscript = () => {
     setTranscript('');
     setInterimTranscript('');
+    setParsedRecipe(null);
+    setUsedProvider(null);
     lastProcessedIndexRef.current = 0;
     processedResultsRef.current.clear();
     lastWordsRef.current = [];
@@ -861,9 +875,24 @@ function CreerRecettePageContent() {
         <div className="mb-6">
           <div className="bg-white rounded-xl p-4 shadow-lg min-h-[200px]">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {parsedRecipe ? 'Aperçu recette structurée' : 'Aperçu recette brute'}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {parsedRecipe ? 'Aperçu recette structurée' : 'Aperçu recette brute'}
+                </h2>
+                {usedProvider && (
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    usedProvider === 'groq' ? 'bg-purple-100 text-purple-700' :
+                    usedProvider === 'openai' ? 'bg-green-100 text-green-700' :
+                    usedProvider === 'ollama' ? 'bg-blue-100 text-blue-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {usedProvider === 'groq' ? '🤖 Groq' :
+                     usedProvider === 'openai' ? '🤖 OpenAI' :
+                     usedProvider === 'ollama' ? '🦙 Ollama' :
+                     '🤖 IA'}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 {transcript && (
                   <>
