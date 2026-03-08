@@ -65,6 +65,13 @@ export default function ShareToPinterestButton({
     checkStatus();
   }, []);
 
+  // Mettre à jour selectedBoardId quand la liste des boards change
+  useEffect(() => {
+    if (boards.length > 0 && !selectedBoardId) {
+      setSelectedBoardId(boards[0].id);
+    }
+  }, [boards, selectedBoardId]);
+
   const checkStatus = async (sessionIdFromUrl?: string) => {
     try {
       // Si on a un sessionId depuis l'URL, le passer en paramètre pour le premier appel
@@ -108,11 +115,16 @@ export default function ShareToPinterestButton({
 
   const loadBoards = async () => {
     try {
-      const boardsResponse = await axios.get('/api/pinterest/boards', { timeout: 15_000 });
+      const boardsResponse = await axios.get('/api/pinterest/boards', { 
+        timeout: 15_000,
+        withCredentials: true, // S'assurer que les cookies sont envoyés
+      });
       const boardsList = boardsResponse.data.boards || [];
+      
+      // Mettre à jour l'état de manière synchrone
       setBoards(boardsList);
       
-      if (boardsList.length > 0) {
+      if (boardsList.length > 0 && !selectedBoardId) {
         setSelectedBoardId(boardsList[0].id);
       }
       
@@ -171,18 +183,21 @@ export default function ShareToPinterestButton({
       if (response.data.success && response.data.board) {
         toast.success('Board créé avec succès !');
         
-        // Rafraîchir la liste des boards
-        const boardsList = await loadBoards();
-        
-        // Sélectionner le nouveau board
-        if (response.data.board.id) {
-          setSelectedBoardId(response.data.board.id);
-        }
-        
-        // Masquer le formulaire de création
+        // Masquer le formulaire de création d'abord
         setShowCreateBoard(false);
         setNewBoardName('');
         setNewBoardDescription('');
+        
+        // Rafraîchir la liste des boards (avec un petit délai pour s'assurer que l'état est mis à jour)
+        const boardsList = await loadBoards();
+        
+        // Sélectionner le nouveau board créé
+        if (response.data.board.id) {
+          setSelectedBoardId(response.data.board.id);
+        } else if (boardsList.length > 0) {
+          // Fallback : sélectionner le premier board si l'ID n'est pas disponible
+          setSelectedBoardId(boardsList[0].id);
+        }
       } else {
         toast.error(response.data.message || 'Erreur lors de la création du board');
       }
@@ -332,6 +347,7 @@ export default function ShareToPinterestButton({
                   </div>
                   {boards.length > 0 ? (
                     <select
+                      key={`board-select-${boards.length}-${selectedBoardId}`}
                       id="board-select"
                       value={selectedBoardId}
                       onChange={(e) => setSelectedBoardId(e.target.value)}
