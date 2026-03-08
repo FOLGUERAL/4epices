@@ -65,44 +65,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt = `Tu es un chef cuisinier professionnel et un rédacteur culinaire SEO.
+    const prompt = `Tu es un chef cuisinier professionnel. Génère une recette COMPLÈTE au format JSON.
 
-À partir de la dictée suivante, génère une recette STRUCTURÉE au format JSON strict.
+RÈGLES CRITIQUES :
+1. Retourne UNIQUEMENT du JSON valide, rien d'autre
+2. Le champ "ingredients" DOIT être un array avec MINIMUM 5 éléments
+3. Le champ "etapes" DOIT être un array de strings avec MINIMUM 4 éléments
+4. Si la dictée est courte, COMPLÈTE avec tes connaissances culinaires
+5. Les étapes sont des strings simples, PAS de HTML
 
-Règles ABSOLUES :
-- Retourne UNIQUEMENT du JSON valide
-- Pas de texte autour, pas de markdown, pas de commentaires
-- Champs obligatoires : titre, description, ingredients (array), etapes (array)
-- Si des informations manquent dans la dictée, INFÈRE-les intelligemment en fonction du type de plat
-- Pour les ingrédients et étapes manquants, génère des suggestions réalistes et cohérentes avec le type de recette
-
-Structure JSON EXACTE (correspondant au schéma Strapi) :
+Structure JSON OBLIGATOIRE :
 
 {
-  "titre": string (max 255 caractères, obligatoire - utilise le nom du plat mentionné ou infère un titre approprié),
-  "description": string (texte descriptif de 2-3 phrases, obligatoire - décris le plat, son origine, ses caractéristiques),
+  "titre": "Nom du plat",
+  "description": "Description de 2-3 phrases du plat, son origine, ses caractéristiques",
   "ingredients": [
-    string | { "quantite": string, "ingredient": string }
-  ] (array JSON, obligatoire - MINIMUM 5 ingrédients, même si non mentionnés dans la dictée, infère des ingrédients typiques pour ce type de plat),
-  "etapes": string[] (array de strings, obligatoire - MINIMUM 4 étapes détaillées, même si non mentionnées, infère les étapes de préparation classiques),
-  "tempsPreparation": number (minutes, optionnel, null si vraiment inconnu, sinon estime),
-  "tempsCuisson": number (minutes, optionnel, null si vraiment inconnu, sinon estime),
-  "nombrePersonnes": number (optionnel, défaut 4),
-  "difficulte": "facile" | "moyen" | "difficile" (optionnel, défaut "facile" - estime selon la complexité du plat),
-  "categories": string[] (noms de catégories, optionnel - infère selon le type de plat, ex: ["Plat principal", "Dessert", "Entrée"]),
-  "tags": string[] (noms de tags, optionnel - infère selon les caractéristiques, ex: ["rapide", "végétarien", "traditionnel"])
+    "500g de semoule de blé",
+    "2 carottes",
+    "2 courgettes",
+    "1 oignon",
+    "200g de viande d'agneau",
+    "1 cuillère à café de curcuma",
+    "1 cuillère à café de cumin",
+    "sel, poivre"
+  ],
+  "etapes": [
+    "Préparer la semoule en la mouillant légèrement et en la travaillant à la main",
+    "Cuire la semoule à la vapeur dans un couscoussier pendant 20 minutes",
+    "Pendant ce temps, faire revenir la viande et les légumes dans une grande casserole",
+    "Ajouter les épices, le sel et le poivre, puis couvrir d'eau et laisser mijoter 30 minutes",
+    "Servir la semoule avec le bouillon et les légumes"
+  ],
+  "tempsPreparation": 30,
+  "tempsCuisson": 50,
+  "nombrePersonnes": 4,
+  "difficulte": "moyen",
+  "categories": ["Plat principal"],
+  "tags": ["traditionnel", "maghrébin"]
 }
 
-Instructions importantes :
-- Les ingrédients peuvent être des strings simples ("200g de farine") ou des objets {"quantite": "200g", "ingredient": "farine"}
-- Les étapes sont un array de strings, chaque string est une étape de préparation détaillée
-- Les catégories et tags sont des noms (strings), ils seront associés automatiquement
-- Si la dictée est très courte (ex: juste un nom de plat), génère une recette complète et réaliste pour ce plat
-- Sois créatif mais réaliste : utilise tes connaissances culinaires pour compléter les informations manquantes
+IMPORTANT : 
+- "ingredients" : array avec MINIMUM 5 ingrédients, même si non mentionnés
+- "etapes" : array avec MINIMUM 4 étapes détaillées, même si non mentionnées
+- Utilise tes connaissances pour compléter : si on dit "couscous", génère une vraie recette de couscous avec semoule, légumes, épices, etc.
 
-Exemple : Si la dictée est "couscous", génère une recette complète de couscous avec semoule, légumes, épices, etc.
-
-Dictée à analyser :
+Dictée :
 
 """
 ${text.trim()}
@@ -187,6 +194,44 @@ ${text.trim()}
       );
     }
 
+    // Valider et forcer un minimum d'ingrédients et d'étapes
+    if (!Array.isArray(parsedRecipe.ingredients) || parsedRecipe.ingredients.length === 0) {
+      console.warn('[API /recipe/parse-ai] Aucun ingrédient trouvé, génération de base...');
+      // Générer des ingrédients de base selon le titre
+      const titreLower = String(parsedRecipe.titre || '').toLowerCase();
+      if (titreLower.includes('couscous')) {
+        parsedRecipe.ingredients = [
+          '500g de semoule de blé fine',
+          '2 carottes',
+          '2 courgettes',
+          '1 oignon',
+          '200g de viande d\'agneau',
+          '1 cuillère à café de curcuma',
+          '1 cuillère à café de cumin',
+          'sel, poivre'
+        ];
+      } else {
+        parsedRecipe.ingredients = ['Ingrédients à compléter'];
+      }
+    }
+
+    if (!Array.isArray(parsedRecipe.etapes) || parsedRecipe.etapes.length === 0) {
+      console.warn('[API /recipe/parse-ai] Aucune étape trouvée, génération de base...');
+      const titreLower = String(parsedRecipe.titre || '').toLowerCase();
+      if (titreLower.includes('couscous')) {
+        parsedRecipe.etapes = [
+          'Préparer la semoule en la mouillant légèrement avec de l\'eau salée',
+          'Travailler la semoule à la main pour obtenir des grains séparés',
+          'Cuire la semoule à la vapeur dans un couscoussier pendant 20 minutes',
+          'Pendant ce temps, faire revenir la viande et les légumes dans une grande casserole',
+          'Ajouter les épices, le sel et le poivre, puis couvrir d\'eau et laisser mijoter 30 minutes',
+          'Servir la semoule avec le bouillon et les légumes'
+        ];
+      } else {
+        parsedRecipe.etapes = ['Préparation de la recette à compléter'];
+      }
+    }
+
     // Normaliser les ingrédients (peuvent être strings ou objets {quantite, ingredient})
     const normalizedIngredients = parsedRecipe.ingredients.map((ing: any) => {
       if (typeof ing === 'string') {
@@ -201,9 +246,45 @@ ${text.trim()}
     });
 
     // Normaliser les étapes
-    const normalizedEtapes = Array.isArray(parsedRecipe.etapes)
-      ? parsedRecipe.etapes
-      : [String(parsedRecipe.etapes)];
+    let normalizedEtapes: string[] = [];
+    if (Array.isArray(parsedRecipe.etapes)) {
+      normalizedEtapes = parsedRecipe.etapes.map((e: any) => String(e));
+    } else if (typeof parsedRecipe.etapes === 'string') {
+      // Si c'est une string HTML, extraire le texte ou utiliser tel quel
+      // On va le traiter comme du texte brut qui sera converti en HTML plus tard
+      const etapesStr = parsedRecipe.etapes.trim();
+      if (etapesStr.includes('<p>') || etapesStr.includes('<strong>')) {
+        // C'est du HTML, extraire le texte ou diviser par les balises
+        const tempDiv = typeof document !== 'undefined' ? document.createElement('div') : null;
+        if (tempDiv) {
+          tempDiv.innerHTML = etapesStr;
+          const paragraphs = tempDiv.querySelectorAll('p');
+          normalizedEtapes = Array.from(paragraphs).map(p => p.textContent || '').filter(t => t.trim());
+        } else {
+          // Côté serveur, utiliser une regex simple pour extraire le texte
+          const stepMatches = etapesStr.match(/<p><strong>Étape \d+ :<\/strong> (.+?)<\/p>/g);
+          if (stepMatches) {
+            normalizedEtapes = stepMatches.map(match => {
+              const text = match.replace(/<[^>]+>/g, '').replace(/Étape \d+ :\s*/, '').trim();
+              return text;
+            });
+          } else {
+            // Fallback : diviser par les balises <p>
+            normalizedEtapes = etapesStr.split(/<p>/).filter(s => s.trim()).map(s => {
+              return s.replace(/<\/p>.*$/, '').replace(/<[^>]+>/g, '').replace(/Étape \d+ :\s*/, '').trim();
+            }).filter(s => s);
+          }
+        }
+      } else {
+        // C'est du texte simple, diviser par lignes ou points
+        normalizedEtapes = etapesStr.split(/\n+|\.\s+/).filter(s => s.trim()).slice(0, 10);
+      }
+    }
+    
+    // S'assurer qu'on a au moins une étape
+    if (normalizedEtapes.length === 0) {
+      normalizedEtapes = [String(parsedRecipe.etapes || 'Préparation de la recette')];
+    }
 
     // Normaliser la difficulté
     const difficulte = ['facile', 'moyen', 'difficile'].includes(parsedRecipe.difficulte)
