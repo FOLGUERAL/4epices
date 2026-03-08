@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast } from './Toast';
 
@@ -39,6 +39,9 @@ export default function ShareToPinterestButton({
   const [newBoardName, setNewBoardName] = useState('');
   const [newBoardDescription, setNewBoardDescription] = useState('');
   const [isCreatingBoard, setIsCreatingBoard] = useState(false);
+  const [isSearchingBoard, setIsSearchingBoard] = useState(false);
+  const [searchProgress, setSearchProgress] = useState(0); // 0-10 secondes
+  const searchIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Vérifier le statut de connexion Pinterest au chargement
   useEffect(() => {
@@ -71,6 +74,28 @@ export default function ShareToPinterestButton({
       setSelectedBoardId(boards[0].id);
     }
   }, [boards, selectedBoardId]);
+
+  // Nettoyer le polling si la modale est fermée
+  useEffect(() => {
+    if (!showModal && isSearchingBoard) {
+      if (searchIntervalRef.current) {
+        clearInterval(searchIntervalRef.current);
+        searchIntervalRef.current = null;
+      }
+      setIsSearchingBoard(false);
+      setSearchProgress(0);
+    }
+  }, [showModal, isSearchingBoard]);
+
+  // Nettoyer l'intervalle lors du démontage du composant
+  useEffect(() => {
+    return () => {
+      if (searchIntervalRef.current) {
+        clearInterval(searchIntervalRef.current);
+        searchIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   const checkStatus = async (sessionIdFromUrl?: string) => {
     try {
@@ -191,8 +216,6 @@ export default function ShareToPinterestButton({
       if (response.data.success && response.data.board) {
         const newBoardId = response.data.board.id;
         
-        toast.success('Board créé avec succès !');
-        
         // Masquer le formulaire de création
         setShowCreateBoard(false);
         setNewBoardName('');
@@ -201,25 +224,66 @@ export default function ShareToPinterestButton({
         // Fermer la modale
         setShowModal(false);
         
-        // Réouvrir la modale après un court délai pour forcer le rechargement
-        setTimeout(async () => {
+        // Afficher un toast informatif
+        toast.success('Board créé ! Recherche en cours...');
+        
+        // Réouvrir la modale et démarrer le polling
+        setTimeout(() => {
           setShowModal(true);
-          setIsLoading(true);
+          setIsSearchingBoard(true);
+          setSearchProgress(0);
           
-          // Recharger les boards avec cache-busting
-          const boardsList = await loadBoards(true);
+          // Polling progressif : vérifier toutes les 2 secondes pendant 10 secondes
+          let elapsed = 0;
+          const interval = 2000; // 2 secondes
+          const maxTime = 10000; // 10 secondes
           
-          // Sélectionner le nouveau board créé
-          if (newBoardId) {
-            const boardExists = boardsList.some((b: any) => b.id === newBoardId);
-            if (boardExists) {
-              setSelectedBoardId(newBoardId);
-            } else if (boardsList.length > 0) {
-              setSelectedBoardId(boardsList[0].id);
+          searchIntervalRef.current = setInterval(async () => {
+            elapsed += interval;
+            setSearchProgress(elapsed);
+            
+            try {
+              // Recharger les boards avec cache-busting
+              const boardsList = await loadBoards(true);
+              
+              // Vérifier si le nouveau board est dans la liste
+              if (newBoardId && boardsList.some((b: any) => b.id === newBoardId)) {
+                if (searchIntervalRef.current) {
+                  clearInterval(searchIntervalRef.current);
+                  searchIntervalRef.current = null;
+                }
+                setIsSearchingBoard(false);
+                setSearchProgress(0);
+                setSelectedBoardId(newBoardId);
+                toast.success('Board trouvé et sélectionné !');
+                return;
+              }
+              
+              // Si on a atteint le temps maximum
+              if (elapsed >= maxTime) {
+                if (searchIntervalRef.current) {
+                  clearInterval(searchIntervalRef.current);
+                  searchIntervalRef.current = null;
+                }
+                setIsSearchingBoard(false);
+                setSearchProgress(0);
+                
+                // Sélectionner le premier board disponible si la liste n'est pas vide
+                if (boardsList.length > 0) {
+                  setSelectedBoardId(boardsList[0].id);
+                }
+              }
+            } catch (error) {
+              // En cas d'erreur, arrêter le polling
+              if (searchIntervalRef.current) {
+                clearInterval(searchIntervalRef.current);
+                searchIntervalRef.current = null;
+              }
+              setIsSearchingBoard(false);
+              setSearchProgress(0);
+              console.error('Erreur lors de la recherche du board:', error);
             }
-          }
-          
-          setIsLoading(false);
+          }, interval);
         }, 300);
       } else {
         toast.error(response.data.message || 'Erreur lors de la création du board');
@@ -356,14 +420,45 @@ export default function ShareToPinterestButton({
 
             {!showCreateBoard ? (
               <>
-                {isLoading ? (
+                {isSearchingBoard ? (
                   <div className="mb-4 flex items-center justify-center py-8">
                     <div className="text-center">
                       <svg className="animate-spin h-8 w-8 text-red-600 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      <p className="text-sm text-gray-600">Création du board en cours, veuillez patienter...</p>
+                      <p className="text-sm text-gray-600 mb-2">Recherche du nouveau board...</p>
+                      <p className="text-xs text-gray-500">({Math.round(searchProgress / 1000)}/10s)</p>
+                      {searchProgress >= 10000 && (
+                        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <p className="text-sm text-yellow-800 mb-2">
+                            Le board peut prendre plus de temps à apparaître.
+                          </p>
+                          <button
+                            onClick={async () => {
+                              setIsSearchingBoard(false);
+                              setSearchProgress(0);
+                              const boardsList = await loadBoards(true);
+                              if (boardsList.length > 0) {
+                                setSelectedBoardId(boardsList[0].id);
+                              }
+                            }}
+                            className="text-sm text-red-600 hover:text-red-700 font-medium underline"
+                          >
+                            Rafraîchir maintenant
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : isLoading ? (
+                  <div className="mb-4 flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <svg className="animate-spin h-8 w-8 text-red-600 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <p className="text-sm text-gray-600">Chargement des boards...</p>
                     </div>
                   </div>
                 ) : (
