@@ -250,46 +250,65 @@ async function callOllama(prompt: string): Promise<string> {
   const ollamaUrl = getOllamaUrl();
   const model = getOllamaModel();
   
-  const response = await fetch(`${ollamaUrl}/api/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        {
-          role: 'system',
-          content: 'Tu es un assistant qui retourne uniquement du JSON valide, sans aucun texte supplémentaire. Réponds UNIQUEMENT avec du JSON, rien d\'autre.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      stream: false,
-      options: {
-        temperature: 0.3, // Plus bas pour plus de cohérence
-        num_predict: 2000, // Limiter la longueur de la réponse
+  console.log(`[Ollama] Tentative de connexion à ${ollamaUrl} avec le modèle ${model}`);
+  
+  try {
+    const response = await fetch(`${ollamaUrl}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    }),
-    // Timeout de 60 secondes pour Ollama (peut être plus lent)
-    signal: AbortSignal.timeout(60000),
-  });
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          {
+            role: 'system',
+            content: 'Tu es un assistant qui retourne uniquement du JSON valide, sans aucun texte supplémentaire. Réponds UNIQUEMENT avec du JSON, rien d\'autre.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        stream: false,
+        options: {
+          temperature: 0.3, // Plus bas pour plus de cohérence
+          num_predict: 2000, // Limiter la longueur de la réponse
+        },
+      }),
+      // Timeout de 60 secondes pour Ollama (peut être plus lent)
+      signal: AbortSignal.timeout(60000),
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => 'Erreur inconnue');
-    throw new Error(`Ollama API error (${response.status}): ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Erreur inconnue');
+      const errorMessage = `Ollama API error (${response.status}): ${errorText}`;
+      console.error(`[Ollama] ${errorMessage}`);
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    const content = data.message?.content;
+
+    if (!content) {
+      throw new Error('Aucune réponse de Ollama (contenu vide)');
+    }
+
+    console.log(`[Ollama] Réponse reçue avec succès (${content.length} caractères)`);
+    return content;
+  } catch (error: any) {
+    // Améliorer les messages d'erreur pour le diagnostic
+    if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+      throw new Error(`Ollama timeout: Le serveur n'a pas répondu dans les 60 secondes. Vérifiez que Ollama est démarré et accessible à ${ollamaUrl}`);
+    }
+    
+    if (error.message?.includes('fetch failed') || error.message?.includes('ECONNREFUSED')) {
+      throw new Error(`Impossible de se connecter à Ollama à ${ollamaUrl}. Vérifiez que: 1) Ollama est démarré, 2) L'URL est correcte, 3) Le port 11434 est accessible`);
+    }
+    
+    // Propager l'erreur telle quelle si elle contient déjà un message utile
+    throw error;
   }
-
-  const data = await response.json();
-  const content = data.message?.content;
-
-  if (!content) {
-    throw new Error('Aucune réponse de Ollama');
-  }
-
-  return content;
 }
 
 /**
