@@ -106,7 +106,7 @@ ${text.trim()}
 
     // Appeler le provider approprié (Ollama ou OpenAI)
     let content: string;
-    let usedProvider: string;
+    let usedProvider: 'ollama' | 'openai' = 'ollama'; // Initialiser avec une valeur par défaut
 
     try {
       if (provider === 'ollama' || (!provider && getOllamaUrl())) {
