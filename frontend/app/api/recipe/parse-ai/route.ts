@@ -276,8 +276,8 @@ async function callOllama(prompt: string): Promise<string> {
           num_predict: 2000, // Limiter la longueur de la réponse
         },
       }),
-      // Timeout de 60 secondes pour Ollama (peut être plus lent)
-      signal: AbortSignal.timeout(60000),
+      // Timeout de 120 secondes pour Ollama (le premier appel peut être lent si le modèle doit être chargé)
+      signal: AbortSignal.timeout(120000),
     });
 
     if (!response.ok) {
@@ -299,7 +299,7 @@ async function callOllama(prompt: string): Promise<string> {
   } catch (error: any) {
     // Améliorer les messages d'erreur pour le diagnostic
     if (error.name === 'AbortError' || error.message?.includes('timeout')) {
-      throw new Error(`Ollama timeout: Le serveur n'a pas répondu dans les 60 secondes. Vérifiez que Ollama est démarré et accessible à ${ollamaUrl}`);
+      throw new Error(`Ollama timeout: Le serveur n'a pas répondu dans les 120 secondes. Le modèle est peut-être en train de charger (premier appel). Vérifiez les logs Ollama: docker logs 4epices_ollama`);
     }
     
     if (error.message?.includes('fetch failed') || error.message?.includes('ECONNREFUSED')) {
