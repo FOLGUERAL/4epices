@@ -25,8 +25,17 @@ export async function GET(request: NextRequest) {
 
     // Transmettre les cookies de session
     const cookies = request.headers.get('cookie') || '';
+    
+    // Récupérer le sessionId depuis les query params si présent (fallback si cookie non disponible)
+    const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get('sessionId');
+    
+    let statusUrl = `${strapiUrl}/api/pinterest/status`;
+    if (sessionId) {
+      statusUrl += `?sessionId=${encodeURIComponent(sessionId)}`;
+    }
 
-    const response = await axios.get(`${strapiUrl}/api/pinterest/status`, {
+    const response = await axios.get(statusUrl, {
       headers: {
         Cookie: cookies,
       },

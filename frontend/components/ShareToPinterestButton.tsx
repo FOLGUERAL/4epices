@@ -38,12 +38,40 @@ export default function ShareToPinterestButton({
 
   // Vérifier le statut de connexion Pinterest au chargement
   useEffect(() => {
+    // Récupérer le sessionId depuis l'URL si présent (après redirection OAuth)
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pinterestSession = urlParams.get('pinterest_session');
+      if (pinterestSession) {
+        // Stocker le sessionId dans un cookie (valide 30 jours)
+        const cookieValue = `pinterest_session_id=${pinterestSession}; max-age=${30 * 24 * 60 * 60}; path=/; SameSite=Lax`;
+        document.cookie = cookieValue;
+        
+        // Nettoyer l'URL
+        urlParams.delete('pinterest_session');
+        const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : '');
+        window.history.replaceState({}, '', newUrl);
+        
+        // Vérifier le statut immédiatement avec le sessionId de l'URL
+        // (le cookie sera utilisé pour les prochains appels)
+        checkStatus(pinterestSession);
+        return;
+      }
+    }
     checkStatus();
   }, []);
 
-  const checkStatus = async () => {
+  const checkStatus = async (sessionIdFromUrl?: string) => {
     try {
-      const response = await axios.get('/api/pinterest/status', { timeout: 10_000 });
+      // Si on a un sessionId depuis l'URL, le passer en paramètre pour le premier appel
+      const url = sessionIdFromUrl 
+        ? `/api/pinterest/status?sessionId=${encodeURIComponent(sessionIdFromUrl)}`
+        : '/api/pinterest/status';
+      
+      const response = await axios.get(url, { 
+        timeout: 10_000,
+        withCredentials: true, // S'assurer que les cookies sont envoyés
+      });
       setIsConnected(response.data.connected || false);
       setUsername(response.data.username || null);
     } catch (error) {
