@@ -47,10 +47,15 @@ services:
       # URL pour les requêtes serveur (SSR) - utilise le service Docker
       STRAPI_URL: http://backend:1337
       # URL publique pour le client (déjà dans NEXT_PUBLIC_STRAPI_URL)
-      # Ollama configuration (utilise le service Docker ollama)
+      # Configuration IA (Groq recommandé - gratuit et performant)
+      AI_PROVIDER: ${AI_PROVIDER:-groq}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-70b-versatile}
+      # Fallback Ollama (optionnel)
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
-      AI_PROVIDER: ${AI_PROVIDER:-ollama}
+      # Fallback OpenAI (optionnel)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "3000:3000"
     depends_on:
