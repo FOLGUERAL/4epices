@@ -10,7 +10,6 @@ import AddToShoppingListButton from '@/components/AddToShoppingListButton';
 import RatingForm from '@/components/RatingForm';
 import RatingList from '@/components/RatingList';
 import Breadcrumbs from '@/components/Breadcrumbs';
-import PublishPinterestButton from '@/components/PublishPinterestButton';
 import ShareToPinterestButton from '@/components/ShareToPinterestButton';
 
 function formatTime(minutes: number): string {
@@ -209,10 +208,6 @@ export default async function RecettePage({ params }: { params: { slug: string }
                   </svg>
                   <span>Mode cuisine</span>
                 </Link>
-                <PublishPinterestButton
-                  recetteId={recette.id}
-                  pinterestPinId={recette.attributes.pinterestPinId}
-                />
                 <FavoriteButton
                   recette={{
                     id: recette.id,
