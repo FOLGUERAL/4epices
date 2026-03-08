@@ -189,28 +189,37 @@ export default function ShareToPinterestButton({
       );
 
       if (response.data.success && response.data.board) {
-        toast.success('Board créé avec succès !');
+        const newBoardId = response.data.board.id;
         
         // Masquer le formulaire de création
         setShowCreateBoard(false);
         setNewBoardName('');
         setNewBoardDescription('');
         
-        // Attendre un peu pour que Pinterest propage le nouveau board
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Afficher un message informatif pendant l'attente
+        toast.success('Board créé avec succès !');
+        
+        // Afficher un indicateur de chargement dans la modale
+        setIsLoading(true);
+        
+        // Attendre 2-3 secondes pour que Pinterest propage le nouveau board
+        await new Promise(resolve => setTimeout(resolve, 2500));
         
         // Recharger les boards avec cache-busting pour éviter le cache
         const boardsList = await loadBoards(true);
         
         // Sélectionner le nouveau board créé
-        if (response.data.board.id) {
-          const boardExists = boardsList.some((b: any) => b.id === response.data.board.id);
+        if (newBoardId) {
+          const boardExists = boardsList.some((b: any) => b.id === newBoardId);
           if (boardExists) {
-            setSelectedBoardId(response.data.board.id);
+            setSelectedBoardId(newBoardId);
           } else if (boardsList.length > 0) {
             setSelectedBoardId(boardsList[0].id);
           }
         }
+        
+        // Masquer l'indicateur de chargement
+        setIsLoading(false);
       } else {
         toast.error(response.data.message || 'Erreur lors de la création du board');
       }
@@ -346,40 +355,52 @@ export default function ShareToPinterestButton({
 
             {!showCreateBoard ? (
               <>
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <label htmlFor="board-select" className="block text-sm font-medium text-gray-700">
-                      Choisir un board
-                    </label>
-                    <button
-                      onClick={() => setShowCreateBoard(true)}
-                      className="text-sm text-red-600 hover:text-red-700 font-medium"
-                      disabled={isSharing || isCreatingBoard}
-                    >
-                      + Créer un board
-                    </button>
-                  </div>
-                  {boards.length > 0 ? (
-                    <select
-                      key={`board-select-${boards.length}-${selectedBoardId || 'none'}`}
-                      id="board-select"
-                      value={selectedBoardId || ''}
-                      onChange={(e) => setSelectedBoardId(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                      disabled={isSharing || isCreatingBoard}
-                    >
-                      {boards.map((board) => (
-                        <option key={board.id} value={board.id}>
-                          {board.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="text-sm text-gray-500 py-2">
-                      Aucun board. Cliquez sur "Créer un board" pour en créer un.
+                {isLoading ? (
+                  <div className="mb-4 flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <svg className="animate-spin h-8 w-8 text-red-600 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <p className="text-sm text-gray-600">Création du board en cours, veuillez patienter...</p>
                     </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <label htmlFor="board-select" className="block text-sm font-medium text-gray-700">
+                        Choisir un board
+                      </label>
+                      <button
+                        onClick={() => setShowCreateBoard(true)}
+                        className="text-sm text-red-600 hover:text-red-700 font-medium"
+                        disabled={isSharing || isCreatingBoard}
+                      >
+                        + Créer un board
+                      </button>
+                    </div>
+                    {boards.length > 0 ? (
+                      <select
+                        key={`board-select-${boards.length}-${selectedBoardId || 'none'}`}
+                        id="board-select"
+                        value={selectedBoardId || ''}
+                        onChange={(e) => setSelectedBoardId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                        disabled={isSharing || isCreatingBoard}
+                      >
+                        {boards.map((board) => (
+                          <option key={board.id} value={board.id}>
+                            {board.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="text-sm text-gray-500 py-2">
+                        Aucun board. Cliquez sur "Créer un board" pour en créer un.
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             ) : (
               <div className="mb-4">
