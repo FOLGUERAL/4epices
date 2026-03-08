@@ -202,8 +202,8 @@ export default function ShareToPinterestButton({
         // Afficher un indicateur de chargement dans la modale
         setIsLoading(true);
         
-        // Attendre 2-3 secondes pour que Pinterest propage le nouveau board
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        // Attendre 5 secondes pour que Pinterest propage le nouveau board
+        await new Promise(resolve => setTimeout(resolve, 5000));
         
         // Recharger les boards avec cache-busting pour éviter le cache
         const boardsList = await loadBoards(true);
