@@ -8,6 +8,30 @@ function getOpenAIApiKey(): string | null {
   return process.env.OPENAI_API_KEY || null;
 }
 
+// Fonction pour obtenir l'URL Ollama
+function getOllamaUrl(): string {
+  return process.env.OLLAMA_URL || 'http://localhost:11434';
+}
+
+// Fonction pour obtenir le modèle Ollama
+function getOllamaModel(): string {
+  return process.env.OLLAMA_MODEL || 'llama3.2:3b';
+}
+
+// Fonction pour déterminer quel provider utiliser
+function getProvider(): 'ollama' | 'openai' | null {
+  const provider = process.env.AI_PROVIDER?.toLowerCase() || 'ollama';
+  
+  if (provider === 'ollama') {
+    return 'ollama';
+  } else if (provider === 'openai' && getOpenAIApiKey()) {
+    return 'openai';
+  }
+  
+  // Fallback : essayer Ollama d'abord, puis OpenAI
+  return null;
+}
+
 /**
  * Route API pour parser une recette dictée avec l'IA
  * 
@@ -30,10 +54,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = getOpenAIApiKey();
-    if (!apiKey) {
+    // Déterminer le provider à utiliser
+    const provider = getProvider();
+    
+    // Si aucun provider disponible, retourner une erreur
+    if (!provider && !getOpenAIApiKey()) {
       return NextResponse.json(
-        { success: false, message: 'OPENAI_API_KEY non configurée' },
+        { success: false, message: 'Aucun provider IA configuré (Ollama ou OpenAI requis)' },
         { status: 500 }
       );
     }
@@ -77,57 +104,52 @@ Dictée :
 ${text.trim()}
 """`;
 
-    // Appeler OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'Tu es un assistant qui retourne uniquement du JSON valide, sans aucun texte supplémentaire.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.3, // Plus bas pour plus de cohérence
-        response_format: { type: 'json_object' }, // Force le format JSON
-      }),
-    });
+    // Appeler le provider approprié (Ollama ou OpenAI)
+    let content: string;
+    let usedProvider: string;
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: { message: 'Erreur inconnue' } }));
-      console.error('Erreur OpenAI API:', error);
-      
-      // Détecter spécifiquement les erreurs de quota
-      const errorMessage = error.error?.message || '';
-      if (errorMessage.includes('quota') || errorMessage.includes('billing') || response.status === 429) {
+    try {
+      if (provider === 'ollama' || (!provider && getOllamaUrl())) {
+        // Essayer Ollama d'abord
+        usedProvider = 'ollama';
+        content = await callOllama(prompt);
+      } else {
+        // Utiliser OpenAI
+        usedProvider = 'openai';
+        content = await callOpenAI(prompt);
+      }
+    } catch (error: any) {
+      // Si Ollama échoue et qu'on a OpenAI en fallback, essayer OpenAI
+      if (usedProvider === 'ollama' && getOpenAIApiKey()) {
+        console.warn('[API /recipe/parse-ai] Ollama a échoué, fallback vers OpenAI:', error.message);
+        try {
+          usedProvider = 'openai';
+          content = await callOpenAI(prompt);
+        } catch (fallbackError: any) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              message: `Erreur avec Ollama et OpenAI: ${fallbackError.message || 'Erreur inconnue'}`,
+              errorType: 'provider_error'
+            },
+            { status: 500 }
+          );
+        }
+      } else {
         return NextResponse.json(
           { 
             success: false, 
-            message: 'Quota OpenAI dépassé. Veuillez vérifier votre plan et vos détails de facturation sur https://platform.openai.com/account/billing',
-            errorType: 'quota_exceeded'
+            message: error.message || 'Erreur lors de l\'appel à l\'IA',
+            errorType: 'provider_error'
           },
-          { status: 402 } // 402 Payment Required
+          { status: 500 }
         );
       }
-      
-      return NextResponse.json(
-        { success: false, message: errorMessage || 'Erreur lors de l\'appel à l\'IA' },
-        { status: response.status }
-      );
     }
 
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
+    console.log(`[API /recipe/parse-ai] Réponse reçue de ${usedProvider}`);
 
-    if (!content) {
+    if (!content || !content.trim()) {
       return NextResponse.json(
         { success: false, message: 'Aucune réponse de l\'IA' },
         { status: 500 }
@@ -221,3 +243,105 @@ ${text.trim()}
   }
 }
 
+/**
+ * Appeler Ollama API
+ */
+async function callOllama(prompt: string): Promise<string> {
+  const ollamaUrl = getOllamaUrl();
+  const model = getOllamaModel();
+  
+  const response = await fetch(`${ollamaUrl}/api/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        {
+          role: 'system',
+          content: 'Tu es un assistant qui retourne uniquement du JSON valide, sans aucun texte supplémentaire. Réponds UNIQUEMENT avec du JSON, rien d\'autre.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      stream: false,
+      options: {
+        temperature: 0.3, // Plus bas pour plus de cohérence
+        num_predict: 2000, // Limiter la longueur de la réponse
+      },
+    }),
+    // Timeout de 60 secondes pour Ollama (peut être plus lent)
+    signal: AbortSignal.timeout(60000),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Erreur inconnue');
+    throw new Error(`Ollama API error (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  const content = data.message?.content;
+
+  if (!content) {
+    throw new Error('Aucune réponse de Ollama');
+  }
+
+  return content;
+}
+
+/**
+ * Appeler OpenAI API
+ */
+async function callOpenAI(prompt: string): Promise<string> {
+  const apiKey = getOpenAIApiKey();
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY non configurée');
+  }
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'Tu es un assistant qui retourne uniquement du JSON valide, sans aucun texte supplémentaire.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: { message: 'Erreur inconnue' } }));
+    console.error('Erreur OpenAI API:', error);
+    
+    const errorMessage = error.error?.message || '';
+    if (errorMessage.includes('quota') || errorMessage.includes('billing') || response.status === 429) {
+      throw new Error('QUOTA_EXCEEDED');
+    }
+    
+    throw new Error(errorMessage || 'Erreur lors de l\'appel à OpenAI');
+  }
+
+  const data = await response.json();
+  const content = data.choices[0]?.message?.content;
+
+  if (!content) {
+    throw new Error('Aucune réponse de OpenAI');
+  }
+
+  return content;
+}
