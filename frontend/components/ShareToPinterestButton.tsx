@@ -145,16 +145,19 @@ export default function ShareToPinterestButton({
       return;
     }
 
+    // Ouvrir la modale immédiatement
+    setShowModal(true);
+    
     setIsLoading(true);
     try {
+      // Charger les boards Pinterest
       const boardsList = await loadBoards();
       
-      if (boardsList.length > 0) {
-        setShowModal(true);
-      } else {
+      if (boardsList.length === 0) {
         // Pas de boards : proposer d'en créer un
-        setShowModal(true);
         setShowCreateBoard(true);
+      } else {
+        setShowCreateBoard(false);
       }
     } catch (error: any) {
       toast.error('Erreur lors du chargement des boards Pinterest');
@@ -181,24 +184,34 @@ export default function ShareToPinterestButton({
       );
 
       if (response.data.success && response.data.board) {
+        const newBoardId = response.data.board.id;
         toast.success('Board créé avec succès !');
         
-        // Masquer le formulaire de création d'abord
+        // Masquer le formulaire de création
         setShowCreateBoard(false);
         setNewBoardName('');
         setNewBoardDescription('');
         
-        // Attendre un peu pour que Pinterest propage le nouveau board, puis rafraîchir la liste
-        await new Promise(resolve => setTimeout(resolve, 800));
-        const boardsList = await loadBoards();
+        // Fermer la modale pour forcer un rechargement complet
+        setShowModal(false);
         
-        // Sélectionner le nouveau board créé
-        if (response.data.board.id) {
-          setSelectedBoardId(response.data.board.id);
-        } else if (boardsList.length > 0) {
-          // Fallback : sélectionner le premier board si l'ID n'est pas disponible
-          setSelectedBoardId(boardsList[0].id);
-        }
+        // Réouvrir la modale immédiatement, ce qui déclenchera un nouveau chargement des boards
+        setTimeout(async () => {
+          setShowModal(true);
+          // Charger les boards (cela va aussi sélectionner le premier board par défaut)
+          const boardsList = await loadBoards();
+          
+          // Sélectionner le nouveau board créé s'il est dans la liste
+          if (newBoardId) {
+            const boardExists = boardsList.some((b: any) => b.id === newBoardId);
+            if (boardExists) {
+              setSelectedBoardId(newBoardId);
+            } else if (boardsList.length > 0) {
+              // Si le board n'est pas encore dans la liste, sélectionner le premier
+              setSelectedBoardId(boardsList[0].id);
+            }
+          }
+        }, 100);
       } else {
         toast.error(response.data.message || 'Erreur lors de la création du board');
       }
