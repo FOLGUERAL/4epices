@@ -71,34 +71,38 @@ export async function POST(request: NextRequest) {
 
 Règles ABSOLUES :
 - Retourne UNIQUEMENT du JSON valide
-- Pas de texte autour
-- Pas de commentaires
-- Champs obligatoires même si estimés
+- Pas de texte autour, pas de markdown, pas de commentaires
+- Champs obligatoires : titre, description, ingredients (array), etapes (array)
+- Si des informations manquent dans la dictée, INFÈRE-les intelligemment en fonction du type de plat
+- Pour les ingrédients et étapes manquants, génère des suggestions réalistes et cohérentes avec le type de recette
 
 Structure JSON EXACTE (correspondant au schéma Strapi) :
 
 {
-  "titre": string (max 255 caractères, obligatoire),
-  "description": string (texte, obligatoire),
+  "titre": string (max 255 caractères, obligatoire - utilise le nom du plat mentionné ou infère un titre approprié),
+  "description": string (texte descriptif de 2-3 phrases, obligatoire - décris le plat, son origine, ses caractéristiques),
   "ingredients": [
     string | { "quantite": string, "ingredient": string }
-  ] (array JSON, obligatoire),
-  "etapes": string[] (sera converti en HTML richtext, obligatoire),
-  "tempsPreparation": number (minutes, optionnel, null si inconnu),
-  "tempsCuisson": number (minutes, optionnel, null si inconnu),
+  ] (array JSON, obligatoire - MINIMUM 5 ingrédients, même si non mentionnés dans la dictée, infère des ingrédients typiques pour ce type de plat),
+  "etapes": string[] (array de strings, obligatoire - MINIMUM 4 étapes détaillées, même si non mentionnées, infère les étapes de préparation classiques),
+  "tempsPreparation": number (minutes, optionnel, null si vraiment inconnu, sinon estime),
+  "tempsCuisson": number (minutes, optionnel, null si vraiment inconnu, sinon estime),
   "nombrePersonnes": number (optionnel, défaut 4),
-  "difficulte": "facile" | "moyen" | "difficile" (optionnel, défaut "facile"),
-  "categories": string[] (noms de catégories, optionnel, ex: ["Plat principal", "Dessert"]),
-  "tags": string[] (noms de tags, optionnel, ex: ["rapide", "végétarien"])
+  "difficulte": "facile" | "moyen" | "difficile" (optionnel, défaut "facile" - estime selon la complexité du plat),
+  "categories": string[] (noms de catégories, optionnel - infère selon le type de plat, ex: ["Plat principal", "Dessert", "Entrée"]),
+  "tags": string[] (noms de tags, optionnel - infère selon les caractéristiques, ex: ["rapide", "végétarien", "traditionnel"])
 }
 
-Notes importantes :
+Instructions importantes :
 - Les ingrédients peuvent être des strings simples ("200g de farine") ou des objets {"quantite": "200g", "ingredient": "farine"}
-- Les étapes sont un array de strings, chaque string est une étape de préparation
+- Les étapes sont un array de strings, chaque string est une étape de préparation détaillée
 - Les catégories et tags sont des noms (strings), ils seront associés automatiquement
-- Si une information n'est pas mentionnée, utilise null pour les nombres ou des valeurs par défaut
+- Si la dictée est très courte (ex: juste un nom de plat), génère une recette complète et réaliste pour ce plat
+- Sois créatif mais réaliste : utilise tes connaissances culinaires pour compléter les informations manquantes
 
-Dictée :
+Exemple : Si la dictée est "couscous", génère une recette complète de couscous avec semoule, légumes, épices, etc.
+
+Dictée à analyser :
 
 """
 ${text.trim()}
