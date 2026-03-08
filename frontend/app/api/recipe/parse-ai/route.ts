@@ -18,17 +18,28 @@ function getOllamaModel(): string {
   return process.env.OLLAMA_MODEL || 'llama3.2:3b';
 }
 
+// Fonction pour obtenir la clé API Groq
+function getGroqApiKey(): string | null {
+  return process.env.GROQ_API_KEY || null;
+}
+
 // Fonction pour déterminer quel provider utiliser
-function getProvider(): 'ollama' | 'openai' | null {
-  const provider = process.env.AI_PROVIDER?.toLowerCase() || 'ollama';
+function getProvider(): 'groq' | 'ollama' | 'openai' | null {
+  const provider = process.env.AI_PROVIDER?.toLowerCase() || 'groq';
   
-  if (provider === 'ollama') {
+  if (provider === 'groq' && getGroqApiKey()) {
+    return 'groq';
+  } else if (provider === 'ollama') {
     return 'ollama';
   } else if (provider === 'openai' && getOpenAIApiKey()) {
     return 'openai';
   }
   
-  // Fallback : essayer Ollama d'abord, puis OpenAI
+  // Fallback : essayer Groq, puis Ollama, puis OpenAI
+  if (getGroqApiKey()) return 'groq';
+  if (getOllamaUrl()) return 'ollama';
+  if (getOpenAIApiKey()) return 'openai';
+  
   return null;
 }
 
@@ -115,13 +126,17 @@ Dictée :
 ${text.trim()}
 """`;
 
-    // Appeler le provider approprié (Ollama ou OpenAI)
+    // Appeler le provider approprié (Groq, Ollama ou OpenAI)
     let content: string;
-    let usedProvider: 'ollama' | 'openai' = 'ollama'; // Initialiser avec une valeur par défaut
+    let usedProvider: 'groq' | 'ollama' | 'openai' = 'groq'; // Initialiser avec Groq par défaut
 
     try {
-      if (provider === 'ollama' || (!provider && getOllamaUrl())) {
-        // Essayer Ollama d'abord
+      if (provider === 'groq' || (!provider && getGroqApiKey())) {
+        // Essayer Groq d'abord (gratuit et rapide)
+        usedProvider = 'groq';
+        content = await callGroq(prompt);
+      } else if (provider === 'ollama' || (!provider && getOllamaUrl())) {
+        // Essayer Ollama
         usedProvider = 'ollama';
         content = await callOllama(prompt);
       } else {
@@ -130,17 +145,54 @@ ${text.trim()}
         content = await callOpenAI(prompt);
       }
     } catch (error: any) {
-      // Si Ollama échoue et qu'on a OpenAI en fallback, essayer OpenAI
-      if (usedProvider === 'ollama' && getOpenAIApiKey()) {
-        console.warn('[API /recipe/parse-ai] Ollama a échoué, fallback vers OpenAI:', error.message);
+      // Fallback en cascade : Groq → Ollama → OpenAI
+      console.warn(`[API /recipe/parse-ai] ${usedProvider} a échoué, tentative de fallback:`, error.message);
+      
+      if (usedProvider === 'groq') {
+        // Essayer Ollama puis OpenAI
+        if (getOllamaUrl()) {
+          try {
+            usedProvider = 'ollama';
+            content = await callOllama(prompt);
+          } catch (ollamaError: any) {
+            if (getOpenAIApiKey()) {
+              try {
+                usedProvider = 'openai';
+                content = await callOpenAI(prompt);
+              } catch (openaiError: any) {
+                return NextResponse.json(
+                  { 
+                    success: false, 
+                    message: `Erreur avec tous les providers: ${openaiError.message || 'Erreur inconnue'}`,
+                    errorType: 'provider_error'
+                  },
+                  { status: 500 }
+                );
+              }
+            } else {
+              throw ollamaError;
+            }
+          }
+        } else if (getOpenAIApiKey()) {
+          try {
+            usedProvider = 'openai';
+            content = await callOpenAI(prompt);
+          } catch (openaiError: any) {
+            throw openaiError;
+          }
+        } else {
+          throw error;
+        }
+      } else if (usedProvider === 'ollama' && getOpenAIApiKey()) {
+        // Ollama a échoué, essayer OpenAI
         try {
           usedProvider = 'openai';
           content = await callOpenAI(prompt);
-        } catch (fallbackError: any) {
+        } catch (openaiError: any) {
           return NextResponse.json(
             { 
               success: false, 
-              message: `Erreur avec Ollama et OpenAI: ${fallbackError.message || 'Erreur inconnue'}`,
+              message: `Erreur avec Ollama et OpenAI: ${openaiError.message || 'Erreur inconnue'}`,
               errorType: 'provider_error'
             },
             { status: 500 }
@@ -447,5 +499,67 @@ async function callOpenAI(prompt: string): Promise<string> {
     throw new Error('Aucune réponse de OpenAI');
   }
 
+  return content;
+}
+
+/**
+ * Appeler Groq API (gratuit, rapide, modèles performants)
+ */
+async function callGroq(prompt: string): Promise<string> {
+  const apiKey = getGroqApiKey();
+  if (!apiKey) {
+    throw new Error('GROQ_API_KEY non configurée');
+  }
+
+  // Modèle recommandé : llama-3.1-70b-versatile (gratuit, très performant)
+  // Alternatives : mixtral-8x7b-32768, llama-3.1-8b-instant (plus rapide)
+  const model = process.env.GROQ_MODEL || 'llama-3.1-70b-versatile';
+
+  console.log(`[Groq] Utilisation du modèle ${model}`);
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        {
+          role: 'system',
+          content: 'Tu es un assistant qui retourne uniquement du JSON valide, sans aucun texte supplémentaire.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: { message: 'Erreur inconnue' } }));
+    console.error('Erreur Groq API:', error);
+    
+    const errorMessage = error.error?.message || '';
+    if (errorMessage.includes('quota') || errorMessage.includes('rate limit') || response.status === 429) {
+      throw new Error('QUOTA_EXCEEDED');
+    }
+    
+    throw new Error(errorMessage || 'Erreur lors de l\'appel à Groq');
+  }
+
+  const data = await response.json();
+  const content = data.choices[0]?.message?.content;
+
+  if (!content) {
+    throw new Error('Aucune réponse de Groq');
+  }
+
+  console.log(`[Groq] Réponse reçue avec succès (${content.length} caractères)`);
   return content;
 }
