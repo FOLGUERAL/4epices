@@ -46,11 +46,11 @@ module.exports = ({ strapi }) => ({
     const recipeUrl = `${frontendUrl}/recettes/${recetteData.slug}`;
 
     try {
-      // Pinterest API v5 (prod): https://api.pinterest.com/v5/pins
+      // Pinterest API v5 Sandbox (pour compte Trial): https://api-sandbox.pinterest.com/v5/pins
       // Note: le champ demandé "media_source.image_url" correspond en pratique à:
       // media_source = { source_type: "image_url", url: "https://..." }
       const response = await axios.post(
-        'https://api.pinterest.com/v5/pins',
+        'https://api-sandbox.pinterest.com/v5/pins',
         {
           board_id: boardId,
           title: pinTitle.substring(0, 100), // Pinterest limite à 100 caractères

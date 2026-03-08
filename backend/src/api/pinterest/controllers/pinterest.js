@@ -62,7 +62,7 @@ module.exports = {
       const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
       const tokenResponse = await axios.post(
-        'https://api.pinterest.com/v5/oauth/token',
+        'https://api-sandbox.pinterest.com/v5/oauth/token',
         form.toString(),
         {
           headers: {
@@ -92,7 +92,7 @@ module.exports = {
       });
 
       // Vérification immédiate: récupérer le compte Pinterest
-      const meResponse = await axios.get('https://api.pinterest.com/v5/user_account', {
+      const meResponse = await axios.get('https://api-sandbox.pinterest.com/v5/user_account', {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -152,7 +152,7 @@ module.exports = {
     }
 
     try {
-      const meResponse = await axios.get('https://api.pinterest.com/v5/user_account', {
+      const meResponse = await axios.get('https://api-sandbox.pinterest.com/v5/user_account', {
         headers: {
           Authorization: `Bearer ${auth.accessToken}`,
         },
