@@ -58,6 +58,14 @@ module.exports = {
         auth: false, // Accessible à tous
       },
     },
+    {
+      method: 'POST',
+      path: '/pinterest/boards',
+      handler: 'pinterest.createBoard',
+      config: {
+        auth: false, // Accessible à tous
+      },
+    },
   ],
 };
 

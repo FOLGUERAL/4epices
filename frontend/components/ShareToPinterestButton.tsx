@@ -35,6 +35,10 @@ export default function ShareToPinterestButton({
   const [selectedBoardId, setSelectedBoardId] = useState<string>('');
   const [isSharing, setIsSharing] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
+  const [showCreateBoard, setShowCreateBoard] = useState(false);
+  const [newBoardName, setNewBoardName] = useState('');
+  const [newBoardDescription, setNewBoardDescription] = useState('');
+  const [isCreatingBoard, setIsCreatingBoard] = useState(false);
 
   // Vérifier le statut de connexion Pinterest au chargement
   useEffect(() => {
@@ -102,6 +106,27 @@ export default function ShareToPinterestButton({
     window.location.href = oauthUrl.toString();
   };
 
+  const loadBoards = async () => {
+    try {
+      const boardsResponse = await axios.get('/api/pinterest/boards', { timeout: 15_000 });
+      const boardsList = boardsResponse.data.boards || [];
+      setBoards(boardsList);
+      
+      if (boardsList.length > 0) {
+        setSelectedBoardId(boardsList[0].id);
+      }
+      
+      return boardsList;
+    } catch (error: any) {
+      if (error?.response?.status === 401) {
+        setIsConnected(false);
+        handleConnect();
+        return [];
+      }
+      throw error;
+    }
+  };
+
   const handleShareClick = async () => {
     if (!isConnected) {
       handleConnect();
@@ -110,26 +135,68 @@ export default function ShareToPinterestButton({
 
     setIsLoading(true);
     try {
-      // Charger les boards
-      const boardsResponse = await axios.get('/api/pinterest/boards', { timeout: 15_000 });
-      setBoards(boardsResponse.data.boards || []);
+      const boardsList = await loadBoards();
       
-      if (boardsResponse.data.boards && boardsResponse.data.boards.length > 0) {
-        setSelectedBoardId(boardsResponse.data.boards[0].id);
+      if (boardsList.length > 0) {
         setShowModal(true);
       } else {
-        toast.error('Aucun board Pinterest trouvé. Créez-en un sur Pinterest d\'abord.');
+        // Pas de boards : proposer d'en créer un
+        setShowModal(true);
+        setShowCreateBoard(true);
       }
     } catch (error: any) {
-      if (error?.response?.status === 401) {
-        // Token expiré, reconnecter
-        setIsConnected(false);
-        handleConnect();
-      } else {
-        toast.error('Erreur lors du chargement des boards Pinterest');
-      }
+      toast.error('Erreur lors du chargement des boards Pinterest');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCreateBoard = async () => {
+    if (!newBoardName.trim()) {
+      toast.error('Le nom du board est requis');
+      return;
+    }
+
+    setIsCreatingBoard(true);
+    try {
+      const response = await axios.post(
+        '/api/pinterest/boards',
+        {
+          name: newBoardName.trim(),
+          description: newBoardDescription.trim() || undefined,
+        },
+        { timeout: 15_000 }
+      );
+
+      if (response.data.success && response.data.board) {
+        toast.success('Board créé avec succès !');
+        
+        // Rafraîchir la liste des boards
+        const boardsList = await loadBoards();
+        
+        // Sélectionner le nouveau board
+        if (response.data.board.id) {
+          setSelectedBoardId(response.data.board.id);
+        }
+        
+        // Masquer le formulaire de création
+        setShowCreateBoard(false);
+        setNewBoardName('');
+        setNewBoardDescription('');
+      } else {
+        toast.error(response.data.message || 'Erreur lors de la création du board');
+      }
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 'Erreur lors de la création du board';
+      toast.error(message);
+      
+      if (error?.response?.status === 401) {
+        setIsConnected(false);
+        setShowModal(false);
+        handleConnect();
+      }
+    } finally {
+      setIsCreatingBoard(false);
     }
   };
 
@@ -248,41 +315,115 @@ export default function ShareToPinterestButton({
               </div>
             )}
 
-            <div className="mb-4">
-              <label htmlFor="board-select" className="block text-sm font-medium text-gray-700 mb-2">
-                Choisir un board
-              </label>
-              <select
-                id="board-select"
-                value={selectedBoardId}
-                onChange={(e) => setSelectedBoardId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                disabled={isSharing}
-              >
-                {boards.map((board) => (
-                  <option key={board.id} value={board.id}>
-                    {board.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!showCreateBoard ? (
+              <>
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="board-select" className="block text-sm font-medium text-gray-700">
+                      Choisir un board
+                    </label>
+                    <button
+                      onClick={() => setShowCreateBoard(true)}
+                      className="text-sm text-red-600 hover:text-red-700 font-medium"
+                      disabled={isSharing || isCreatingBoard}
+                    >
+                      + Créer un board
+                    </button>
+                  </div>
+                  {boards.length > 0 ? (
+                    <select
+                      id="board-select"
+                      value={selectedBoardId}
+                      onChange={(e) => setSelectedBoardId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      disabled={isSharing || isCreatingBoard}
+                    >
+                      {boards.map((board) => (
+                        <option key={board.id} value={board.id}>
+                          {board.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="text-sm text-gray-500 py-2">
+                      Aucun board. Cliquez sur "Créer un board" pour en créer un.
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Créer un nouveau board
+                  </label>
+                  <button
+                    onClick={() => {
+                      setShowCreateBoard(false);
+                      setNewBoardName('');
+                      setNewBoardDescription('');
+                    }}
+                    className="text-sm text-gray-600 hover:text-gray-800"
+                    disabled={isCreatingBoard}
+                  >
+                    ← Retour
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <input
+                      type="text"
+                      value={newBoardName}
+                      onChange={(e) => setNewBoardName(e.target.value)}
+                      placeholder="Nom du board (requis)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      disabled={isCreatingBoard}
+                      maxLength={100}
+                    />
+                  </div>
+                  <div>
+                    <textarea
+                      value={newBoardDescription}
+                      onChange={(e) => setNewBoardDescription(e.target.value)}
+                      placeholder="Description (optionnelle)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                      disabled={isCreatingBoard}
+                      rows={3}
+                      maxLength={500}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {newBoardDescription.length}/500 caractères
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCreateBoard}
+                    disabled={isCreatingBoard || !newBoardName.trim()}
+                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isCreatingBoard ? 'Création en cours...' : 'Créer le board'}
+                  </button>
+                </div>
+              </div>
+            )}
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                disabled={isSharing}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleShare}
-                disabled={isSharing || !selectedBoardId}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSharing ? 'Partage en cours...' : 'Partager'}
-              </button>
-            </div>
+            {!showCreateBoard && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowModal(false)}
+                  disabled={isSharing || isCreatingBoard}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleShare}
+                  disabled={isSharing || !selectedBoardId || boards.length === 0}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSharing ? 'Partage en cours...' : 'Partager'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -509,5 +509,76 @@ module.exports = {
       });
     }
   },
+
+  /**
+   * POST /api/pinterest/boards
+   * Crée un nouveau board Pinterest
+   * Body: { name, description? }
+   */
+  async createBoard(ctx) {
+    const { userId, sessionId } = getUserIdOrSession(ctx);
+    const { name, description } = ctx.request.body || {};
+
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return ctx.badRequest('Le nom du board est requis');
+    }
+
+    const tokenService = strapi.service('api::pinterest-token.pinterest-token');
+    const token = await tokenService.getUserToken(userId, sessionId);
+    
+    if (!token || !token.accessToken) {
+      return ctx.unauthorized('Pinterest non connecté. Connectez-vous d\'abord.');
+    }
+
+    try {
+      // Créer le board via l'API Pinterest
+      const boardData = {
+        name: name.trim(),
+      };
+
+      // Description optionnelle (max 500 caractères selon Pinterest)
+      if (description && typeof description === 'string' && description.trim().length > 0) {
+        boardData.description = description.trim().substring(0, 500);
+      }
+
+      const response = await axios.post(
+        'https://api-sandbox.pinterest.com/v5/boards',
+        boardData,
+        {
+          headers: {
+            Authorization: `Bearer ${token.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 15_000,
+        }
+      );
+
+      const newBoard = response.data || {};
+
+      return ctx.send({
+        success: true,
+        board: {
+          id: newBoard.id,
+          name: newBoard.name,
+          description: newBoard.description || '',
+        },
+        message: 'Board créé avec succès',
+      });
+    } catch (e) {
+      const status = e?.response?.status;
+      const data = e?.response?.data;
+
+      if (status === 401 || status === 403) {
+        await tokenService.deleteUserToken(userId, sessionId);
+        return ctx.unauthorized('Token Pinterest invalide ou expiré');
+      }
+
+      return ctx.internalServerError('Erreur lors de la création du board', {
+        status,
+        data,
+        message: e?.message,
+      });
+    }
+  },
 };
 
