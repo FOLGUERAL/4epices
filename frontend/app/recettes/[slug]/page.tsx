@@ -12,6 +12,7 @@ import RatingList from '@/components/RatingList';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import PinterestBadge from '@/components/PinterestBadge';
 import PublishPinterestButton from '@/components/PublishPinterestButton';
+import PinterestConnectPanel from '@/components/PinterestConnectPanel';
 
 function formatTime(minutes: number): string {
   if (minutes <= 0) {
@@ -195,6 +196,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
           />
 
           <div className="p-8">
+            <PinterestConnectPanel />
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
               <h1 className="text-4xl font-bold text-gray-900">
                 {recette.attributes.titre}

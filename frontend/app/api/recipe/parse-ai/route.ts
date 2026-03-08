@@ -104,8 +104,22 @@ ${text.trim()}
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: { message: 'Erreur inconnue' } }));
       console.error('Erreur OpenAI API:', error);
+      
+      // Détecter spécifiquement les erreurs de quota
+      const errorMessage = error.error?.message || '';
+      if (errorMessage.includes('quota') || errorMessage.includes('billing') || response.status === 429) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'Quota OpenAI dépassé. Veuillez vérifier votre plan et vos détails de facturation sur https://platform.openai.com/account/billing',
+            errorType: 'quota_exceeded'
+          },
+          { status: 402 } // 402 Payment Required
+        );
+      }
+      
       return NextResponse.json(
-        { success: false, message: error.error?.message || 'Erreur lors de l\'appel à l\'IA' },
+        { success: false, message: errorMessage || 'Erreur lors de l\'appel à l\'IA' },
         { status: response.status }
       );
     }

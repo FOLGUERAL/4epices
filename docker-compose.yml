@@ -42,6 +42,7 @@ services:
       args:
         NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-https://api.4epices.fr}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://4epices.fr}
+        NEXT_PUBLIC_ADMIN_SECRET: ${NEXT_PUBLIC_ADMIN_SECRET:-}
     container_name: 4epices_frontend
     restart: unless-stopped
     environment:

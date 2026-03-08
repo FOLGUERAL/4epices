@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/Toast';
 import AdminAuth from '@/components/AdminAuth';
+import PinterestConnectPanel from '@/components/PinterestConnectPanel';
 
 function CreerRecettePageContent() {
   const router = useRouter();
@@ -65,7 +66,15 @@ function CreerRecettePageContent() {
         }
       } else {
         const error = await response.json().catch(() => ({ message: 'Erreur serveur' }));
-        toast.error(error.message || 'Erreur lors du parsing');
+        // Message spécial pour les erreurs de quota
+        if (error.errorType === 'quota_exceeded' || response.status === 402) {
+          toast.error(
+            'Quota OpenAI dépassé. Vérifiez votre plan sur https://platform.openai.com/account/billing',
+            { duration: 8000 }
+          );
+        } else {
+          toast.error(error.message || 'Erreur lors du parsing');
+        }
       }
     } catch (error) {
       console.error('Erreur parsing IA:', error);
@@ -714,6 +723,9 @@ function CreerRecettePageContent() {
             Dictez votre recette ou prenez une photo
           </p>
         </div>
+
+        {/* Connexion Pinterest (OAuth) */}
+        <PinterestConnectPanel />
 
         {/* Sélecteur d'API */}
         <div className="mb-4">

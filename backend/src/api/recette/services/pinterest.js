@@ -4,16 +4,26 @@
  * Pinterest service
  */
 
+const axios = require('axios');
+const { getPinterestAuth } = require('../../../utils/pinterestAuthStore');
+
 module.exports = ({ strapi }) => ({
   /**
    * Créer un pin Pinterest pour une recette
    */
   async createPin(recette) {
-    const accessToken = process.env.PINTEREST_ACCESS_TOKEN;
+    // Priorité: token OAuth utilisateur (démo) > token statique (fallback)
+    // Objectif demandé: utiliser le token OAuth issu du callback.
+    const oauthAccessToken = getPinterestAuth()?.accessToken;
+    const accessToken = oauthAccessToken || process.env.PINTEREST_ACCESS_TOKEN;
     const boardId = process.env.PINTEREST_BOARD_ID;
 
     if (!accessToken || !boardId) {
-      throw new Error('Pinterest access token et board ID doivent être configurés');
+      throw new Error(
+        oauthAccessToken
+          ? 'Pinterest board ID manquant (PINTEREST_BOARD_ID)'
+          : 'Token Pinterest manquant. Connectez d’abord Pinterest (OAuth) ou configurez PINTEREST_ACCESS_TOKEN + PINTEREST_BOARD_ID'
+      );
     }
 
     // Normaliser les données (Strapi peut retourner avec ou sans attributes)
@@ -36,35 +46,43 @@ module.exports = ({ strapi }) => ({
     const recipeUrl = `${frontendUrl}/recettes/${recetteData.slug}`;
 
     try {
-      const response = await fetch('https://api-sandbox.pinterest.com/v5/pins', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Pinterest API v5 (prod): https://api.pinterest.com/v5/pins
+      // Note: le champ demandé "media_source.image_url" correspond en pratique à:
+      // media_source = { source_type: "image_url", url: "https://..." }
+      const response = await axios.post(
+        'https://api.pinterest.com/v5/pins',
+        {
           board_id: boardId,
+          title: pinTitle.substring(0, 100), // Pinterest limite à 100 caractères
+          description: pinDescription.substring(0, 800), // Pinterest limite à 800 caractères
+          link: recipeUrl,
           media_source: {
             source_type: 'image_url',
             url: imageUrl,
           },
-          title: pinTitle.substring(0, 100), // Pinterest limite à 100 caractères
-          description: pinDescription.substring(0, 800), // Pinterest limite à 800 caractères
-          link: recipeUrl,
           alt_text: pinTitle,
-        }),
-      });
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 20_000,
+        }
+      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Erreur Pinterest API: ${JSON.stringify(error)}`);
-      }
-
-      const pinData = await response.json();
-      return pinData;
+      return response.data;
     } catch (error) {
-      strapi.log.error('Erreur lors de la création du pin Pinterest:', error);
-      throw error;
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      strapi.log.error('Erreur lors de la création du pin Pinterest:', {
+        message: error?.message,
+        status,
+        data,
+      });
+      throw new Error(
+        `Erreur Pinterest API (${status || 'unknown'}): ${data ? JSON.stringify(data) : error?.message}`
+      );
     }
   },
 
