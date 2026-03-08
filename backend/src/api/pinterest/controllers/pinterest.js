@@ -128,7 +128,7 @@ module.exports = {
       // En cas d'échec, on nettoie pour éviter un état incohérent.
       clearPinterestAuth();
 
-      return ctx.internalServerError('Erreur lors de l'échange OAuth Pinterest', {
+      return ctx.internalServerError("Erreur lors de l'échange OAuth Pinterest", {
         status,
         data,
         message,
