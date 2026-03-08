@@ -8,6 +8,16 @@ const {
 } = require('../../../utils/pinterestAuthStore');
 
 /**
+ * Récupère l'URL de base de l'API Pinterest (sandbox ou production)
+ */
+function getPinterestApiUrl() {
+  const useSandbox = process.env.PINTEREST_USE_SANDBOX !== 'false'; // Par défaut: true (sandbox)
+  return useSandbox 
+    ? 'https://api-sandbox.pinterest.com'
+    : 'https://api.pinterest.com';
+}
+
+/**
  * Génère un ID de session unique pour les utilisateurs anonymes
  */
 function generateSessionId() {
@@ -93,7 +103,7 @@ module.exports = {
       const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
       const tokenResponse = await axios.post(
-        'https://api-sandbox.pinterest.com/v5/oauth/token',
+        `${getPinterestApiUrl()}/v5/oauth/token`,
         form.toString(),
         {
           headers: {
@@ -114,7 +124,7 @@ module.exports = {
       }
 
       // Vérification immédiate: récupérer le compte Pinterest
-      const meResponse = await axios.get('https://api-sandbox.pinterest.com/v5/user_account', {
+      const meResponse = await axios.get(`${getPinterestApiUrl()}/v5/user_account`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -237,7 +247,7 @@ module.exports = {
     }
 
     try {
-      const meResponse = await axios.get('https://api-sandbox.pinterest.com/v5/user_account', {
+      const meResponse = await axios.get(`${getPinterestApiUrl()}/v5/user_account`, {
         headers: {
           Authorization: `Bearer ${auth.accessToken}`,
         },
@@ -289,7 +299,7 @@ module.exports = {
 
     // Vérifier si le token est encore valide
     try {
-      const meResponse = await axios.get('https://api-sandbox.pinterest.com/v5/user_account', {
+      const meResponse = await axios.get(`${getPinterestApiUrl()}/v5/user_account`, {
         headers: {
           Authorization: `Bearer ${token.accessToken}`,
         },
@@ -363,7 +373,7 @@ module.exports = {
     }
 
     try {
-      const boardsResponse = await axios.get('https://api-sandbox.pinterest.com/v5/boards', {
+      const boardsResponse = await axios.get(`${getPinterestApiUrl()}/v5/boards`, {
         headers: {
           Authorization: `Bearer ${token.accessToken}`,
         },
@@ -451,7 +461,7 @@ module.exports = {
 
         // Créer le pin avec le token de l'utilisateur
         const response = await axios.post(
-          'https://api-sandbox.pinterest.com/v5/pins',
+          `${getPinterestApiUrl()}/v5/pins`,
           {
             board_id: boardId,
             title: pinTitle.substring(0, 100),
@@ -542,7 +552,7 @@ module.exports = {
       }
 
       const response = await axios.post(
-        'https://api-sandbox.pinterest.com/v5/boards',
+        `${getPinterestApiUrl()}/v5/boards`,
         boardData,
         {
           headers: {
