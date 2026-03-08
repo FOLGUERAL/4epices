@@ -113,9 +113,14 @@ export default function ShareToPinterestButton({
     window.location.href = oauthUrl.toString();
   };
 
-  const loadBoards = async () => {
+  const loadBoards = async (forceRefresh = false) => {
     try {
-      const boardsResponse = await axios.get('/api/pinterest/boards', { 
+      // Ajouter un paramètre de cache-busting si on force le rafraîchissement
+      const url = forceRefresh 
+        ? `/api/pinterest/boards?_t=${Date.now()}`
+        : '/api/pinterest/boards';
+      
+      const boardsResponse = await axios.get(url, { 
         timeout: 15_000,
         withCredentials: true, // S'assurer que les cookies sont envoyés
       });
@@ -184,7 +189,6 @@ export default function ShareToPinterestButton({
       );
 
       if (response.data.success && response.data.board) {
-        const newBoardId = response.data.board.id;
         toast.success('Board créé avec succès !');
         
         // Masquer le formulaire de création
@@ -192,26 +196,21 @@ export default function ShareToPinterestButton({
         setNewBoardName('');
         setNewBoardDescription('');
         
-        // Fermer la modale pour forcer un rechargement complet
-        setShowModal(false);
+        // Attendre un peu pour que Pinterest propage le nouveau board
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Réouvrir la modale immédiatement, ce qui déclenchera un nouveau chargement des boards
-        setTimeout(async () => {
-          setShowModal(true);
-          // Charger les boards (cela va aussi sélectionner le premier board par défaut)
-          const boardsList = await loadBoards();
-          
-          // Sélectionner le nouveau board créé s'il est dans la liste
-          if (newBoardId) {
-            const boardExists = boardsList.some((b: any) => b.id === newBoardId);
-            if (boardExists) {
-              setSelectedBoardId(newBoardId);
-            } else if (boardsList.length > 0) {
-              // Si le board n'est pas encore dans la liste, sélectionner le premier
-              setSelectedBoardId(boardsList[0].id);
-            }
+        // Recharger les boards avec cache-busting pour éviter le cache
+        const boardsList = await loadBoards(true);
+        
+        // Sélectionner le nouveau board créé
+        if (response.data.board.id) {
+          const boardExists = boardsList.some((b: any) => b.id === response.data.board.id);
+          if (boardExists) {
+            setSelectedBoardId(response.data.board.id);
+          } else if (boardsList.length > 0) {
+            setSelectedBoardId(boardsList[0].id);
           }
-        }, 100);
+        }
       } else {
         toast.error(response.data.message || 'Erreur lors de la création du board');
       }
