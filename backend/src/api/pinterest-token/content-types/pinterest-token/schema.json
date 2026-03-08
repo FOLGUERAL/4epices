@@ -16,7 +16,7 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "plugin::users-permissions.user",
-      "required": true,
+      "required": false,
       "unique": true
     },
     "accessToken": {

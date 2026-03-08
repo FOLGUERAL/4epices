@@ -148,6 +148,12 @@ module.exports = {
         // Mode utilisateur : stocker dans la base de données
         const tokenService = strapi.service('api::pinterest-token.pinterest-token');
         
+        // Vérifier qu'on a au moins un userId ou sessionId
+        if (!userId && !sessionId) {
+          strapi.log.error('❌ Erreur OAuth: ni userId ni sessionId disponible');
+          return ctx.internalServerError('Erreur lors de la sauvegarde du token: identifiant utilisateur manquant');
+        }
+        
         // Calculer expiresAt si expires_in est fourni
         const expiresAt = tokenData.expires_in
           ? new Date(Date.now() + tokenData.expires_in * 1000)
@@ -164,7 +170,15 @@ module.exports = {
 
         // Rediriger vers la page d'origine ou la recette si spécifiée
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const returnUrl = ctx.query?.returnUrl || ctx.query?.state?.replace('return:', '') || `${frontendUrl}?pinterest=connected`;
+        let returnUrl = ctx.query?.returnUrl || ctx.query?.state?.replace('return:', '') || `${frontendUrl}?pinterest=connected`;
+        
+        // Ajouter le sessionId à l'URL si présent (pour les utilisateurs anonymes)
+        if (sessionId && !userId) {
+          const url = new URL(returnUrl, frontendUrl);
+          url.searchParams.set('pinterest_session', sessionId);
+          returnUrl = url.toString();
+        }
+        
         ctx.redirect(returnUrl);
       }
     } catch (e) {

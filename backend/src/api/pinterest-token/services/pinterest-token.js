@@ -42,6 +42,11 @@ module.exports = ({ strapi }) => ({
   async saveUserToken(data) {
     const { userId, sessionId, accessToken, refreshToken, expiresAt, username } = data;
 
+    // Validation : il faut au moins un userId ou sessionId
+    if (!userId && !sessionId) {
+      throw new Error('userId ou sessionId requis pour sauvegarder un token Pinterest');
+    }
+
     try {
       // Chercher un token existant
       let existingToken = null;
