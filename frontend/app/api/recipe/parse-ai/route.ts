@@ -321,7 +321,7 @@ ${text.trim()}
           // Côté serveur, utiliser une regex simple pour extraire le texte
           const stepMatches = etapesStr.match(/<p><strong>Étape \d+ :<\/strong> (.+?)<\/p>/g);
           if (stepMatches) {
-            normalizedEtapes = stepMatches.map(match => {
+            normalizedEtapes = stepMatches.map((match: string) => {
               const text = match.replace(/<[^>]+>/g, '').replace(/Étape \d+ :\s*/, '').trim();
               return text;
             });
