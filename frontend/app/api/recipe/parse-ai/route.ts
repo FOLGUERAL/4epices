@@ -334,7 +334,7 @@ ${text.trim()}
         }
       } else {
         // C'est du texte simple, diviser par lignes ou points
-        normalizedEtapes = etapesStr.split(/\n+|\.\s+/).filter(s => s.trim()).slice(0, 10);
+        normalizedEtapes = etapesStr.split(/\n+|\.\s+/).filter((s: string) => s.trim()).slice(0, 10);
       }
     }
     
