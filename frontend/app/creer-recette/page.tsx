@@ -39,6 +39,9 @@ function CreerRecettePageContent() {
   const [parsedRecipe, setParsedRecipe] = useState<any>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [usedProvider, setUsedProvider] = useState<string | null>(null);
+  
+  // État pour le modèle IA sélectionné
+  const [selectedAIProvider, setSelectedAIProvider] = useState<'groq' | 'ollama' | 'openai'>('groq');
 
   // Fonction pour parser le texte avec l'IA (appelée manuellement via bouton)
   const handleParseWithAI = async () => {
@@ -54,7 +57,10 @@ function CreerRecettePageContent() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text: transcript.trim() }),
+        body: JSON.stringify({ 
+          text: transcript.trim(),
+          provider: selectedAIProvider
+        }),
       });
 
       if (response.ok) {
@@ -759,6 +765,30 @@ function CreerRecettePageContent() {
                 ⚠️ Nécessite une clé API Google (60 min gratuites/mois)
               </p>
             )}
+          </div>
+        </div>
+
+        {/* Sélecteur de modèle IA */}
+        <div className="mb-4">
+          <div className="bg-white rounded-xl p-4 shadow-md">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Modèle IA pour la génération du JSON
+            </label>
+            <select
+              value={selectedAIProvider}
+              onChange={(e) => setSelectedAIProvider(e.target.value as 'groq' | 'ollama' | 'openai')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+              disabled={isParsing}
+            >
+              <option value="groq">🤖 Groq (Recommandé - Gratuit et Rapide)</option>
+              <option value="ollama">🦙 Ollama (Local - Gratuit)</option>
+              <option value="openai">💬 ChatGPT (OpenAI - Payant)</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-2">
+              {selectedAIProvider === 'groq' && 'Gratuit jusqu\'à 30 requêtes/min, très rapide'}
+              {selectedAIProvider === 'ollama' && '100% gratuit, nécessite Ollama installé localement'}
+              {selectedAIProvider === 'openai' && 'Meilleure qualité, nécessite une clé API OpenAI'}
+            </p>
           </div>
         </div>
 

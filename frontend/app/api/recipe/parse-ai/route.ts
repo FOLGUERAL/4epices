@@ -24,7 +24,23 @@ function getGroqApiKey(): string | null {
 }
 
 // Fonction pour déterminer quel provider utiliser
-function getProvider(): 'groq' | 'ollama' | 'openai' | null {
+// Si un provider est fourni explicitement, l'utiliser (pas de fallback)
+function getProvider(requestedProvider?: string): 'groq' | 'ollama' | 'openai' | null {
+  // Si un provider est explicitement demandé, l'utiliser (sans fallback)
+  if (requestedProvider) {
+    const provider = requestedProvider.toLowerCase();
+    if (provider === 'groq' && getGroqApiKey()) {
+      return 'groq';
+    } else if (provider === 'ollama') {
+      return 'ollama';
+    } else if (provider === 'openai' && getOpenAIApiKey()) {
+      return 'openai';
+    }
+    // Si le provider demandé n'est pas disponible, retourner null (pas de fallback)
+    return null;
+  }
+  
+  // Sinon, utiliser le provider par défaut depuis les variables d'environnement
   const provider = process.env.AI_PROVIDER?.toLowerCase() || 'groq';
   
   if (provider === 'groq' && getGroqApiKey()) {
@@ -35,11 +51,6 @@ function getProvider(): 'groq' | 'ollama' | 'openai' | null {
     return 'openai';
   }
   
-  // Fallback : essayer Groq, puis Ollama, puis OpenAI
-  if (getGroqApiKey()) return 'groq';
-  if (getOllamaUrl()) return 'ollama';
-  if (getOpenAIApiKey()) return 'openai';
-  
   return null;
 }
 
@@ -48,15 +59,17 @@ function getProvider(): 'groq' | 'ollama' | 'openai' | null {
  * 
  * Reçoit :
  * - text: Le texte dicté de la recette
+ * - provider?: 'groq' | 'ollama' | 'openai' - Modèle IA à utiliser (optionnel, pas de fallback automatique)
  * 
  * Retourne :
  * - success: boolean
  * - data?: ParsedRecipe (si succès)
  * - message?: string (si erreur)
+ * - provider?: string - Le provider utilisé
  */
 export async function POST(request: NextRequest) {
   try {
-    const { text } = await request.json();
+    const { text, provider: requestedProvider } = await request.json();
 
     if (!text || !text.trim()) {
       return NextResponse.json(
@@ -65,30 +78,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Déterminer le provider à utiliser
-    const provider = getProvider();
+    // Déterminer le provider à utiliser (avec le provider demandé si fourni)
+    const provider = getProvider(requestedProvider);
     
     // Si aucun provider disponible, retourner une erreur avec détails
     if (!provider) {
       const hasGroqKey = !!getGroqApiKey();
       const hasOllamaUrl = !!getOllamaUrl();
       const hasOpenAIKey = !!getOpenAIApiKey();
-      const configuredProvider = process.env.AI_PROVIDER?.toLowerCase() || 'groq';
       
-      let message = 'Aucun provider IA configuré. ';
+      let message = '';
       
-      if (configuredProvider === 'groq' && !hasGroqKey) {
-        message += 'Groq est configuré comme provider par défaut mais GROQ_API_KEY n\'est pas définie. ';
-      } else if (configuredProvider === 'ollama' && !hasOllamaUrl) {
-        message += 'Ollama est configuré comme provider mais OLLAMA_URL n\'est pas accessible. ';
-      } else if (configuredProvider === 'openai' && !hasOpenAIKey) {
-        message += 'OpenAI est configuré comme provider mais OPENAI_API_KEY n\'est pas définie. ';
+      if (requestedProvider) {
+        // Provider explicitement demandé mais non disponible
+        const requested = requestedProvider.toLowerCase();
+        if (requested === 'groq' && !hasGroqKey) {
+          message = 'Groq est sélectionné mais GROQ_API_KEY n\'est pas configurée. Configurez GROQ_API_KEY dans vos variables d\'environnement.';
+        } else if (requested === 'ollama' && !hasOllamaUrl) {
+          message = 'Ollama est sélectionné mais OLLAMA_URL n\'est pas accessible. Vérifiez que Ollama est démarré et que OLLAMA_URL est correctement configurée.';
+        } else if (requested === 'openai' && !hasOpenAIKey) {
+          message = 'OpenAI est sélectionné mais OPENAI_API_KEY n\'est pas configurée. Configurez OPENAI_API_KEY dans vos variables d\'environnement.';
+        } else {
+          message = `Le provider "${requestedProvider}" n'est pas valide ou non configuré.`;
+        }
+      } else {
+        // Aucun provider demandé, utiliser le défaut
+        const configuredProvider = process.env.AI_PROVIDER?.toLowerCase() || 'groq';
+        message = `Aucun provider IA configuré. Le provider par défaut (${configuredProvider}) n'est pas disponible. `;
+        
+        if (configuredProvider === 'groq' && !hasGroqKey) {
+          message += 'GROQ_API_KEY n\'est pas définie. ';
+        } else if (configuredProvider === 'ollama' && !hasOllamaUrl) {
+          message += 'OLLAMA_URL n\'est pas accessible. ';
+        } else if (configuredProvider === 'openai' && !hasOpenAIKey) {
+          message += 'OPENAI_API_KEY n\'est pas définie. ';
+        }
+        
+        message += 'Configurez au moins un provider: Groq (GROQ_API_KEY), Ollama (OLLAMA_URL), ou OpenAI (OPENAI_API_KEY)';
       }
       
-      message += 'Configurez au moins un provider: Groq (GROQ_API_KEY), Ollama (OLLAMA_URL), ou OpenAI (OPENAI_API_KEY)';
-      
       console.error('[API /recipe/parse-ai] Aucun provider disponible:', {
-        configuredProvider,
+        requestedProvider,
         hasGroqKey,
         hasOllamaUrl,
         hasOpenAIKey,
@@ -151,88 +181,38 @@ Dictée :
 ${text.trim()}
 """`;
 
-    // Appeler le provider approprié (Groq, Ollama ou OpenAI)
+    // Appeler le provider approprié (pas de fallback automatique)
     let content: string;
-    let usedProvider: 'groq' | 'ollama' | 'openai' = 'groq'; // Initialiser avec Groq par défaut
+    let usedProvider: 'groq' | 'ollama' | 'openai' = provider || 'groq';
 
     try {
-      if (provider === 'groq' || (!provider && getGroqApiKey())) {
-        // Essayer Groq d'abord (gratuit et rapide)
-        usedProvider = 'groq';
+      if (provider === 'groq') {
         content = await callGroq(prompt);
-      } else if (provider === 'ollama' || (!provider && getOllamaUrl())) {
-        // Essayer Ollama
-        usedProvider = 'ollama';
+      } else if (provider === 'ollama') {
         content = await callOllama(prompt);
-      } else {
-        // Utiliser OpenAI
-        usedProvider = 'openai';
+      } else if (provider === 'openai') {
         content = await callOpenAI(prompt);
-      }
-    } catch (error: any) {
-      // Fallback en cascade : Groq → Ollama → OpenAI
-      console.warn(`[API /recipe/parse-ai] ${usedProvider} a échoué, tentative de fallback:`, error.message);
-      
-      if (usedProvider === 'groq') {
-        // Essayer Ollama puis OpenAI
-        if (getOllamaUrl()) {
-          try {
-            usedProvider = 'ollama';
-            content = await callOllama(prompt);
-          } catch (ollamaError: any) {
-            if (getOpenAIApiKey()) {
-              try {
-                usedProvider = 'openai';
-                content = await callOpenAI(prompt);
-              } catch (openaiError: any) {
-                return NextResponse.json(
-                  { 
-                    success: false, 
-                    message: `Erreur avec tous les providers: ${openaiError.message || 'Erreur inconnue'}`,
-                    errorType: 'provider_error'
-                  },
-                  { status: 500 }
-                );
-              }
-            } else {
-              throw ollamaError;
-            }
-          }
-        } else if (getOpenAIApiKey()) {
-          try {
-            usedProvider = 'openai';
-            content = await callOpenAI(prompt);
-          } catch (openaiError: any) {
-            throw openaiError;
-          }
-        } else {
-          throw error;
-        }
-      } else if (usedProvider === 'ollama' && getOpenAIApiKey()) {
-        // Ollama a échoué, essayer OpenAI
-        try {
-          usedProvider = 'openai';
-          content = await callOpenAI(prompt);
-        } catch (openaiError: any) {
-          return NextResponse.json(
-            { 
-              success: false, 
-              message: `Erreur avec Ollama et OpenAI: ${openaiError.message || 'Erreur inconnue'}`,
-              errorType: 'provider_error'
-            },
-            { status: 500 }
-          );
-        }
       } else {
         return NextResponse.json(
           { 
             success: false, 
-            message: error.message || 'Erreur lors de l\'appel à l\'IA',
+            message: 'Provider IA non valide ou non configuré',
             errorType: 'provider_error'
           },
           { status: 500 }
         );
       }
+    } catch (error: any) {
+      // Pas de fallback automatique - retourner l'erreur directement
+      console.error(`[API /recipe/parse-ai] ${usedProvider} a échoué:`, error.message);
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: `Erreur avec ${usedProvider}: ${error.message || 'Erreur inconnue'}`,
+          errorType: 'provider_error'
+        },
+        { status: 500 }
+      );
     }
 
     console.log(`[API /recipe/parse-ai] Réponse reçue de ${usedProvider}`);
