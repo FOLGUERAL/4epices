@@ -327,9 +327,9 @@ ${text.trim()}
             });
           } else {
             // Fallback : diviser par les balises <p>
-            normalizedEtapes = etapesStr.split(/<p>/).filter(s => s.trim()).map(s => {
+            normalizedEtapes = etapesStr.split(/<p>/).filter((s: string) => s.trim()).map((s: string) => {
               return s.replace(/<\/p>.*$/, '').replace(/<[^>]+>/g, '').replace(/Étape \d+ :\s*/, '').trim();
-            }).filter(s => s);
+            }).filter((s: string) => s);
           }
         }
       } else {
