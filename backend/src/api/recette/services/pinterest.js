@@ -37,9 +37,20 @@ module.exports = ({ strapi }) => ({
       throw new Error('Aucune image principale trouvée pour la recette');
     }
 
-    // Créer le titre et la description pour Pinterest
-    const pinTitle = recetteData.metaTitle || recetteData.titre;
-    const pinDescription = recetteData.metaDescription || recetteData.description;
+    // Générer le contenu optimisé avec Groq (avec fallback)
+    let pinTitle, pinDescription;
+    try {
+      const contentGenerator = strapi.service('api::recette.pinterest-content-generator');
+      const generatedContent = await contentGenerator.generateContent(recette);
+      pinTitle = generatedContent.title;
+      pinDescription = generatedContent.description;
+      strapi.log.info(`[Pinterest] Contenu généré avec Groq pour: ${recetteData.titre}`);
+    } catch (error) {
+      // Fallback sur metaTitle/metaDescription si Groq échoue
+      strapi.log.warn(`[Pinterest] Erreur génération contenu Groq, utilisation du fallback:`, error.message);
+      pinTitle = recetteData.metaTitle || recetteData.titre;
+      pinDescription = recetteData.metaDescription || recetteData.description;
+    }
 
     // URL de la recette sur le frontend
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';

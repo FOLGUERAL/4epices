@@ -50,7 +50,7 @@ services:
       # Configuration IA (Groq recommandé - gratuit et performant)
       AI_PROVIDER: ${AI_PROVIDER:-groq}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
-      GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-70b-versatile}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
       # Fallback Ollama (optionnel)
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
