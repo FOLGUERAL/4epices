@@ -22,6 +22,10 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env
+    environment:
+      # Configuration IA pour génération de contenu Pinterest (Groq)
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
     ports:
       - "1337:1337"
     volumes:
