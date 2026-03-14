@@ -20,26 +20,34 @@ module.exports = {
     // Vérifier que les cron jobs sont bien chargés par Strapi
     try {
       // Strapi charge automatiquement les cron jobs depuis config/cron-tasks.js
-      // Vérifier si Strapi a chargé les cron jobs
-      const cronConfig = strapi.config.get('server.cron');
+      // Vérifier directement le fichier cron-tasks.js
+      const path = require('path');
+      const fs = require('fs');
+      const cronTasksPath = path.join(process.cwd(), 'config', 'cron-tasks.js');
       
-      if (cronConfig && Object.keys(cronConfig).length > 0) {
-        const cronKeys = Object.keys(cronConfig);
-        strapi.log.info(`✅ [BOOTSTRAP] ${cronKeys.length} cron job(s) chargé(s) par Strapi: ${cronKeys.join(', ')}`);
-      } else {
-        strapi.log.warn('⚠️ [BOOTSTRAP] Aucun cron job chargé par Strapi');
-        strapi.log.warn(`⚠️ [BOOTSTRAP] Working directory: ${process.cwd()}`);
-        
-        // Vérifier si le fichier existe
-        const path = require('path');
-        const fs = require('fs');
-        const cronTasksPath = path.join(process.cwd(), 'config', 'cron-tasks.js');
-        if (fs.existsSync(cronTasksPath)) {
-          strapi.log.info(`✅ [BOOTSTRAP] Fichier cron-tasks.js existe: ${cronTasksPath}`);
-          strapi.log.warn('⚠️ [BOOTSTRAP] Mais Strapi ne l\'a pas chargé - vérifiez la configuration');
-        } else {
-          strapi.log.warn(`⚠️ [BOOTSTRAP] Fichier cron-tasks.js non trouvé: ${cronTasksPath}`);
+      if (fs.existsSync(cronTasksPath)) {
+        try {
+          const cronTasks = require(cronTasksPath);
+          const taskKeys = Object.keys(cronTasks);
+          strapi.log.info(`✅ [BOOTSTRAP] ${taskKeys.length} cron job(s) défini(s) dans cron-tasks.js: ${taskKeys.join(', ')}`);
+          
+          // Vérifier si Strapi les a chargés
+          const cronConfig = strapi.config.get('server.cron');
+          if (cronConfig) {
+            const cronKeys = Object.keys(cronConfig);
+            strapi.log.info(`✅ [BOOTSTRAP] Strapi a chargé la configuration cron (${cronKeys.length} clé(s): ${cronKeys.join(', ')})`);
+            
+            // Les cron jobs Strapi devraient s'exécuter automatiquement
+            // On attendra les logs [Pinterest Cron] pour confirmer
+            strapi.log.info('✅ [BOOTSTRAP] Les cron jobs devraient s\'exécuter automatiquement');
+          } else {
+            strapi.log.warn('⚠️ [BOOTSTRAP] Strapi n\'a pas chargé la configuration cron');
+          }
+        } catch (error) {
+          strapi.log.warn(`⚠️ [BOOTSTRAP] Erreur lors du chargement de cron-tasks.js: ${error.message}`);
         }
+      } else {
+        strapi.log.warn(`⚠️ [BOOTSTRAP] Fichier cron-tasks.js non trouvé: ${cronTasksPath}`);
       }
     } catch (error) {
       strapi.log.error('❌ [BOOTSTRAP] Erreur lors de la vérification des cron jobs:', error.message);

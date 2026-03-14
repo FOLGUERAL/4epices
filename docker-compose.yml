@@ -98,8 +98,8 @@ services:
       sh -c "
       while true; do
         sleep 300;
-        echo \"[Cron] Traitement de la queue Pinterest...\";
-        curl -X POST http://backend:1337/api/pinterest/process-queue || echo \"[Cron] Erreur lors de l'appel\";
+        echo \"[Cron Docker] Traitement de la queue Pinterest...\";
+        curl -X POST http://backend:1337/api/pinterest/process-queue -H \"X-Cron-Source: docker\" || echo \"[Cron Docker] Erreur lors de l'appel\";
       done
       "
     depends_on:

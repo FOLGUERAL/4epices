@@ -633,14 +633,22 @@ module.exports = {
 
   /**
    * POST /api/pinterest/process-queue
-   * Force le traitement immédiat de toutes les tâches prêtes (pour debug/manuel)
+   * Force le traitement immédiat de toutes les tâches prêtes (pour debug/manuel ou cron Docker)
    */
   async processQueue(ctx) {
     try {
       const queueService = strapi.service('api::recette.pinterest-queue');
       const readyTasks = await queueService.getReadyTasks();
       
+      // Détecter si l'appel vient du cron Docker ou d'un appel manuel
+      const isCronDocker = ctx.request.headers['x-cron-source'] === 'docker';
+      const logPrefix = isCronDocker ? '[Pinterest Cron Docker]' : '[Pinterest Manual]';
+      
       if (readyTasks.length === 0) {
+        if (isCronDocker) {
+          // Ne pas logger si c'est le cron Docker et qu'il n'y a rien à traiter (pour éviter le spam)
+          strapi.log.debug(`${logPrefix} Aucune tâche prête à être traitée`);
+        }
         return ctx.send({
           success: true,
           message: 'Aucune tâche prête à être traitée',
@@ -648,46 +656,44 @@ module.exports = {
         });
       }
       
-      strapi.log.info(`[Pinterest Manual] Traitement manuel de ${readyTasks.length} tâche(s) prête(s)`);
+      strapi.log.info(`${logPrefix} Traitement de ${readyTasks.length} tâche(s) prête(s)`);
       
-      const results = [];
+      // Traiter une seule tâche à la fois pour respecter le rate limiting Pinterest
+      // (même si plusieurs sont prêtes, on en traite qu'une par appel)
+      let processed = 0;
       for (const task of readyTasks) {
         try {
-          strapi.log.info(`[Pinterest Manual] Traitement de la tâche ${task.id} (pin #${task.pinIndex} pour recette ${task.recetteId})`);
+          strapi.log.info(`${logPrefix} Traitement de la tâche ${task.id} (pin #${task.pinIndex} pour recette ${task.recetteId})`);
           const result = await queueService.processTask(task);
-          results.push({
-            taskId: task.id,
-            pinIndex: task.pinIndex,
-            recetteId: task.recetteId,
-            success: result.success,
-            error: result.error,
-            attempts: result.attempts,
-          });
+          
+          if (result.success) {
+            processed++;
+            strapi.log.info(`${logPrefix} Tâche ${task.id} traitée avec succès`);
+            // Traiter une seule tâche par appel pour respecter le rate limiting
+            // Les autres seront traitées lors des prochaines exécutions (toutes les 5 min)
+            break;
+          } else {
+            strapi.log.warn(`${logPrefix} Tâche ${task.id} échouée: ${result.error}`);
+            // Continuer avec la tâche suivante si celle-ci a échoué
+          }
         } catch (error) {
-          results.push({
-            taskId: task.id,
-            pinIndex: task.pinIndex,
-            recetteId: task.recetteId,
-            success: false,
-            error: error.message,
-          });
+          strapi.log.error(`${logPrefix} Erreur lors du traitement de la tâche ${task.id}:`, error);
+          // Continuer avec la tâche suivante en cas d'erreur
         }
       }
       
       // Nettoyer les tâches expirées
       await queueService.cleanup();
       
-      const successCount = results.filter(r => r.success).length;
-      const failCount = results.filter(r => !r.success).length;
-      
       return ctx.send({
         success: true,
-        message: `${successCount} tâche(s) traitée(s) avec succès, ${failCount} échec(s)`,
-        processed: readyTasks.length,
-        results,
+        message: `${processed} tâche(s) traitée(s) avec succès`,
+        processed,
+        remaining: readyTasks.length - processed,
       });
     } catch (error) {
-      strapi.log.error('[Pinterest Manual] Erreur lors du traitement manuel de la queue:', error);
+      const logPrefix = ctx.request.headers['x-cron-source'] === 'docker' ? '[Pinterest Cron Docker]' : '[Pinterest Manual]';
+      strapi.log.error(`${logPrefix} Erreur lors du traitement de la queue:`, error);
       return ctx.internalServerError('Erreur lors du traitement de la queue', {
         error: error.message,
       });
