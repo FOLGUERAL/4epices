@@ -616,6 +616,7 @@ module.exports = {
           minutesUntilReady: Math.round((scheduledTime - now) / 1000 / 60),
           attempts: task.attempts,
           maxAttempts: task.maxAttempts,
+          boardId: task.boardId || null, // Inclure le boardId
         };
       });
       

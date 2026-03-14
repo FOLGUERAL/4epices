@@ -303,10 +303,9 @@ module.exports = {
           populate: ['imagePrincipale', 'imagesPinterest', 'categories'],
         });
         
-        // Créer 3 pins (premier immédiatement, les autres planifiés)
+        // Créer 7 pins avec distribution personnalisée
         const resultPins = await pinterestService.createMultiplePins(recetteComplete, {
-          pinsCount: 3,
-          delayBetweenPins: 5 * 60 * 1000, // 5 minutes
+          pinsCount: 7,
         });
         
         // Mettre à jour avec le premier pin créé
