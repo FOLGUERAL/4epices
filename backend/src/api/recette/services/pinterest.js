@@ -102,8 +102,9 @@ module.exports = ({ strapi }) => ({
     }
 
     // Récupérer le board ID
-    if (!boardId) {
-      boardId = await getBoardIdForRecette(strapi, recette);
+    let finalBoardId = boardId;
+    if (!finalBoardId) {
+      finalBoardId = await getBoardIdForRecette(strapi, recette);
     }
 
     // Normaliser les données
@@ -147,7 +148,7 @@ module.exports = ({ strapi }) => ({
       const response = await axios.post(
         `${apiBaseUrl}/v5/pins`,
         {
-          board_id: boardId,
+          board_id: finalBoardId,
           title: pinTitle.substring(0, 100),
           description: pinDescription.substring(0, 800),
           link: recipeUrl,
@@ -188,7 +189,7 @@ module.exports = ({ strapi }) => ({
     const { 
       pinsCount = 3, 
       delayBetweenPins = 5 * 60 * 1000, // 5 minutes par défaut
-      boardId = null 
+      boardId: providedBoardId = null 
     } = options;
 
     const recetteData = recette.attributes || recette;
@@ -202,6 +203,7 @@ module.exports = ({ strapi }) => ({
     }
 
     // Récupérer le board ID une seule fois
+    let boardId = providedBoardId;
     if (!boardId) {
       boardId = await getBoardIdForRecette(strapi, recette);
     }
