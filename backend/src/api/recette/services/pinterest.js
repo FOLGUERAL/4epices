@@ -98,7 +98,7 @@ module.exports = ({ strapi }) => ({
     const accessToken = oauthAccessToken || process.env.PINTEREST_ACCESS_TOKEN;
 
     if (!accessToken) {
-      throw new Error('Token Pinterest manquant. Connectez d'abord Pinterest (OAuth) ou configurez PINTEREST_ACCESS_TOKEN');
+      throw new Error('Token Pinterest manquant. Connectez d\'abord Pinterest (OAuth) ou configurez PINTEREST_ACCESS_TOKEN');
     }
 
     // Récupérer le board ID
