@@ -81,7 +81,8 @@ export default function PinterestConnectPanel() {
     oauthUrl.searchParams.set('client_id', clientId);
     oauthUrl.searchParams.set('redirect_uri', redirectUri);
     oauthUrl.searchParams.set('scope', 'pins:read,pins:write,boards:read,boards:write,user_accounts:read');
-    oauthUrl.searchParams.set('state', state);
+    // Ajouter admin=true dans le state pour que le callback sache que c'est un admin
+    oauthUrl.searchParams.set('state', `admin_${state}`);
 
     window.location.href = oauthUrl.toString();
   };

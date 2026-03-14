@@ -149,10 +149,13 @@ module.exports = {
           user: pinterestUser,
         });
 
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        // Rediriger vers l'admin Strapi si c'est une connexion admin
+        const strapiAdminUrl = process.env.STRAPI_ADMIN_URL || 
+                               process.env.ADMIN_URL || 
+                               (process.env.PUBLIC_STRAPI_URL || process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 1337}`) + '/admin';
         const postAuthRedirect =
           process.env.PINTEREST_POST_AUTH_REDIRECT ||
-          `${frontendUrl}/creer-recette?pinterest=connected`;
+          `${strapiAdminUrl}?pinterest=connected`;
         ctx.redirect(postAuthRedirect);
       } else {
         // Mode utilisateur : stocker dans la base de données
