@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { toast } from '@/components/Toast';
 import AdminAuth from '@/components/AdminAuth';
 import PinterestConnectPanel from '@/components/PinterestConnectPanel';
+import PinterestDashboard from '@/components/PinterestDashboard';
+import CommentsViewer from '@/components/CommentsViewer';
 
 function CreerRecettePageContent() {
   const router = useRouter();
@@ -42,6 +44,9 @@ function CreerRecettePageContent() {
   
   // État pour le modèle IA sélectionné
   const [selectedAIProvider, setSelectedAIProvider] = useState<'groq' | 'ollama' | 'openai'>('groq');
+  
+  // État pour les onglets
+  const [activeTab, setActiveTab] = useState<'create' | 'pinterest' | 'comments'>('create');
 
   // Fonction pour parser le texte avec l'IA (appelée manuellement via bouton)
   const handleParseWithAI = async () => {
@@ -732,19 +737,59 @@ function CreerRecettePageContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="max-w-md mx-auto px-4 py-6">
+      <div className="max-w-4xl mx-auto px-4 py-6">
         {/* En-tête */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Créer une recette
+            Administration
           </h1>
           <p className="text-gray-600 text-sm">
-            Dictez votre recette ou prenez une photo
+            Gérer vos recettes, Pinterest et commentaires
           </p>
         </div>
 
-        {/* Connexion Pinterest (OAuth) */}
-        <PinterestConnectPanel />
+        {/* Onglets */}
+        <div className="mb-6 bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('create')}
+              className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
+                activeTab === 'create'
+                  ? 'bg-orange-50 text-orange-600 border-b-2 border-orange-600'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              📝 Créer une recette
+            </button>
+            <button
+              onClick={() => setActiveTab('pinterest')}
+              className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
+                activeTab === 'pinterest'
+                  ? 'bg-red-50 text-red-600 border-b-2 border-red-600'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              📌 Dashboard Pinterest
+            </button>
+            <button
+              onClick={() => setActiveTab('comments')}
+              className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
+                activeTab === 'comments'
+                  ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              💬 Commentaires
+            </button>
+          </div>
+        </div>
+
+        {/* Contenu des onglets */}
+        <div className={activeTab === 'create' ? 'max-w-md mx-auto' : 'w-full'}>
+          {activeTab === 'create' && (
+            <>
+              {/* Connexion Pinterest (OAuth) */}
+              <PinterestConnectPanel />
 
         {/* Sélecteur d'API */}
         <div className="mb-4">
@@ -1015,9 +1060,23 @@ function CreerRecettePageContent() {
           )}
         </button>
 
-        {/* Info */}
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>💡 Astuce : Vous pouvez dicter et prendre une photo</p>
+              {/* Info */}
+              <div className="mt-6 text-center text-sm text-gray-500">
+                <p>💡 Astuce : Vous pouvez dicter et prendre une photo</p>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'pinterest' && (
+            <div className="space-y-6">
+              <PinterestConnectPanel />
+              <PinterestDashboard />
+            </div>
+          )}
+
+          {activeTab === 'comments' && (
+            <CommentsViewer />
+          )}
         </div>
       </div>
     </div>
