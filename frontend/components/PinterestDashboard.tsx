@@ -28,15 +28,40 @@ interface PinterestStats {
   readyTasks: number;
 }
 
+interface Board {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export default function PinterestDashboard() {
   const [loading, setLoading] = useState(true);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [stats, setStats] = useState<PinterestStats | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [boardsMap, setBoardsMap] = useState<Record<string, string>>({});
 
   const fetchDashboard = async () => {
     setLoading(true);
     try {
+      // Récupérer les boards pour le mapping ID -> nom
+      try {
+        const boardsResponse = await axios.get('/api/pinterest/admin/boards');
+        const boardsData = boardsResponse.data.boards || [];
+        setBoards(boardsData);
+        
+        // Créer un mapping ID -> nom
+        const mapping: Record<string, string> = {};
+        boardsData.forEach((board: Board) => {
+          mapping[board.id] = board.name;
+        });
+        setBoardsMap(mapping);
+      } catch (error) {
+        console.warn('Impossible de récupérer les boards:', error);
+        // Continuer même si les boards ne peuvent pas être récupérés
+      }
+
       // Récupérer l'état de la queue
       const queueResponse = await axios.get('/api/pinterest/queue-status');
       setQueueStatus(queueResponse.data);
@@ -177,7 +202,12 @@ export default function PinterestDashboard() {
                     </div>
                     <div className="text-sm text-gray-600">
                       <div>📅 {new Date(task.scheduledTime).toLocaleString('fr-FR')}</div>
-                      <div>📌 Board: {task.boardId}</div>
+                      <div>
+                        📌 Board: {boardsMap[task.boardId] || task.boardId}
+                        {boardsMap[task.boardId] && (
+                          <span className="text-xs text-gray-400 ml-2">({task.boardId})</span>
+                        )}
+                      </div>
                       {!task.isReady && (
                         <div>
                           ⏱️ Dans {task.minutesUntilReady > 0 

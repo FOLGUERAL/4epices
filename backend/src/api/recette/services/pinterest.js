@@ -203,6 +203,7 @@ module.exports = ({ strapi }) => ({
     // Récupérer les 3 boards (principale, catégorie, autre)
     const boards = await getThreeBoardsForRecette(strapi, recette);
     strapi.log.info(`[Pinterest] Boards configurés - Principal: ${boards.boardPrincipal}, Catégorie: ${boards.boardCategorie}, Autre: ${boards.boardAutre}`);
+    strapi.log.info(`[Pinterest] Distribution des pins - Pin #0,2: ${boards.boardPrincipal} | Pin #1,3,5: ${boards.boardCategorie} | Pin #4,6: ${boards.boardAutre}`);
 
     const createdPins = [];
     const errors = [];

@@ -107,13 +107,23 @@ async function getThreeBoardsForRecette(strapi, recette) {
   let boardAutre = boardPrincipal;
   
   // Essayer d'abord le board saisonnier
+  const season = getCurrentSeason();
   const seasonalBoard = getSeasonalBoard(strapi);
+  
+  strapi.log.info(`[Pinterest Boards] Saison actuelle: ${season}`);
+  strapi.log.info(`[Pinterest Boards] Board saisonnier détecté: ${seasonalBoard || 'aucun'}`);
+  strapi.log.info(`[Pinterest Boards] Variables d'environnement - PINTEREST_BOARD_SEASONAL_AUTOMNE_HIVER: ${process.env.PINTEREST_BOARD_SEASONAL_AUTOMNE_HIVER || 'non configuré'}`);
+  strapi.log.info(`[Pinterest Boards] Variables d'environnement - PINTEREST_BOARD_SEASONAL_PRINTEMPS_ETE: ${process.env.PINTEREST_BOARD_SEASONAL_PRINTEMPS_ETE || 'non configuré'}`);
+  
   if (seasonalBoard) {
     boardAutre = seasonalBoard;
+    strapi.log.info(`[Pinterest Boards] Board saisonnier sélectionné: ${boardAutre} (saison: ${season})`);
   } else if (process.env.PINTEREST_BOARD_SECONDARY) {
     // Fallback sur board secondaire si aucun board saisonnier configuré
     boardAutre = process.env.PINTEREST_BOARD_SECONDARY;
-    strapi.log.info(`[Pinterest Boards] Aucun board saisonnier configuré pour la saison ${getCurrentSeason()}, utilisation du board secondaire: ${boardAutre}`);
+    strapi.log.info(`[Pinterest Boards] Aucun board saisonnier configuré pour la saison ${season}, utilisation du board secondaire: ${boardAutre}`);
+  } else {
+    strapi.log.warn(`[Pinterest Boards] Aucun board saisonnier ni secondaire configuré, utilisation du board principal: ${boardAutre}`);
   }
   
   // Si tous les boards sont identiques, utiliser le board principal pour tous
@@ -143,14 +153,27 @@ async function getThreeBoardsForRecette(strapi, recette) {
 function getBoardForPinIndex(boards, pinIndex) {
   // Rotation selon le nouveau schéma :
   // Pin 0,2 → principal | Pin 1,3,5 → catégorie | Pin 4,6 → autre
+  let selectedBoard;
+  let boardType;
+  
   if (pinIndex === 0 || pinIndex === 2) {
-    return boards.boardPrincipal;
+    selectedBoard = boards.boardPrincipal;
+    boardType = 'principal';
   } else if (pinIndex === 1 || pinIndex === 3 || pinIndex === 5) {
-    return boards.boardCategorie;
+    selectedBoard = boards.boardCategorie;
+    boardType = 'catégorie';
   } else {
     // pinIndex === 4 || pinIndex === 6
-    return boards.boardAutre;
+    selectedBoard = boards.boardAutre;
+    boardType = 'autre (saisonnier/secondaire)';
   }
+  
+  // Log pour déboguer les pins saisonniers
+  if (pinIndex === 4 || pinIndex === 6) {
+    console.log(`[Pinterest Boards] Pin #${pinIndex} → Board "${boardType}": ${selectedBoard}`);
+  }
+  
+  return selectedBoard;
 }
 
 module.exports = {

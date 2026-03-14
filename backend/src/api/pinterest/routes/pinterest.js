@@ -51,6 +51,14 @@ module.exports = {
       },
     },
     {
+      method: 'GET',
+      path: '/pinterest/admin/boards',
+      handler: 'pinterest.adminBoards',
+      config: {
+        auth: false, // Utilise le token admin
+      },
+    },
+    {
       method: 'POST',
       path: '/pinterest/share',
       handler: 'pinterest.share',

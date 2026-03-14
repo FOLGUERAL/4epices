@@ -632,6 +632,50 @@ module.exports = {
   },
 
   /**
+   * GET /api/pinterest/admin/boards
+   * Liste les boards Pinterest avec le token admin (pour le dashboard)
+   */
+  async adminBoards(ctx) {
+    const auth = getPinterestAuth();
+    const accessToken = auth?.accessToken || process.env.PINTEREST_ACCESS_TOKEN;
+
+    if (!accessToken) {
+      return ctx.unauthorized('Token Pinterest manquant. Connectez-vous d\'abord via OAuth ou configurez PINTEREST_ACCESS_TOKEN');
+    }
+
+    try {
+      const boardsResponse = await axios.get(`${getPinterestApiUrl()}/v5/boards`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        params: {
+          page_size: 250, // Maximum
+        },
+        timeout: 15_000,
+      });
+
+      const boards = boardsResponse.data?.items || [];
+      
+      return ctx.send({
+        boards: boards.map(board => ({
+          id: board.id,
+          name: board.name,
+          description: board.description || '',
+        })),
+      });
+    } catch (e) {
+      const status = e?.response?.status;
+      strapi.log.error('[Pinterest Admin Boards] Erreur:', e.message);
+      
+      return ctx.internalServerError('Erreur lors de la récupération des boards', {
+        status,
+        data: e?.response?.data,
+        message: e?.message,
+      });
+    }
+  },
+
+  /**
    * POST /api/pinterest/process-queue
    * Force le traitement immédiat de toutes les tâches prêtes (pour debug/manuel ou cron Docker)
    */
