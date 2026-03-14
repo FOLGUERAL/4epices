@@ -17,6 +17,28 @@ module.exports = {
    * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }) {
+    // Vérifier que les cron jobs sont bien chargés
+    try {
+      // Dans Strapi 4, les cron jobs sont chargés depuis config/cron-tasks.js
+      // Vérifier si le module cron-tasks existe
+      const cronTasksPath = require('path').join(__dirname, '../../config/cron-tasks.js');
+      const fs = require('fs');
+      if (fs.existsSync(cronTasksPath)) {
+        strapi.log.info('✅ [BOOTSTRAP] Fichier cron-tasks.js trouvé');
+        try {
+          const cronTasks = require(cronTasksPath);
+          const cronKeys = Object.keys(cronTasks);
+          strapi.log.info(`✅ [BOOTSTRAP] ${cronKeys.length} cron job(s) défini(s) dans cron-tasks.js: ${cronKeys.join(', ')}`);
+        } catch (error) {
+          strapi.log.error('❌ [BOOTSTRAP] Erreur lors du chargement de cron-tasks.js:', error.message);
+        }
+      } else {
+        strapi.log.warn('⚠️ [BOOTSTRAP] Fichier cron-tasks.js non trouvé');
+      }
+    } catch (error) {
+      strapi.log.error('❌ [BOOTSTRAP] Erreur lors de la vérification des cron jobs:', error.message);
+    }
+
     // Enregistrer la route personnalisée pour publier sur Pinterest
     // Utiliser bootstrap() car les controllers sont chargés à ce moment-là
     try {
