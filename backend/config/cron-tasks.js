@@ -1,7 +1,36 @@
 module.exports = {
   /**
+   * Traiter la queue de pins Pinterest planifiés
+   * Exécuté toutes les 5 minutes pour respecter le rate limiting
+   */
+  '*/5 * * * *': async ({ strapi }) => {
+    try {
+      const queueService = strapi.service('api::recette.pinterest-queue');
+      
+      // Récupérer les tâches prêtes à être exécutées
+      const readyTasks = await queueService.getReadyTasks();
+      
+      if (readyTasks.length === 0) {
+        return; // Aucune tâche à traiter
+      }
+      
+      strapi.log.info(`[Pinterest Cron] ${readyTasks.length} tâche(s) à traiter`);
+      
+      // Traiter une seule tâche à la fois pour respecter le rate limiting
+      // (Pinterest recommande 1 pin toutes les 5 minutes)
+      const task = readyTasks[0];
+      await queueService.processTask(task);
+      
+      // Nettoyer les tâches expirées
+      await queueService.cleanup();
+    } catch (error) {
+      strapi.log.error('[Pinterest Cron] Erreur lors du traitement de la queue:', error);
+    }
+  },
+
+  /**
    * Vérifier les recettes à publier et créer les pins Pinterest
-   * Exécuté toutes les heures
+   * Exécuté toutes les heures pour les recettes qui n'ont pas encore de pins
    */
   '0 * * * *': async ({ strapi }) => {
     try {
@@ -19,30 +48,62 @@ module.exports = {
             $null: true,
           },
         },
-        populate: ['imagePrincipale'],
+        populate: ['imagePrincipale', 'imagesPinterest', 'categories'],
       });
 
       const pinterestService = strapi.service('api::recette.pinterest');
 
       for (const recette of recettes) {
         try {
-          const pinData = await pinterestService.createPin(recette);
+          // Vérifier si des pins existent déjà dans le nouveau format
+          const recetteData = recette.attributes || recette;
+          const existingPins = recetteData.pinterestPins || {};
+          let hasPins = false;
           
-          await strapi.entityService.update('api::recette.recette', recette.id, {
-            data: {
-              pinterestPinId: pinData.id,
-            },
+          // Vérifier si pinterestPins contient des données
+          if (typeof existingPins === 'object' && Object.keys(existingPins).length > 0) {
+            hasPins = true;
+          } else if (recetteData.pinterestPinId) {
+            hasPins = true;
+          }
+          
+          if (hasPins) {
+            continue; // Cette recette a déjà des pins
+          }
+          
+          // Créer 3 pins (premier immédiatement, les autres planifiés)
+          const resultPins = await pinterestService.createMultiplePins(recette, {
+            pinsCount: 3,
+            delayBetweenPins: 5 * 60 * 1000, // 5 minutes
           });
+          
+          // Mettre à jour avec le premier pin créé
+          if (resultPins.createdPins.length > 0) {
+            const firstPin = resultPins.createdPins[0];
+            await strapi.entityService.update('api::recette.recette', recette.id, {
+              data: {
+                pinterestPinId: firstPin.pinId, // Compatibilité legacy
+                pinterestPins: {
+                  [firstPin.pinId]: {
+                    imageUrl: firstPin.imageUrl,
+                    pinIndex: firstPin.pinIndex,
+                    boardId: firstPin.boardId,
+                    createdAt: firstPin.createdAt,
+                  },
+                },
+              },
+            });
+          }
 
           const titre = recette.attributes?.titre || recette.titre || 'Recette sans titre';
-          strapi.log.info(`Pin Pinterest créé pour la recette: ${titre}`);
+          strapi.log.info(`[Pinterest Cron] Pins créés pour la recette: ${titre} (1 immédiat, ${resultPins.scheduledPins} planifiés)`);
         } catch (error) {
           const titre = recette.attributes?.titre || recette.titre || 'Recette sans titre';
-          strapi.log.error(`Erreur lors de la création du pin pour ${titre}:`, error);
+          strapi.log.error(`[Pinterest Cron] Erreur lors de la création des pins pour ${titre}:`, error);
         }
       }
     } catch (error) {
-      strapi.log.error('Erreur dans le cron job Pinterest:', error);
+      strapi.log.error('[Pinterest Cron] Erreur dans le cron job Pinterest:', error);
     }
   },
 };

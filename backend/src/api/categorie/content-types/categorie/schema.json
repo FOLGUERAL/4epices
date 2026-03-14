@@ -25,6 +25,10 @@
     "description": {
       "type": "text"
     },
+    "pinterestBoardId": {
+      "type": "string",
+      "required": false
+    },
     "recettes": {
       "type": "relation",
       "relation": "manyToMany",

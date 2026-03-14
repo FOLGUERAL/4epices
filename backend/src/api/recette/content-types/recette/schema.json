@@ -32,6 +32,12 @@
       "required": true,
       "allowedTypes": ["images"]
     },
+    "imagesPinterest": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
     "tempsPreparation": {
       "type": "integer",
       "required": false
@@ -76,6 +82,10 @@
     },
     "pinterestPinId": {
       "type": "string",
+      "required": false
+    },
+    "pinterestPins": {
+      "type": "json",
       "required": false
     },
     "pinterestAutoPublish": {

@@ -193,19 +193,48 @@ module.exports = {
     }
     
     // Si auto-publish est activé et que la recette est publiée
-    if (result.pinterestAutoPublish && result.publishedAt && !result.pinterestPinId) {
-      const pinterestService = strapi.service('api::recette.pinterest');
+    if (result.pinterestAutoPublish && result.publishedAt) {
+      // Vérifier si des pins existent déjà
+      const existingPins = result.pinterestPins || {};
+      const hasPins = Object.keys(existingPins).length > 0 || result.pinterestPinId;
       
-      try {
-        const pinData = await pinterestService.createPin(result);
-        await strapi.entityService.update('api::recette.recette', result.id, {
-          data: {
-            pinterestPinId: pinData.id,
-          },
-        });
-        strapi.log.info(`Pin Pinterest créé automatiquement pour: ${result.titre}`);
-      } catch (error) {
-        strapi.log.error('Erreur lors de la publication automatique Pinterest:', error);
+      if (!hasPins) {
+        const pinterestService = strapi.service('api::recette.pinterest');
+        
+        try {
+          // Récupérer la recette complète avec toutes les relations nécessaires
+          const recetteComplete = await strapi.entityService.findOne('api::recette.recette', result.id, {
+            populate: ['imagePrincipale', 'imagesPinterest', 'categories'],
+          });
+          
+          // Créer 3 pins (premier immédiatement, les autres planifiés)
+          const resultPins = await pinterestService.createMultiplePins(recetteComplete, {
+            pinsCount: 3,
+            delayBetweenPins: 5 * 60 * 1000, // 5 minutes
+          });
+          
+          // Mettre à jour avec le premier pin créé
+          if (resultPins.createdPins.length > 0) {
+            const firstPin = resultPins.createdPins[0];
+            await strapi.entityService.update('api::recette.recette', result.id, {
+              data: {
+                pinterestPinId: firstPin.pinId, // Compatibilité legacy
+                pinterestPins: {
+                  [firstPin.pinId]: {
+                    imageUrl: firstPin.imageUrl,
+                    pinIndex: firstPin.pinIndex,
+                    boardId: firstPin.boardId,
+                    createdAt: firstPin.createdAt,
+                  },
+                },
+              },
+            });
+          }
+          
+          strapi.log.info(`Pins Pinterest créés automatiquement pour: ${result.titre} (1 immédiat, ${resultPins.scheduledPins} planifiés)`);
+        } catch (error) {
+          strapi.log.error('Erreur lors de la publication automatique Pinterest:', error);
+        }
       }
     }
   },
@@ -256,32 +285,52 @@ module.exports = {
       result.pinterestAutoPublish;
     const pinterestAutoPublishIsActive = result.pinterestAutoPublish;
     const recetteIsPublished = result.publishedAt;
-    const noPinExists = !result.pinterestPinId;
+    
+    // Vérifier si des pins existent déjà
+    const existingPins = result.pinterestPins || {};
+    const hasPins = Object.keys(existingPins).length > 0 || result.pinterestPinId;
     
     // Publier sur Pinterest si :
     // 1. auto-publish vient d'être activé OU
     // 2. auto-publish est activé ET la recette est publiée ET aucun Pin n'existe
     if ((pinterestAutoPublishWasActivated || pinterestAutoPublishIsActive) && 
         recetteIsPublished && 
-        noPinExists) {
+        !hasPins) {
       const pinterestService = strapi.service('api::recette.pinterest');
       
       try {
         // Récupérer la recette complète avec toutes les relations nécessaires
         const recetteComplete = await strapi.entityService.findOne('api::recette.recette', result.id, {
-          populate: ['imagePrincipale'],
+          populate: ['imagePrincipale', 'imagesPinterest', 'categories'],
         });
         
-        const pinData = await pinterestService.createPin(recetteComplete);
-        await strapi.entityService.update('api::recette.recette', result.id, {
-          data: {
-            pinterestPinId: pinData.id,
-          },
+        // Créer 3 pins (premier immédiatement, les autres planifiés)
+        const resultPins = await pinterestService.createMultiplePins(recetteComplete, {
+          pinsCount: 3,
+          delayBetweenPins: 5 * 60 * 1000, // 5 minutes
         });
+        
+        // Mettre à jour avec le premier pin créé
+        if (resultPins.createdPins.length > 0) {
+          const firstPin = resultPins.createdPins[0];
+          await strapi.entityService.update('api::recette.recette', result.id, {
+            data: {
+              pinterestPinId: firstPin.pinId, // Compatibilité legacy
+              pinterestPins: {
+                [firstPin.pinId]: {
+                  imageUrl: firstPin.imageUrl,
+                  pinIndex: firstPin.pinIndex,
+                  boardId: firstPin.boardId,
+                  createdAt: firstPin.createdAt,
+                },
+              },
+            },
+          });
+        }
         
         const message = pinterestAutoPublishWasActivated 
-          ? `Pin Pinterest créé automatiquement après activation de pinterestAutoPublish pour: ${result.titre}`
-          : `Pin Pinterest créé automatiquement pour: ${result.titre}`;
+          ? `Pins Pinterest créés automatiquement après activation de pinterestAutoPublish pour: ${result.titre} (1 immédiat, ${resultPins.scheduledPins} planifiés)`
+          : `Pins Pinterest créés automatiquement pour: ${result.titre} (1 immédiat, ${resultPins.scheduledPins} planifiés)`;
         strapi.log.info(message);
       } catch (error) {
         strapi.log.error('Erreur lors de la publication automatique Pinterest:', error);
