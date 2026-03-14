@@ -17,23 +17,29 @@ module.exports = {
    * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }) {
-    // Vérifier que les cron jobs sont bien chargés
+    // Vérifier que les cron jobs sont bien chargés par Strapi
     try {
-      // Dans Strapi 4, les cron jobs sont chargés depuis config/cron-tasks.js
-      // Vérifier si le module cron-tasks existe
-      const cronTasksPath = require('path').join(__dirname, '../../config/cron-tasks.js');
-      const fs = require('fs');
-      if (fs.existsSync(cronTasksPath)) {
-        strapi.log.info('✅ [BOOTSTRAP] Fichier cron-tasks.js trouvé');
-        try {
-          const cronTasks = require(cronTasksPath);
-          const cronKeys = Object.keys(cronTasks);
-          strapi.log.info(`✅ [BOOTSTRAP] ${cronKeys.length} cron job(s) défini(s) dans cron-tasks.js: ${cronKeys.join(', ')}`);
-        } catch (error) {
-          strapi.log.error('❌ [BOOTSTRAP] Erreur lors du chargement de cron-tasks.js:', error.message);
-        }
+      // Strapi charge automatiquement les cron jobs depuis config/cron-tasks.js
+      // Vérifier si Strapi a chargé les cron jobs
+      const cronConfig = strapi.config.get('server.cron');
+      
+      if (cronConfig && Object.keys(cronConfig).length > 0) {
+        const cronKeys = Object.keys(cronConfig);
+        strapi.log.info(`✅ [BOOTSTRAP] ${cronKeys.length} cron job(s) chargé(s) par Strapi: ${cronKeys.join(', ')}`);
       } else {
-        strapi.log.warn('⚠️ [BOOTSTRAP] Fichier cron-tasks.js non trouvé');
+        strapi.log.warn('⚠️ [BOOTSTRAP] Aucun cron job chargé par Strapi');
+        strapi.log.warn(`⚠️ [BOOTSTRAP] Working directory: ${process.cwd()}`);
+        
+        // Vérifier si le fichier existe
+        const path = require('path');
+        const fs = require('fs');
+        const cronTasksPath = path.join(process.cwd(), 'config', 'cron-tasks.js');
+        if (fs.existsSync(cronTasksPath)) {
+          strapi.log.info(`✅ [BOOTSTRAP] Fichier cron-tasks.js existe: ${cronTasksPath}`);
+          strapi.log.warn('⚠️ [BOOTSTRAP] Mais Strapi ne l\'a pas chargé - vérifiez la configuration');
+        } else {
+          strapi.log.warn(`⚠️ [BOOTSTRAP] Fichier cron-tasks.js non trouvé: ${cronTasksPath}`);
+        }
       }
     } catch (error) {
       strapi.log.error('❌ [BOOTSTRAP] Erreur lors de la vérification des cron jobs:', error.message);
