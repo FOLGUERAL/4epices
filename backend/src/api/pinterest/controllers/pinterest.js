@@ -630,5 +630,68 @@ module.exports = {
       });
     }
   },
+
+  /**
+   * POST /api/pinterest/process-queue
+   * Force le traitement immédiat de toutes les tâches prêtes (pour debug/manuel)
+   */
+  async processQueue(ctx) {
+    try {
+      const queueService = strapi.service('api::recette.pinterest-queue');
+      const readyTasks = await queueService.getReadyTasks();
+      
+      if (readyTasks.length === 0) {
+        return ctx.send({
+          success: true,
+          message: 'Aucune tâche prête à être traitée',
+          processed: 0,
+        });
+      }
+      
+      strapi.log.info(`[Pinterest Manual] Traitement manuel de ${readyTasks.length} tâche(s) prête(s)`);
+      
+      const results = [];
+      for (const task of readyTasks) {
+        try {
+          strapi.log.info(`[Pinterest Manual] Traitement de la tâche ${task.id} (pin #${task.pinIndex} pour recette ${task.recetteId})`);
+          const result = await queueService.processTask(task);
+          results.push({
+            taskId: task.id,
+            pinIndex: task.pinIndex,
+            recetteId: task.recetteId,
+            success: result.success,
+            error: result.error,
+            attempts: result.attempts,
+          });
+        } catch (error) {
+          results.push({
+            taskId: task.id,
+            pinIndex: task.pinIndex,
+            recetteId: task.recetteId,
+            success: false,
+            error: error.message,
+          });
+        }
+      }
+      
+      // Nettoyer les tâches expirées
+      await queueService.cleanup();
+      
+      const successCount = results.filter(r => r.success).length;
+      const failCount = results.filter(r => !r.success).length;
+      
+      return ctx.send({
+        success: true,
+        message: `${successCount} tâche(s) traitée(s) avec succès, ${failCount} échec(s)`,
+        processed: readyTasks.length,
+        results,
+      });
+    } catch (error) {
+      strapi.log.error('[Pinterest Manual] Erreur lors du traitement manuel de la queue:', error);
+      return ctx.internalServerError('Erreur lors du traitement de la queue', {
+        error: error.message,
+      });
+    }
+  },
 };
 

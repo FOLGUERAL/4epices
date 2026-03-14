@@ -235,6 +235,59 @@ pg_dump -U "4epices_user" "4epices" > backup_$(date +%Y%m%d).sql
 psql -U "4epices_user" "4epices" < backup_YYYYMMDD.sql
 ```
 
+### 8.1. Recharger les Variables d'Environnement
+
+#### Avec Docker Compose (Recommandé)
+
+```bash
+# 1. Modifier les variables dans docker-compose.yml ou dans un fichier .env à la racine
+# Par exemple, pour changer GROQ_MODEL :
+# Dans docker-compose.yml, modifier la ligne :
+#   GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+# Ou créer/modifier un fichier .env à la racine avec :
+#   GROQ_MODEL=llama-3.3-70b-versatile
+
+# 2. Recharger les variables d'environnement en recréant les conteneurs
+docker-compose down
+docker-compose up -d
+
+# OU simplement redémarrer le service concerné (plus rapide)
+docker-compose restart frontend
+
+# 3. Vérifier que les nouvelles variables sont chargées
+docker-compose exec frontend env | grep GROQ_MODEL
+```
+
+#### Avec PM2 (Déploiement manuel)
+
+```bash
+# 1. Modifier les variables dans les fichiers .env
+# - Backend : backend/.env
+# - Frontend : frontend/.env.local
+
+# 2. Redémarrer les services PM2
+pm2 restart 4epices-backend
+pm2 restart 4epices-frontend
+
+# OU redémarrer tous les services
+pm2 restart all
+
+# 3. Vérifier les logs pour confirmer
+pm2 logs 4epices-frontend --lines 50
+```
+
+#### Variables d'environnement importantes pour l'IA
+
+**Frontend (dans docker-compose.yml ou .env) :**
+- `AI_PROVIDER` : groq, ollama, ou openai
+- `GROQ_API_KEY` : Clé API Groq
+- `GROQ_MODEL` : Modèle Groq (ex: llama-3.3-70b-versatile)
+- `OLLAMA_URL` : URL d'Ollama (ex: http://ollama:11434)
+- `OLLAMA_MODEL` : Modèle Ollama (ex: llama3.2:3b)
+- `OPENAI_API_KEY` : Clé API OpenAI
+
+**Note importante :** Après modification des variables d'environnement, il est **nécessaire de redémarrer les conteneurs/services** pour que les changements soient pris en compte. Les variables d'environnement sont chargées au démarrage de l'application.
+
 ### 9. Monitoring
 
 ```bash

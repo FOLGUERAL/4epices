@@ -31,11 +31,34 @@ module.exports = {
       
       strapi.log.info(`[Pinterest Cron] ${readyTasks.length} tâche(s) prête(s) à traiter`);
       
-      // Traiter une seule tâche à la fois pour respecter le rate limiting
+      // Traiter toutes les tâches prêtes, mais une seule à la fois pour respecter le rate limiting
       // (Pinterest recommande 1 pin toutes les 5 minutes)
-      const task = readyTasks[0];
-      strapi.log.info(`[Pinterest Cron] Traitement de la tâche ${task.id} (pin #${task.pinIndex} pour recette ${task.recetteId})`);
-      await queueService.processTask(task);
+      // Comme le cron s'exécute toutes les 5 minutes, on peut traiter une tâche par exécution
+      let processed = 0;
+      for (const task of readyTasks) {
+        try {
+          strapi.log.info(`[Pinterest Cron] Traitement de la tâche ${task.id} (pin #${task.pinIndex} pour recette ${task.recetteId})`);
+          const result = await queueService.processTask(task);
+          
+          if (result.success) {
+            processed++;
+            strapi.log.info(`[Pinterest Cron] Tâche ${task.id} traitée avec succès`);
+            // Traiter une seule tâche par exécution du cron pour respecter le rate limiting
+            // Les autres seront traitées lors des prochaines exécutions (toutes les 5 min)
+            break;
+          } else {
+            strapi.log.warn(`[Pinterest Cron] Tâche ${task.id} échouée: ${result.error}`);
+            // Continuer avec la tâche suivante si celle-ci a échoué
+          }
+        } catch (error) {
+          strapi.log.error(`[Pinterest Cron] Erreur lors du traitement de la tâche ${task.id}:`, error);
+          // Continuer avec la tâche suivante en cas d'erreur
+        }
+      }
+      
+      if (processed > 0) {
+        strapi.log.info(`[Pinterest Cron] ${processed} tâche(s) traitée(s) avec succès`);
+      }
       
       // Nettoyer les tâches expirées
       await queueService.cleanup();

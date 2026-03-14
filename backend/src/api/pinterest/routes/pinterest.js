@@ -74,6 +74,14 @@ module.exports = {
         auth: false, // Pour debug
       },
     },
+    {
+      method: 'POST',
+      path: '/pinterest/process-queue',
+      handler: 'pinterest.processQueue',
+      config: {
+        auth: false, // Pour debug/manuel
+      },
+    },
   ],
 };
 
