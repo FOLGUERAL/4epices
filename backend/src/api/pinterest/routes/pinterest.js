@@ -66,6 +66,14 @@ module.exports = {
         auth: false, // Accessible à tous
       },
     },
+    {
+      method: 'GET',
+      path: '/pinterest/queue-status',
+      handler: 'pinterest.queueStatus',
+      config: {
+        auth: false, // Pour debug
+      },
+    },
   ],
 };
 

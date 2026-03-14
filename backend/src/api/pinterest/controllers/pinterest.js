@@ -593,5 +593,42 @@ module.exports = {
       });
     }
   },
+
+  /**
+   * GET /api/pinterest/queue-status
+   * Affiche l'état de la queue de pins planifiés (pour debug)
+   */
+  async queueStatus(ctx) {
+    try {
+      const queueService = strapi.service('api::recette.pinterest-queue');
+      const allTasks = await queueService.getAllTasks();
+      const readyTasks = await queueService.getReadyTasks();
+      
+      const now = new Date();
+      const tasksWithStatus = allTasks.map(task => {
+        const scheduledTime = new Date(task.scheduledTime);
+        return {
+          id: task.id,
+          recetteId: task.recetteId,
+          pinIndex: task.pinIndex,
+          scheduledTime: task.scheduledTime,
+          isReady: scheduledTime <= now,
+          minutesUntilReady: Math.round((scheduledTime - now) / 1000 / 60),
+          attempts: task.attempts,
+          maxAttempts: task.maxAttempts,
+        };
+      });
+      
+      return ctx.send({
+        total: allTasks.length,
+        ready: readyTasks.length,
+        tasks: tasksWithStatus,
+      });
+    } catch (error) {
+      return ctx.internalServerError('Erreur lors de la récupération de l\'état de la queue', {
+        error: error.message,
+      });
+    }
+  },
 };
 

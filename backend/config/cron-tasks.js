@@ -7,18 +7,34 @@ module.exports = {
     try {
       const queueService = strapi.service('api::recette.pinterest-queue');
       
+      // Récupérer toutes les tâches pour debug
+      const allTasks = await queueService.getAllTasks();
+      strapi.log.info(`[Pinterest Cron] Vérification de la queue: ${allTasks.length} tâche(s) en attente`);
+      
+      // Afficher les détails des tâches en attente
+      if (allTasks.length > 0) {
+        allTasks.forEach(task => {
+          const scheduledTime = new Date(task.scheduledTime);
+          const now = new Date();
+          const isReady = scheduledTime <= now;
+          strapi.log.info(`[Pinterest Cron] Tâche ${task.id}: pin #${task.pinIndex} pour recette ${task.recetteId}, planifiée pour ${task.scheduledTime}, ${isReady ? 'PRÊTE' : 'en attente'} (${Math.round((scheduledTime - now) / 1000 / 60)} min)`);
+        });
+      }
+      
       // Récupérer les tâches prêtes à être exécutées
       const readyTasks = await queueService.getReadyTasks();
       
       if (readyTasks.length === 0) {
-        return; // Aucune tâche à traiter
+        strapi.log.info('[Pinterest Cron] Aucune tâche prête à être exécutée');
+        return;
       }
       
-      strapi.log.info(`[Pinterest Cron] ${readyTasks.length} tâche(s) à traiter`);
+      strapi.log.info(`[Pinterest Cron] ${readyTasks.length} tâche(s) prête(s) à traiter`);
       
       // Traiter une seule tâche à la fois pour respecter le rate limiting
       // (Pinterest recommande 1 pin toutes les 5 minutes)
       const task = readyTasks[0];
+      strapi.log.info(`[Pinterest Cron] Traitement de la tâche ${task.id} (pin #${task.pinIndex} pour recette ${task.recetteId})`);
       await queueService.processTask(task);
       
       // Nettoyer les tâches expirées
