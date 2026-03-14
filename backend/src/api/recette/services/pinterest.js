@@ -8,6 +8,7 @@ const axios = require('axios');
 const { getPinterestAuth } = require('../../../utils/pinterestAuthStore');
 const { getBoardIdForRecette } = require('../../../utils/pinterestBoardMapper');
 const pinterestBoardHelper = require('../../../utils/pinterestBoardHelper');
+const { getThreeBoardsForRecette, getBoardForPinIndex } = require('../../../utils/pinterestBoardsManager');
 
 module.exports = ({ strapi }) => ({
   /**
@@ -110,25 +111,22 @@ module.exports = ({ strapi }) => ({
     // Normaliser les données
     const recetteData = recette.attributes || recette;
 
-    // Générer le contenu avec variations
+    // Générer le contenu avec Groq pour tous les pins
     let pinTitle, pinDescription;
     try {
-      // Essayer d'utiliser Groq pour le premier pin seulement
-      if (pinIndex === 0) {
-        const contentGenerator = strapi.service('api::recette.pinterest-content-generator');
-        const generatedContent = await contentGenerator.generateContent(recette);
-        pinTitle = generatedContent.title;
-        pinDescription = generatedContent.description;
-        strapi.log.info(`[Pinterest] Contenu généré avec Groq pour pin #${pinIndex}: ${recetteData.titre}`);
-      } else {
-        // Pour les autres pins, utiliser les variations
-        const content = this.generatePinContent(recetteData, pinIndex);
-        pinTitle = content.title;
-        pinDescription = content.description;
-      }
+      // Utiliser Groq pour générer le contenu optimisé
+      const contentGenerator = strapi.service('api::recette.pinterest-content-generator');
+      const generatedContent = await contentGenerator.generateContent(recette, pinIndex);
+      pinTitle = generatedContent.title;
+      pinDescription = generatedContent.description;
+      strapi.log.info(`[Pinterest] Contenu généré avec Groq pour pin #${pinIndex}: ${recetteData.titre}`);
     } catch (error) {
-      // Fallback sur les variations manuelles
-      strapi.log.warn(`[Pinterest] Erreur génération contenu, utilisation des variations:`, error.message);
+      // Fallback sur les variations manuelles en cas d'erreur (rate limit, quota, etc.)
+      if (error.message === 'QUOTA_EXCEEDED' || error.message.includes('rate limit')) {
+        strapi.log.warn(`[Pinterest] Rate limit/quota Groq atteint pour pin #${pinIndex}, utilisation des variations manuelles`);
+      } else {
+        strapi.log.warn(`[Pinterest] Erreur génération contenu Groq pour pin #${pinIndex}, utilisation des variations:`, error.message);
+      }
       const content = this.generatePinContent(recetteData, pinIndex);
       pinTitle = content.title;
       pinDescription = content.description;
@@ -183,12 +181,12 @@ module.exports = ({ strapi }) => ({
   },
 
   /**
-   * Créer plusieurs pins Pinterest pour une recette (3 par défaut)
+   * Créer plusieurs pins Pinterest pour une recette
+   * Option A modifiée : 7 pins sur 25 jours avec distribution personnalisée
    */
   async createMultiplePins(recette, options = {}) {
     const { 
-      pinsCount = 3, 
-      delayBetweenPins = 5 * 60 * 1000, // 5 minutes par défaut
+      pinsCount = 7, // 7 pins par défaut
       boardId: providedBoardId = null 
     } = options;
 
@@ -202,18 +200,33 @@ module.exports = ({ strapi }) => ({
       throw new Error('Aucune image disponible pour créer des pins Pinterest');
     }
 
-    // Récupérer le board ID une seule fois
-    let boardId = providedBoardId;
-    if (!boardId) {
-      boardId = await getBoardIdForRecette(strapi, recette);
-    }
+    // Récupérer les 3 boards (principale, catégorie, autre)
+    const boards = await getThreeBoardsForRecette(strapi, recette);
+    strapi.log.info(`[Pinterest] Boards configurés - Principal: ${boards.boardPrincipal}, Catégorie: ${boards.boardCategorie}, Autre: ${boards.boardAutre}`);
 
     const createdPins = [];
     const errors = [];
 
-    // Créer le premier pin immédiatement
+    // Distribution pour tests : 5 minutes entre chaque pin
+    // TODO: Remettre les délais en jours après les tests
+    const pinSchedule = [
+      0,      // Pin #0 : Immédiat
+      5,      // Pin #1 : +5 minutes
+      10,     // Pin #2 : +10 minutes
+      15,     // Pin #3 : +15 minutes
+      20,     // Pin #4 : +20 minutes
+      25,     // Pin #5 : +25 minutes
+      30,     // Pin #6 : +30 minutes
+    ];
+    
+    // Convertir les minutes en millisecondes pour les tests
+    const isTestMode = true; // TODO: Passer à false après les tests
+    const scheduleMultiplier = isTestMode ? 60 * 1000 : 24 * 60 * 60 * 1000; // minutes ou jours
+
+    // Créer le premier pin immédiatement sur le board principal
     try {
       const imageUrl = images[0];
+      const boardId = getBoardForPinIndex(boards, 0);
       const pinData = await this.createPinFromImage(recette, imageUrl, 0, boardId);
       createdPins.push({
         pinId: pinData.id,
@@ -222,16 +235,21 @@ module.exports = ({ strapi }) => ({
         createdAt: new Date().toISOString(),
         boardId,
       });
-      strapi.log.info(`[Pinterest] Pin #0 créé pour: ${recetteData.titre} (ID: ${pinData.id})`);
+      strapi.log.info(`[Pinterest] Pin #0 créé pour: ${recetteData.titre} (ID: ${pinData.id}, Board: ${boardId})`);
     } catch (error) {
       errors.push({ pinIndex: 0, error: error.message });
       strapi.log.error(`[Pinterest] Erreur création pin #0:`, error);
     }
 
-    // Planifier les autres pins dans la queue
+    // Planifier les autres pins dans la queue avec les dates personnalisées
     for (let i = 1; i < pinsCount; i++) {
       const imageUrl = images[i % images.length]; // Répéter les images si nécessaire
-      const scheduledTime = new Date(Date.now() + (i * delayBetweenPins));
+      // Calculer la date selon le planning personnalisé
+      const scheduleValue = pinSchedule[i] || (i * 5); // Fallback si l'index dépasse le tableau
+      const scheduledTime = new Date(Date.now() + (scheduleValue * scheduleMultiplier));
+      
+      // Déterminer le board selon l'index (rotation)
+      const boardId = getBoardForPinIndex(boards, i);
       
       // Ajouter à la queue
       const queueService = strapi.service('api::recette.pinterest-queue');
@@ -243,7 +261,12 @@ module.exports = ({ strapi }) => ({
         scheduledTime: scheduledTime.toISOString(),
       });
       
-      strapi.log.info(`[Pinterest] Pin #${i} planifié pour: ${scheduledTime.toISOString()}`);
+      if (isTestMode) {
+        strapi.log.info(`[Pinterest] Pin #${i} planifié pour: ${scheduledTime.toISOString()} (dans ${scheduleValue} minutes, Board: ${boardId}) [MODE TEST]`);
+      } else {
+        const daysFromNow = Math.round((scheduledTime - new Date()) / (24 * 60 * 60 * 1000));
+        strapi.log.info(`[Pinterest] Pin #${i} planifié pour: ${scheduledTime.toISOString()} (dans ${daysFromNow} jours, Board: ${boardId})`);
+      }
     }
 
     return {

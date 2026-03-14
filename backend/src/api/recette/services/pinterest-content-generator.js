@@ -74,9 +74,10 @@ module.exports = ({ strapi }) => ({
    * Génère du contenu optimisé pour Pinterest à partir d'une recette
    * 
    * @param {Object} recette - La recette Strapi
+   * @param {Number} pinIndex - Index du pin (0, 1, 2...) pour varier le contenu
    * @returns {Promise<Object>} { title, description, hashtags }
    */
-  async generateContent(recette) {
+  async generateContent(recette, pinIndex = 0) {
     // Normaliser les données (Strapi peut retourner avec ou sans attributes)
     const recetteData = recette.attributes || recette;
 
@@ -137,7 +138,16 @@ module.exports = ({ strapi }) => ({
       });
     }
 
-    // Construire le prompt pour Groq
+    // Construire le prompt pour Groq avec variation selon pinIndex
+    let variationInstruction = '';
+    if (pinIndex === 1) {
+      variationInstruction = '\nVARIATION : Mettre l\'accent sur le TEMPS DE PRÉPARATION et la RAPIDITÉ de la recette.';
+    } else if (pinIndex === 2) {
+      variationInstruction = '\nVARIATION : Mettre l\'accent sur le NOMBRE DE PERSONNES et le PARTAGE.';
+    } else if (pinIndex > 2) {
+      variationInstruction = `\nVARIATION : Créer une variation unique et différente des précédentes, en mettant l'accent sur un aspect différent (ingrédients, saveurs, tradition, modernité, etc.).`;
+    }
+
     const prompt = `Génère un contenu optimisé Pinterest pour cette recette :
 
 TITRE : "${titre}"
@@ -150,6 +160,7 @@ NOMBRE DE PERSONNES : ${personnes}
 CATÉGORIES : ${categoriesList.length > 0 ? categoriesList.join(', ') : 'Non spécifié'}
 TAGS : ${tagsList.length > 0 ? tagsList.join(', ') : 'Non spécifié'}
 INGRÉDIENTS PRINCIPAUX : ${ingredientsPreview.length > 0 ? ingredientsPreview.join(', ') : 'Non spécifié'}
+${variationInstruction}
 
 RÈGLES IMPORTANTES :
 1. Le titre doit être accrocheur, avec des emojis pertinents, MAX 100 caractères
@@ -158,6 +169,7 @@ RÈGLES IMPORTANTES :
 4. Utiliser un ton convivial et appétissant
 5. Mettre en avant les points forts (rapide, facile, traditionnel, etc.)
 6. Ajouter un call-to-action subtil (ex: "Cliquez pour découvrir la recette complète")
+7. ${pinIndex > 0 ? 'Créer une variation unique et différente des autres pins de cette recette.' : ''}
 
 Retourne UNIQUEMENT du JSON valide avec cette structure :
 {

@@ -17,7 +17,23 @@ module.exports = {
           const scheduledTime = new Date(task.scheduledTime);
           const now = new Date();
           const isReady = scheduledTime <= now;
-          strapi.log.info(`[Pinterest Cron] Tâche ${task.id}: pin #${task.pinIndex} pour recette ${task.recetteId}, planifiée pour ${task.scheduledTime}, ${isReady ? 'PRÊTE' : 'en attente'} (${Math.round((scheduledTime - now) / 1000 / 60)} min)`);
+          const diffMs = scheduledTime - now;
+          const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000));
+          const diffHours = Math.round(diffMs / (60 * 60 * 1000));
+          const diffMinutes = Math.round(diffMs / (60 * 1000));
+          
+          let timeUntilReady = '';
+          if (isReady) {
+            timeUntilReady = 'PRÊTE';
+          } else if (Math.abs(diffDays) >= 1) {
+            timeUntilReady = `dans ${diffDays} jour(s)`;
+          } else if (Math.abs(diffHours) >= 1) {
+            timeUntilReady = `dans ${diffHours} heure(s)`;
+          } else {
+            timeUntilReady = `dans ${diffMinutes} minute(s)`;
+          }
+          
+          strapi.log.info(`[Pinterest Cron] Tâche ${task.id}: pin #${task.pinIndex} pour recette ${task.recetteId}, planifiée pour ${task.scheduledTime}, ${isReady ? 'PRÊTE' : 'en attente'} (${timeUntilReady}, Board: ${task.boardId})`);
         });
       }
       
