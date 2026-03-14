@@ -207,9 +207,9 @@ module.exports = {
             populate: ['imagePrincipale', 'imagesPinterest', 'categories'],
           });
           
-          // Créer 7 pins avec distribution personnalisée
+          // Créer 6 pins avec distribution personnalisée
           const resultPins = await pinterestService.createMultiplePins(recetteComplete, {
-            pinsCount: 7,
+            pinsCount: 6,
           });
           
           // Mettre à jour avec le premier pin créé
@@ -303,9 +303,9 @@ module.exports = {
           populate: ['imagePrincipale', 'imagesPinterest', 'categories'],
         });
         
-        // Créer 7 pins avec distribution personnalisée
+        // Créer 6 pins avec distribution personnalisée
         const resultPins = await pinterestService.createMultiplePins(recetteComplete, {
-          pinsCount: 7,
+          pinsCount: 6,
         });
         
         // Mettre à jour avec le premier pin créé

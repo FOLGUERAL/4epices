@@ -145,31 +145,31 @@ async function getThreeBoardsForRecette(strapi, recette) {
 
 /**
  * Détermine quel board utiliser pour un pin selon son index
- * Rotation : 0,2 → principal | 1,3,5 → catégorie | 4,6 → autre
+ * Rotation : 0,3 → principal | 1,4 → catégorie | 2,5 → autre (saisonnier)
  * @param {Object} boards - Les 3 boards disponibles
- * @param {Number} pinIndex - Index du pin (0-6)
+ * @param {Number} pinIndex - Index du pin (0-5)
  * @returns {String} Board ID à utiliser
  */
 function getBoardForPinIndex(boards, pinIndex) {
   // Rotation selon le nouveau schéma :
-  // Pin 0,2 → principal | Pin 1,3,5 → catégorie | Pin 4,6 → autre
+  // Pin 0,3 → principal | Pin 1,4 → catégorie | Pin 2,5 → autre (saisonnier)
   let selectedBoard;
   let boardType;
   
-  if (pinIndex === 0 || pinIndex === 2) {
+  if (pinIndex === 0 || pinIndex === 3) {
     selectedBoard = boards.boardPrincipal;
     boardType = 'principal';
-  } else if (pinIndex === 1 || pinIndex === 3 || pinIndex === 5) {
+  } else if (pinIndex === 1 || pinIndex === 4) {
     selectedBoard = boards.boardCategorie;
     boardType = 'catégorie';
   } else {
-    // pinIndex === 4 || pinIndex === 6
+    // pinIndex === 2 || pinIndex === 5
     selectedBoard = boards.boardAutre;
     boardType = 'autre (saisonnier/secondaire)';
   }
   
   // Log pour déboguer les pins saisonniers
-  if (pinIndex === 4 || pinIndex === 6) {
+  if (pinIndex === 2 || pinIndex === 5) {
     console.log(`[Pinterest Boards] Pin #${pinIndex} → Board "${boardType}": ${selectedBoard}`);
   }
   

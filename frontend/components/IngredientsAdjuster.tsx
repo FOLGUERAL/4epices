@@ -130,7 +130,9 @@ export default function IngredientsAdjuster({ ingredients, basePortions, recipeS
       
       // Format structuré (objet)
       if (typeof ing === 'object' && ing !== null) {
-        const quantiteStr = ing.quantite || '';
+        // Nettoyer la quantité pour supprimer les doublons (ex: "1/2 /2" -> "1/2")
+        let quantiteStr = ing.quantite || '';
+        quantiteStr = quantiteStr.replace(/(\d+\/\d+)\s*\/\d+/g, '$1').replace(/(\d+)\s+\1(?:\s|$)/g, '$1 ').trim();
         const ingredient = ing.ingredient || '';
         const quantite = parseQuantity(quantiteStr);
         
@@ -144,7 +146,10 @@ export default function IngredientsAdjuster({ ingredients, basePortions, recipeS
           };
         }
         
-        return ing;
+        return {
+          quantite: quantiteStr,
+          ingredient: ingredient
+        };
       }
       
       return ing;
@@ -189,7 +194,7 @@ export default function IngredientsAdjuster({ ingredients, basePortions, recipeS
             // Format simple (string)
             if (typeof ingredient === 'string') {
               return (
-                <li key={index} className="ml-4">
+                <li key={index} className="ml-4 break-words">
                   {ingredient}
                 </li>
               );
@@ -200,8 +205,8 @@ export default function IngredientsAdjuster({ ingredients, basePortions, recipeS
               const quantite = ingredient.quantite || '';
               const ing = ingredient.ingredient || '';
               return (
-                <li key={index} className="ml-4">
-                  <span className="font-medium">{quantite}</span> {ing}
+                <li key={index} className="ml-4 break-words">
+                  <span className="font-medium">{quantite}</span> <span className="break-words">{ing}</span>
                 </li>
               );
             }

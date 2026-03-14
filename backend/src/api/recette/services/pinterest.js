@@ -182,11 +182,11 @@ module.exports = ({ strapi }) => ({
 
   /**
    * Créer plusieurs pins Pinterest pour une recette
-   * Option A modifiée : 7 pins sur 25 jours avec distribution personnalisée
+   * 6 pins sur 20 jours avec distribution personnalisée
    */
   async createMultiplePins(recette, options = {}) {
     const { 
-      pinsCount = 7, // 7 pins par défaut
+      pinsCount = 6, // 6 pins par défaut
       boardId: providedBoardId = null 
     } = options;
 
@@ -200,29 +200,26 @@ module.exports = ({ strapi }) => ({
       throw new Error('Aucune image disponible pour créer des pins Pinterest');
     }
 
-    // Récupérer les 3 boards (principale, catégorie, autre)
+    // Récupérer les 3 boards (principale, catégorie, autre/saisonnier)
     const boards = await getThreeBoardsForRecette(strapi, recette);
     strapi.log.info(`[Pinterest] Boards configurés - Principal: ${boards.boardPrincipal}, Catégorie: ${boards.boardCategorie}, Autre: ${boards.boardAutre}`);
-    strapi.log.info(`[Pinterest] Distribution des pins - Pin #0,2: ${boards.boardPrincipal} | Pin #1,3,5: ${boards.boardCategorie} | Pin #4,6: ${boards.boardAutre}`);
+    strapi.log.info(`[Pinterest] Distribution des pins - Pin #0,3: ${boards.boardPrincipal} | Pin #1,4: ${boards.boardCategorie} | Pin #2,5: ${boards.boardAutre}`);
 
     const createdPins = [];
     const errors = [];
 
-    // Distribution pour tests : 5 minutes entre chaque pin
-    // TODO: Remettre les délais en jours après les tests
+    // Distribution en jours : 0, 1, 2, 5, 10, 20 jours
     const pinSchedule = [
-      0,      // Pin #0 : Immédiat
-      5,      // Pin #1 : +5 minutes
-      10,     // Pin #2 : +10 minutes
-      15,     // Pin #3 : +15 minutes
-      20,     // Pin #4 : +20 minutes
-      25,     // Pin #5 : +25 minutes
-      30,     // Pin #6 : +30 minutes
+      0,      // Pin #0 : Immédiat (board principal)
+      1,      // Pin #1 : +1 jour (board catégorie)
+      2,      // Pin #2 : +2 jours (board saisonnier)
+      5,      // Pin #3 : +5 jours (board principal)
+      10,     // Pin #4 : +10 jours (board catégorie)
+      20,     // Pin #5 : +20 jours (board saisonnier)
     ];
     
-    // Convertir les minutes en millisecondes pour les tests
-    const isTestMode = true; // TODO: Passer à false après les tests
-    const scheduleMultiplier = isTestMode ? 60 * 1000 : 24 * 60 * 60 * 1000; // minutes ou jours
+    // Convertir les jours en millisecondes
+    const scheduleMultiplier = 24 * 60 * 60 * 1000; // jours en millisecondes
 
     // Créer le premier pin immédiatement sur le board principal
     try {
@@ -262,12 +259,8 @@ module.exports = ({ strapi }) => ({
         scheduledTime: scheduledTime.toISOString(),
       });
       
-      if (isTestMode) {
-        strapi.log.info(`[Pinterest] Pin #${i} planifié pour: ${scheduledTime.toISOString()} (dans ${scheduleValue} minutes, Board: ${boardId}) [MODE TEST]`);
-      } else {
-        const daysFromNow = Math.round((scheduledTime - new Date()) / (24 * 60 * 60 * 1000));
-        strapi.log.info(`[Pinterest] Pin #${i} planifié pour: ${scheduledTime.toISOString()} (dans ${daysFromNow} jours, Board: ${boardId})`);
-      }
+      const daysFromNow = Math.round((scheduledTime - new Date()) / (24 * 60 * 60 * 1000));
+      strapi.log.info(`[Pinterest] Pin #${i} planifié pour: ${scheduledTime.toISOString()} (dans ${daysFromNow} jours, Board: ${boardId})`);
     }
 
     return {

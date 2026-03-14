@@ -126,10 +126,9 @@ module.exports = {
             continue; // Cette recette a déjà des pins
           }
           
-          // Créer 3 pins (premier immédiatement, les autres planifiés)
+          // Créer 6 pins avec distribution personnalisée
           const resultPins = await pinterestService.createMultiplePins(recette, {
-            pinsCount: 3,
-            delayBetweenPins: 5 * 60 * 1000, // 5 minutes
+            pinsCount: 6,
           });
           
           // Mettre à jour avec le premier pin créé

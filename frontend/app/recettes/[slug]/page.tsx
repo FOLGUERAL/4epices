@@ -91,14 +91,27 @@ export default async function RecettePage({ params }: { params: { slug: string }
     ? recette.attributes.ingredients
     : [];
   
+  // Fonction pour nettoyer les quantités (supprimer les doublons comme "1/2 /2" -> "1/2")
+  const cleanQuantity = (quantite: string): string => {
+    if (!quantite) return '';
+    // Supprimer les espaces multiples
+    let cleaned = quantite.trim().replace(/\s+/g, ' ');
+    // Détecter et supprimer les doublons de fractions (ex: "1/2 /2" -> "1/2")
+    cleaned = cleaned.replace(/(\d+\/\d+)\s*\/\d+/g, '$1');
+    // Détecter et supprimer les doublons de nombres simples (ex: "2 2" -> "2")
+    cleaned = cleaned.replace(/(\d+)\s+\1(?:\s|$)/g, '$1 ');
+    return cleaned.trim();
+  };
+
   // Normaliser les ingrédients pour l'affichage
   const ingredients = rawIngredients.map((ing: any) => {
     if (typeof ing === 'string') {
-      return ing;
+      // Nettoyer aussi les strings qui pourraient contenir des quantités mal formatées
+      return ing.replace(/(\d+\/\d+)\s*\/\d+/g, '$1').replace(/(\d+)\s+\1(?:\s|$)/g, '$1 ');
     }
     if (typeof ing === 'object' && ing !== null) {
       // Format structuré : {quantite, ingredient}
-      const quantite = ing.quantite || '';
+      const quantite = cleanQuantity(ing.quantite || '');
       const ingredient = ing.ingredient || '';
       return quantite ? `${quantite} ${ingredient}`.trim() : ingredient;
     }
@@ -108,10 +121,10 @@ export default async function RecettePage({ params }: { params: { slug: string }
   // Pour le structured data, convertir en tableau de strings
   const ingredientsForStructuredData = rawIngredients.map((ing: any) => {
     if (typeof ing === 'string') {
-      return ing;
+      return ing.replace(/(\d+\/\d+)\s*\/\d+/g, '$1').replace(/(\d+)\s+\1(?:\s|$)/g, '$1 ');
     }
     if (typeof ing === 'object' && ing !== null) {
-      const quantite = ing.quantite || '';
+      const quantite = cleanQuantity(ing.quantite || '');
       const ingredient = ing.ingredient || '';
       return quantite ? `${quantite} ${ingredient}`.trim() : ingredient;
     }

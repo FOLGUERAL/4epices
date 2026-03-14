@@ -68,6 +68,15 @@ export default function CuisineModePage() {
     return value.toFixed(1).replace(/\.0$/, '');
   };
   
+  // Fonction pour nettoyer les quantités (supprimer les doublons comme "1/2 /2" -> "1/2")
+  const cleanQuantity = (quantite: string): string => {
+    if (!quantite) return '';
+    let cleaned = quantite.trim().replace(/\s+/g, ' ');
+    cleaned = cleaned.replace(/(\d+\/\d+)\s*\/\d+/g, '$1');
+    cleaned = cleaned.replace(/(\d+)\s+\1(?:\s|$)/g, '$1 ');
+    return cleaned.trim();
+  };
+
   // Fonction pour ajuster les ingrédients selon le nombre de personnes
   const adjustIngredients = (rawIngredients: any[], basePortions: number, selectedPortions: number): string[] => {
     const ratio = selectedPortions / basePortions;
@@ -75,7 +84,9 @@ export default function CuisineModePage() {
     return rawIngredients.map((ing: any) => {
       // Format simple (string)
       if (typeof ing === 'string') {
-        const quantiteMatch = ing.match(/^([\d\.\/\s]+[a-z]*)\s*(.+)$/i);
+        // Nettoyer d'abord la string
+        const cleanedIng = ing.replace(/(\d+\/\d+)\s*\/\d+/g, '$1').replace(/(\d+)\s+\1(?:\s|$)/g, '$1 ');
+        const quantiteMatch = cleanedIng.match(/^([\d\.\/\s]+[a-z]*)\s*(.+)$/i);
         if (quantiteMatch) {
           const quantiteStr = quantiteMatch[1].trim();
           const reste = quantiteMatch[2].trim();
@@ -89,12 +100,12 @@ export default function CuisineModePage() {
             return unit ? `${formattedQuantite} ${unit} ${reste}`.trim() : `${formattedQuantite} ${reste}`.trim();
           }
         }
-        return ing;
+        return cleanedIng;
       }
       
       // Format structuré (objet)
       if (typeof ing === 'object' && ing !== null) {
-        const quantiteStr = ing.quantite || '';
+        const quantiteStr = cleanQuantity(ing.quantite || '');
         const ingredient = ing.ingredient || '';
         const quantite = parseQuantity(quantiteStr);
         
@@ -324,7 +335,7 @@ export default function CuisineModePage() {
               </h2>
               <ul className="space-y-2">
                 {ingredients.map((ing, index) => (
-                  <li key={index} className="flex items-start gap-2">
+                  <li key={index} className="flex items-start gap-2 break-words">
                     <input
                       type="checkbox"
                       className="mt-1 w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
@@ -389,7 +400,7 @@ export default function CuisineModePage() {
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Ingrédients</h2>
           <ul className="space-y-2">
             {ingredients.map((ing, index) => (
-              <li key={index} className="text-gray-700">
+              <li key={index} className="text-gray-700 break-words">
                 {ing}
               </li>
             ))}
