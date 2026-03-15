@@ -140,6 +140,10 @@ module.exports = {
 
       if (isAdmin) {
         // Mode admin : garder le système actuel (token global en mémoire pour le bot)
+        // Log du token pour pouvoir le copier dans .env si nécessaire
+        strapi.log.info('[Pinterest OAuth] Token admin obtenu avec scopes:', tokenData.scope);
+        strapi.log.info('[Pinterest OAuth] Pour utiliser ce token dans .env, copiez-le depuis les logs ou utilisez /api/pinterest/me');
+        
         setPinterestAuth({
           accessToken,
           refreshToken: tokenData.refresh_token,
@@ -266,6 +270,10 @@ module.exports = {
         connected: true,
         username,
         user,
+        // Inclure le token et les scopes pour pouvoir les copier dans .env
+        token: auth.accessToken,
+        scopes: auth.scope,
+        note: 'Copiez ce token dans PINTEREST_ACCESS_TOKEN de votre .env pour utiliser les permissions d\'écriture',
       });
     } catch (e) {
       // Si le token est invalide/expiré, on efface.
@@ -674,6 +682,34 @@ module.exports = {
         status,
         data: e?.response?.data,
         message: e?.message,
+      });
+    }
+  },
+
+  /**
+   * DELETE /api/pinterest/queue/:taskId
+   * Annule une tâche spécifique dans la queue
+   */
+  async cancelTask(ctx) {
+    const { taskId } = ctx.params;
+
+    if (!taskId) {
+      return ctx.badRequest('taskId est requis');
+    }
+
+    try {
+      const queueService = strapi.service('api::recette.pinterest-queue');
+      const result = await queueService.cancelTask(taskId);
+      
+      return ctx.send(result);
+    } catch (error) {
+      if (error.message.includes('non trouvée')) {
+        return ctx.notFound(error.message);
+      }
+      
+      strapi.log.error('[Pinterest Cancel Task] Erreur:', error);
+      return ctx.internalServerError('Erreur lors de l\'annulation de la tâche', {
+        error: error.message,
       });
     }
   },

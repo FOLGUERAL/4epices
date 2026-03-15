@@ -98,6 +98,21 @@ export default function PinterestDashboard() {
     }
   };
 
+  const handleCancelTask = async (taskId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir annuler cette publication Pinterest ?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`/api/pinterest/queue/${taskId}`);
+      toast.success('Publication annulée avec succès');
+      // Rafraîchir le dashboard
+      await fetchDashboard();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || error.response?.data?.message || 'Erreur lors de l\'annulation');
+    }
+  };
+
   useEffect(() => {
     fetchDashboard();
     // Rafraîchir toutes les 30 secondes
@@ -184,9 +199,9 @@ export default function PinterestDashboard() {
                     : 'bg-gray-50 border-gray-200'
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-2">
                       <span className="font-semibold text-gray-900">
                         Pin #{task.pinIndex} - Recette #{task.recetteId}
                       </span>
@@ -200,7 +215,7 @@ export default function PinterestDashboard() {
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 space-y-1">
                       <div>📅 {new Date(task.scheduledTime).toLocaleString('fr-FR')}</div>
                       <div>
                         📌 Board: {boardsMap[task.boardId] || task.boardId}
@@ -217,6 +232,13 @@ export default function PinterestDashboard() {
                       )}
                     </div>
                   </div>
+                  <button
+                    onClick={() => handleCancelTask(task.id)}
+                    className="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-sm hover:shadow-md"
+                    title="Annuler cette publication Pinterest"
+                  >
+                    ❌ Annuler
+                  </button>
                 </div>
               </div>
             ))}

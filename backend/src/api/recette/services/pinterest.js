@@ -103,6 +103,10 @@ module.exports = ({ strapi }) => ({
       throw new Error('Token Pinterest manquant. Configurez PINTEREST_ACCESS_TOKEN dans .env ou connectez-vous via OAuth');
     }
 
+    // Note: Les scopes requis sont : pins:read, pins:write, boards:read, boards:write, user_accounts:read
+    // Si vous obtenez une erreur 401 avec "Missing: ['boards:write', 'pins:write']",
+    // votre token n'a pas les bonnes permissions. Voir PINTEREST_TOKEN_SCOPES.md
+
     // Récupérer le board ID
     let finalBoardId = boardId;
     if (!finalBoardId) {
@@ -170,14 +174,26 @@ module.exports = ({ strapi }) => ({
     } catch (error) {
       const status = error?.response?.status;
       const data = error?.response?.data;
+      
+      // Message d'erreur amélioré pour les problèmes de scopes
+      let errorMessage = `Erreur Pinterest API (${status || 'unknown'}): ${data ? JSON.stringify(data) : error?.message}`;
+      
+      if (status === 401 && data?.message && data.message.includes('Missing:')) {
+        errorMessage = `Token Pinterest sans permissions suffisantes. ${data.message}\n\n` +
+          `Votre token PINTEREST_ACCESS_TOKEN n'a pas les scopes requis.\n` +
+          `Scopes requis : pins:read, pins:write, boards:read, boards:write, user_accounts:read\n\n` +
+          `Solution : Voir PINTEREST_TOKEN_SCOPES.md pour obtenir un token avec les bons scopes.\n` +
+          `Ou utilisez OAuth qui demande automatiquement les bons scopes.`;
+      }
+      
       strapi.log.error(`[Pinterest] Erreur lors de la création du pin #${pinIndex}:`, {
         message: error?.message,
         status,
         data,
+        errorMessage,
       });
-      throw new Error(
-        `Erreur Pinterest API (${status || 'unknown'}): ${data ? JSON.stringify(data) : error?.message}`
-      );
+      
+      throw new Error(errorMessage);
     }
   },
 

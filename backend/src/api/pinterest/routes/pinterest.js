@@ -90,6 +90,14 @@ module.exports = {
         auth: false, // Pour debug/manuel
       },
     },
+    {
+      method: 'DELETE',
+      path: '/pinterest/queue/:taskId',
+      handler: 'pinterest.cancelTask',
+      config: {
+        auth: false, // Accessible à tous (peut être restreint plus tard)
+      },
+    },
   ],
 };
 

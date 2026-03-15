@@ -150,6 +150,21 @@ module.exports = ({ strapi }) => ({
   },
 
   /**
+   * Annuler une tâche spécifique (retirer de la queue)
+   */
+  async cancelTask(taskId) {
+    const task = pinQueue.find(t => t.id === taskId);
+    if (!task) {
+      throw new Error(`Tâche ${taskId} non trouvée dans la queue`);
+    }
+    
+    this.removeTask(taskId);
+    strapi.log.info(`[Pinterest Queue] Tâche ${taskId} annulée (recette ${task.recetteId}, pin #${task.pinIndex})`);
+    
+    return { success: true, taskId, message: 'Tâche annulée avec succès' };
+  },
+
+  /**
    * Récupérer toutes les tâches en attente (pour debug)
    */
   async getAllTasks() {
