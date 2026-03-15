@@ -177,6 +177,16 @@ module.exports = {
         return ctx.internalServerError('Configuration Groq manquante. Configurez GROQ_API_KEY dans les variables d\'environnement.');
       }
 
+      // Si c'est une erreur de génération d'image (pas l'analyse), on peut quand même retourner les suggestions
+      if (errorMessage.includes('Hugging Face') || errorMessage.includes('Replicate') || errorMessage.includes('génération d\'image')) {
+        strapi.log.warn('[Image Enhancement Controller] Erreur génération d\'image, mais l\'analyse a réussi');
+        // L'erreur vient probablement de generateEnhancedImage, mais enhanceImageWithGroq a réussi
+        // On devrait avoir les suggestions dans le résultat, mais si on arrive ici c'est que tout a échoué
+        return ctx.internalServerError('L\'analyse a réussi mais la génération d\'image a échoué. Utilisez le bouton "Analyser seulement" pour obtenir les suggestions.', {
+          error: error.message,
+        });
+      }
+
       strapi.log.error('[Image Enhancement Controller] Erreur:', error);
       strapi.log.error('[Image Enhancement Controller] Stack:', error.stack);
       

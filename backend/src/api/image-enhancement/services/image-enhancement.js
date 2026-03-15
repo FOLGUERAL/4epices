@@ -283,7 +283,9 @@ async function generateEnhancedImageWithHuggingFace(enhancementPrompt, originalI
       }
       
       if (status === 410) {
-        throw new Error('Le modèle Hugging Face n\'est plus disponible (410). Essayez de configurer REPLICATE_API_TOKEN ou utilisez uniquement l\'analyse (gratuit).');
+        const errorMsg = 'Le modèle Hugging Face n\'est plus disponible (410). La génération d\'image améliorée n\'est pas disponible. Utilisez les suggestions pour retoucher manuellement ou configurez REPLICATE_API_TOKEN.';
+        strapi.log.warn(`[Image Enhancement] ${errorMsg}`);
+        throw new Error(errorMsg);
       }
       
       if (status === 503) {
@@ -304,10 +306,12 @@ async function generateEnhancedImageWithHuggingFace(enhancementPrompt, originalI
  * Génère une image améliorée avec Replicate API (PAYANT)
  */
 async function generateEnhancedImageWithReplicate(enhancementPrompt, originalImageBuffer, originalMimeType, apiToken) {
+  if (!apiToken) {
+    throw new Error('REPLICATE_API_TOKEN non configurée');
+  }
 
   try {
     const axios = require('axios');
-    const FormData = require('form-data');
     
     // Convertir l'image en base64 data URL pour Replicate
     const base64Image = originalImageBuffer.toString('base64');
@@ -341,7 +345,7 @@ async function generateEnhancedImageWithReplicate(enhancementPrompt, originalIma
       },
       {
         headers: {
-          'Authorization': `Token ${replicateApiToken}`,
+          'Authorization': `Token ${apiToken}`,
           'Content-Type': 'application/json',
         },
         timeout: 120000, // 2 minutes pour la génération
@@ -367,7 +371,7 @@ async function generateEnhancedImageWithReplicate(enhancementPrompt, originalIma
         `https://api.replicate.com/v1/predictions/${predictionId}`,
         {
           headers: {
-            'Authorization': `Token ${replicateApiToken}`,
+            'Authorization': `Token ${apiToken}`,
           },
         }
       );
@@ -439,8 +443,18 @@ module.exports = ({ strapi }) => ({
 
       let enhancedImage = null;
       if (generateEnhanced) {
-        // Générer une image améliorée avec Replicate
-        enhancedImage = await generateEnhancedImage(groqResult.enhancement_prompt, imageBuffer, imageMimeType);
+        try {
+          // Générer une image améliorée avec Hugging Face ou Replicate
+          enhancedImage = await generateEnhancedImage(groqResult.enhancement_prompt, imageBuffer, imageMimeType);
+        } catch (imageGenError) {
+          // Si la génération d'image échoue, on continue quand même avec les suggestions
+          strapi.log.warn('[Image Enhancement] Échec de la génération d\'image améliorée:', imageGenError.message);
+          strapi.log.warn('[Image Enhancement] Les suggestions et l\'analyse restent disponibles');
+          enhancedImage = {
+            enhanced: false,
+            message: `Génération d'image échouée: ${imageGenError.message}. Utilisez les suggestions ci-dessus pour retoucher manuellement.`,
+          };
+        }
       }
 
       return {
