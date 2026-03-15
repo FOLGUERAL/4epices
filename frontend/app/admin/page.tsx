@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from '@/components/Toast';
 import AdminAuth from '@/components/AdminAuth';
 import PinterestDashboard from '@/components/PinterestDashboard';
+import PinterestConnectPanel from '@/components/PinterestConnectPanel';
 import CommentsViewer from '@/components/CommentsViewer';
 import ImageEnhancement from '@/components/ImageEnhancement';
 
@@ -1081,10 +1082,15 @@ function CreerRecettePageContent() {
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
                 <p className="font-semibold mb-1">ℹ️ Configuration Pinterest</p>
                 <p>
-                  L'interface admin utilise le token configuré dans <code className="px-1 py-0.5 bg-blue-100 rounded">PINTEREST_ACCESS_TOKEN</code> du fichier <code className="px-1 py-0.5 bg-blue-100 rounded">backend/.env</code>.
-                  Pour partager depuis une recette, les utilisateurs peuvent se connecter via le bouton Pinterest sur la page de la recette.
+                  L'interface admin utilise par défaut le token configuré dans <code className="px-1 py-0.5 bg-blue-100 rounded">PINTEREST_ACCESS_TOKEN</code> du fichier <code className="px-1 py-0.5 bg-blue-100 rounded">backend/.env</code>.
+                  Vous pouvez aussi vous connecter via OAuth ci-dessous pour obtenir un token avec les permissions d'écriture.
                 </p>
               </div>
+              
+              {/* Connexion OAuth Pinterest */}
+              <PinterestConnectPanel />
+              
+              {/* Dashboard Pinterest */}
               <PinterestDashboard />
             </div>
           )}
