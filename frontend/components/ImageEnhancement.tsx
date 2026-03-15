@@ -132,10 +132,13 @@ export default function ImageEnhancement() {
   };
 
   const handleEnhance = async () => {
-    if (!selectedImage) return;
+    if (!selectedImage) {
+      toast.error('Veuillez sélectionner une image');
+      return;
+    }
 
     const formData = new FormData();
-    formData.append('file', selectedImage);
+    formData.append('file', selectedImage as File);
     formData.append('generateEnhanced', 'true');
     
     await handleEnhanceWithOptions(formData);
@@ -209,12 +212,13 @@ export default function ImageEnhancement() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (!selectedImage) return;
                     const formData = new FormData();
-                    formData.append('file', selectedImage);
+                    formData.append('file', selectedImage as File);
                     formData.append('generateEnhanced', 'false');
                     handleEnhanceWithOptions(formData);
                   }}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !selectedImage}
                   className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                 >
                   {isProcessing ? (
@@ -234,7 +238,7 @@ export default function ImageEnhancement() {
                     e.stopPropagation();
                     handleEnhance();
                   }}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !selectedImage}
                   className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                 >
                   {isProcessing ? (
