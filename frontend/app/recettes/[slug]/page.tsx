@@ -11,6 +11,7 @@ import RatingForm from '@/components/RatingForm';
 import RatingList from '@/components/RatingList';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import ShareToPinterestButton from '@/components/ShareToPinterestButton';
+import GoogleAdSense from '@/components/GoogleAdSense';
 
 function formatTime(minutes: number): string {
   if (minutes <= 0) {
@@ -311,11 +312,27 @@ export default async function RecettePage({ params }: { params: { slug: string }
               </div>
             )}
 
+            {/* Annonce Google AdSense entre ingrédients et préparation */}
+            <div className="mb-8 flex justify-center">
+              <GoogleAdSense
+                adFormat="auto"
+                className="min-h-[250px] w-full max-w-[728px]"
+              />
+            </div>
+
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Préparation</h2>
               <div
                 className="prose max-w-none text-gray-700"
                 dangerouslySetInnerHTML={{ __html: recette.attributes.etapes }}
+              />
+            </div>
+
+            {/* Annonce Google AdSense après la préparation */}
+            <div className="mb-8 flex justify-center">
+              <GoogleAdSense
+                adFormat="auto"
+                className="min-h-[250px] w-full max-w-[728px]"
               />
             </div>
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { getRecettes, getCategories, getRecettesByCategory, Recette, Categorie } from '@/lib/strapi';
 import HeroRecipe from '@/components/HeroRecipe';
 import HorizontalCarousel from '@/components/HorizontalCarousel';
+import GoogleAdSense from '@/components/GoogleAdSense';
 
 export default async function Home() {
   let recetteVedette: Recette | null = null;
@@ -75,6 +76,14 @@ export default async function Home() {
       )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" id="recettes">
+        {/* Annonce Google AdSense en haut de la page */}
+        <div className="mb-8 flex justify-center">
+          <GoogleAdSense
+            adFormat="auto"
+            className="min-h-[250px] w-full max-w-[728px]"
+          />
+        </div>
+
         {/* Section Recettes Récentes */}
         {recettesRecent.length > 0 && (
           <HorizontalCarousel
