@@ -98,6 +98,35 @@ module.exports = {
         generateEnhanced
       );
 
+      // Si une image améliorée a été générée, la sauvegarder dans Strapi
+      let enhancedImageUrl = null;
+      if (result.enhancedImage && result.enhancedImage.enhanced && result.enhancedImage.imageBuffer) {
+        try {
+          // Utiliser le plugin upload de Strapi pour sauvegarder l'image
+          const uploadService = strapi.plugins.upload.services.upload;
+          
+          const enhancedFile = {
+            name: `enhanced_${file.name || 'image.png'}`,
+            type: result.enhancedImage.mimeType || 'image/png',
+            size: result.enhancedImage.imageBuffer.length,
+            buffer: result.enhancedImage.imageBuffer,
+          };
+
+          const uploadedFile = await uploadService.upload({
+            data: {},
+            files: [enhancedFile],
+          });
+
+          if (uploadedFile && uploadedFile.length > 0) {
+            enhancedImageUrl = uploadedFile[0].url;
+            strapi.log.info(`[Image Enhancement] Image améliorée sauvegardée: ${enhancedImageUrl}`);
+          }
+        } catch (uploadError) {
+          strapi.log.error('[Image Enhancement] Erreur lors de la sauvegarde de l\'image améliorée:', uploadError);
+          // Ne pas faire échouer la requête si l'upload échoue
+        }
+      }
+
       // Nettoyer le fichier temporaire si nécessaire
       if (file.path) {
         try {
@@ -108,10 +137,25 @@ module.exports = {
         }
       }
 
-      return ctx.send({
+      // Préparer la réponse
+      const response = {
         success: true,
-        ...result,
-      });
+        analysis: result.analysis,
+        enhancement_prompt: result.enhancement_prompt,
+        suggestions: result.suggestions,
+      };
+
+      // Ajouter l'URL de l'image améliorée si disponible
+      if (enhancedImageUrl) {
+        response.enhanced_image_url = enhancedImageUrl;
+        response.enhanced = true;
+      } else if (result.enhancedImage) {
+        // Si l'image n'a pas pu être sauvegardée mais qu'elle existe, retourner l'URL directe
+        response.enhanced_image_url = result.enhancedImage.imageUrl;
+        response.enhanced = result.enhancedImage.enhanced;
+      }
+
+      return ctx.send(response);
     } catch (error) {
       // Nettoyer le fichier temporaire en cas d'erreur
       if (file && file.path) {

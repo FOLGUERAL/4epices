@@ -150,22 +150,223 @@ Retourne UNIQUEMENT un JSON avec cette structure :
 }
 
 /**
- * Génère une image améliorée en utilisant les suggestions de Groq
- * Pour l'instant, on retourne les suggestions. 
- * Plus tard, on pourra intégrer un service de génération d'images (Replicate, Stability AI, etc.)
+ * Génère une image améliorée en utilisant Hugging Face (gratuit) ou Replicate (payant)
+ * Par défaut, utilise Hugging Face si disponible (gratuit)
  */
-async function generateEnhancedImage(enhancementPrompt, originalImageBuffer) {
-  // TODO: Intégrer un service de génération d'images ici
-  // Pour l'instant, on retourne juste les suggestions
-  // Options possibles :
-  // - Replicate API (Stable Diffusion)
-  // - Stability AI
-  // - OpenAI DALL-E (si disponible)
+async function generateEnhancedImage(enhancementPrompt, originalImageBuffer, originalMimeType) {
+  const huggingFaceToken = process.env.HUGGINGFACE_API_TOKEN;
+  const replicateApiToken = process.env.REPLICATE_API_TOKEN;
   
-  return {
-    enhanced: false,
-    message: 'Génération d\'image améliorée à implémenter. Utilisez les suggestions pour retoucher manuellement.',
-  };
+  // Priorité: Hugging Face (gratuit) > Replicate (payant)
+  if (huggingFaceToken) {
+    return await generateEnhancedImageWithHuggingFace(enhancementPrompt, originalImageBuffer, originalMimeType, huggingFaceToken);
+  } else if (replicateApiToken) {
+    return await generateEnhancedImageWithReplicate(enhancementPrompt, originalImageBuffer, originalMimeType, replicateApiToken);
+  } else {
+    strapi.log.warn('[Image Enhancement] Aucun service de génération configuré. HUGGINGFACE_API_TOKEN ou REPLICATE_API_TOKEN requis.');
+    return {
+      enhanced: false,
+      message: 'Génération d\'image améliorée nécessite HUGGINGFACE_API_TOKEN (gratuit) ou REPLICATE_API_TOKEN (payant). Configurez-en un dans .env. En attendant, utilisez les suggestions pour retoucher manuellement.',
+    };
+  }
+}
+
+/**
+ * Génère une image améliorée avec Hugging Face Inference API (GRATUIT)
+ */
+async function generateEnhancedImageWithHuggingFace(enhancementPrompt, originalImageBuffer, originalMimeType, apiToken) {
+  try {
+    const axios = require('axios');
+    
+    // Convertir l'image en base64
+    const base64Image = originalImageBuffer.toString('base64');
+    
+    // Utiliser Stable Diffusion XL pour l'image-to-image
+    // Modèle gratuit sur Hugging Face
+    const model = process.env.HUGGINGFACE_IMAGE_MODEL || 'stabilityai/stable-diffusion-xl-base-1.0';
+    
+    strapi.log.info('[Image Enhancement] Génération d\'image améliorée avec Hugging Face (gratuit)...');
+    
+    // Hugging Face Inference API pour image-to-image
+    // Note: Hugging Face ne supporte pas directement image-to-image via l'API Inference standard
+    // On utilise donc une approche avec le prompt amélioré pour générer une nouvelle image
+    const response = await axios.post(
+      `https://api-inference.huggingface.co/models/${model}`,
+      {
+        inputs: enhancementPrompt,
+        parameters: {
+          num_inference_steps: 30,
+          guidance_scale: 7.5,
+          width: 1024,
+          height: 1024,
+        },
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        responseType: 'arraybuffer',
+        timeout: 120000, // 2 minutes
+      }
+    );
+
+    // Hugging Face retourne directement l'image en PNG
+    const enhancedImageBuffer = Buffer.from(response.data);
+    
+    strapi.log.info('[Image Enhancement] Image améliorée générée avec succès (Hugging Face)');
+    
+    return {
+      enhanced: true,
+      imageBuffer: enhancedImageBuffer,
+      imageUrl: null, // Pas d'URL, l'image est directement dans le buffer
+      mimeType: 'image/png',
+      provider: 'huggingface',
+    };
+  } catch (error) {
+    strapi.log.error('[Image Enhancement] Erreur Hugging Face:', error);
+    
+    if (error.response) {
+      const status = error.response.status;
+      const errorData = error.response.data;
+      
+      if (status === 401 || status === 403) {
+        throw new Error('HUGGINGFACE_API_TOKEN invalide ou expirée');
+      }
+      
+      if (status === 503) {
+        // Le modèle est en train de charger, attendre un peu
+        throw new Error('Le modèle Hugging Face est en cours de chargement. Réessayez dans quelques secondes.');
+      }
+      
+      throw new Error(errorData?.error || `Erreur Hugging Face API (${status})`);
+    }
+    
+    throw new Error(error.message || 'Erreur lors de la génération d\'image avec Hugging Face');
+  }
+}
+
+/**
+ * Génère une image améliorée avec Replicate API (PAYANT)
+ */
+async function generateEnhancedImageWithReplicate(enhancementPrompt, originalImageBuffer, originalMimeType, apiToken) {
+
+  try {
+    const axios = require('axios');
+    const FormData = require('form-data');
+    
+    // Convertir l'image en base64 data URL pour Replicate
+    const base64Image = originalImageBuffer.toString('base64');
+    const dataUrl = `data:${originalMimeType};base64,${base64Image}`;
+    
+    // Utiliser Stable Diffusion XL pour l'image-to-image
+    // Format: owner/model:version ou juste version
+    const modelVersion = process.env.REPLICATE_IMAGE_MODEL || 'stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b';
+    
+    // Extraire la version (dernière partie après :)
+    let version = modelVersion;
+    if (modelVersion.includes(':')) {
+      version = modelVersion.split(':')[1];
+    }
+    
+    strapi.log.info('[Image Enhancement] Génération d\'image améliorée avec Replicate...');
+    
+    // Créer une prédiction
+    const response = await axios.post(
+      'https://api.replicate.com/v1/predictions',
+      {
+        version: version,
+        input: {
+          prompt: enhancementPrompt,
+          image: dataUrl,
+          strength: 0.7, // Force de transformation (0.0 = identique, 1.0 = complètement différent)
+          num_outputs: 1,
+          guidance_scale: 7.5,
+          num_inference_steps: 30,
+        },
+      },
+      {
+        headers: {
+          'Authorization': `Token ${replicateApiToken}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 120000, // 2 minutes pour la génération
+      }
+    );
+
+    const predictionId = response.data.id;
+    strapi.log.info(`[Image Enhancement] Prédiction créée: ${predictionId}`);
+    
+    // Polling pour attendre la génération
+    let prediction = response.data;
+    let attempts = 0;
+    const maxAttempts = 60; // 5 minutes max (60 * 5 secondes)
+    
+    while (prediction.status === 'starting' || prediction.status === 'processing') {
+      if (attempts >= maxAttempts) {
+        throw new Error('Timeout: La génération d\'image a pris trop de temps');
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Attendre 5 secondes
+      
+      const statusResponse = await axios.get(
+        `https://api.replicate.com/v1/predictions/${predictionId}`,
+        {
+          headers: {
+            'Authorization': `Token ${replicateApiToken}`,
+          },
+        }
+      );
+      
+      prediction = statusResponse.data;
+      attempts++;
+      
+      if (prediction.status === 'succeeded') {
+        const imageUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+        
+        if (!imageUrl) {
+          throw new Error('Aucune image générée par Replicate');
+        }
+        
+        // Télécharger l'image générée
+        const imageResponse = await axios.get(imageUrl, {
+          responseType: 'arraybuffer',
+          timeout: 30000,
+        });
+        
+        const enhancedImageBuffer = Buffer.from(imageResponse.data);
+        
+        strapi.log.info('[Image Enhancement] Image améliorée générée avec succès');
+        
+        return {
+          enhanced: true,
+          imageBuffer: enhancedImageBuffer,
+          imageUrl: imageUrl,
+          mimeType: 'image/png', // Replicate génère généralement en PNG
+          provider: 'replicate',
+        };
+      } else if (prediction.status === 'failed' || prediction.status === 'canceled') {
+        throw new Error(`Génération échouée: ${prediction.error || 'Raison inconnue'}`);
+      }
+    }
+    
+    throw new Error(`Statut inattendu: ${prediction.status}`);
+  } catch (error) {
+    strapi.log.error('[Image Enhancement] Erreur lors de la génération d\'image:', error);
+    
+    if (error.response) {
+      const status = error.response.status;
+      const errorData = error.response.data;
+      
+      if (status === 401 || status === 403) {
+        throw new Error('REPLICATE_API_TOKEN invalide ou expirée');
+      }
+      
+      throw new Error(errorData?.detail || `Erreur Replicate API (${status})`);
+    }
+    
+    throw new Error(error.message || 'Erreur lors de la génération d\'image améliorée');
+  }
 }
 
 module.exports = ({ strapi }) => ({
@@ -184,8 +385,8 @@ module.exports = ({ strapi }) => ({
 
       let enhancedImage = null;
       if (generateEnhanced) {
-        // Générer une image améliorée (à implémenter)
-        enhancedImage = await generateEnhancedImage(groqResult.enhancement_prompt, imageBuffer);
+        // Générer une image améliorée avec Replicate
+        enhancedImage = await generateEnhancedImage(groqResult.enhancement_prompt, imageBuffer, imageMimeType);
       }
 
       return {

@@ -11,6 +11,8 @@ export default function ImageEnhancement() {
     analysis?: string;
     enhancement_prompt?: string;
     suggestions?: string[];
+    enhanced_image_url?: string;
+    enhanced?: boolean;
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,16 +69,13 @@ export default function ImageEnhancement() {
     }
   };
 
-  const handleEnhance = async () => {
+  const handleEnhanceWithOptions = async (formData: FormData) => {
     if (!selectedImage) return;
 
     setIsProcessing(true);
     setResults(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', selectedImage);
-
       const strapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
       
       console.log('[ImageEnhancement] Envoi de la requête:', {
@@ -113,8 +112,14 @@ export default function ImageEnhancement() {
           analysis: data.analysis,
           enhancement_prompt: data.enhancement_prompt,
           suggestions: data.suggestions,
+          enhanced_image_url: data.enhanced_image_url,
+          enhanced: data.enhanced,
         });
-        toast.success('Image analysée avec succès !');
+        if (data.enhanced) {
+          toast.success('Image améliorée générée avec succès !');
+        } else {
+          toast.success('Image analysée avec succès !');
+        }
       } else {
         throw new Error(data.message || 'Erreur lors du traitement');
       }
@@ -124,6 +129,16 @@ export default function ImageEnhancement() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleEnhance = async () => {
+    if (!selectedImage) return;
+
+    const formData = new FormData();
+    formData.append('file', selectedImage);
+    formData.append('generateEnhanced', 'true');
+    
+    await handleEnhanceWithOptions(formData);
   };
 
   const handleReset = () => {
@@ -190,26 +205,51 @@ export default function ImageEnhancement() {
               </button>
             </div>
             <div className="flex gap-3 justify-center">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEnhance();
-                }}
-                disabled={isProcessing}
-                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-              >
-                {isProcessing ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Traitement en cours...
-                  </span>
-                ) : (
-                  '✨ Améliorer l\'Image'
-                )}
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const formData = new FormData();
+                    formData.append('file', selectedImage);
+                    formData.append('generateEnhanced', 'false');
+                    handleEnhanceWithOptions(formData);
+                  }}
+                  disabled={isProcessing}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                >
+                  {isProcessing ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Analyse...
+                    </span>
+                  ) : (
+                    '📊 Analyser seulement'
+                  )}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEnhance();
+                  }}
+                  disabled={isProcessing}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                >
+                  {isProcessing ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Génération...
+                    </span>
+                  ) : (
+                    '✨ Générer Image Améliorée'
+                  )}
+                </button>
+              </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -265,15 +305,55 @@ export default function ImageEnhancement() {
               <p className="text-gray-700 italic leading-relaxed">{results.enhancement_prompt}</p>
             </div>
           )}
+
+          {/* Image améliorée */}
+          {results.enhanced_image_url && (
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                ✨ Image Améliorée
+              </h3>
+              <div className="space-y-4">
+                <div className="relative rounded-lg overflow-hidden border-2 border-purple-200">
+                  <img
+                    src={results.enhanced_image_url}
+                    alt="Image améliorée"
+                    className="w-full h-auto max-h-96 object-contain"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <a
+                    href={results.enhanced_image_url}
+                    download="image-amelioree.png"
+                    className="px-4 py-2 bg-purple-500 text-white rounded-lg font-semibold hover:bg-purple-600 transition-colors inline-block"
+                  >
+                    💾 Télécharger l'image améliorée
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
         <p className="font-semibold mb-1">💡 Comment ça fonctionne ?</p>
-        <p>
+        <p className="mb-2">
           Groq Vision analyse votre image culinaire et génère des suggestions pour la rendre plus attrayante.
           Les suggestions incluent des améliorations d'éclairage, de couleurs, de composition et d'optimisation pour les réseaux sociaux.
+        </p>
+        <p className="font-semibold mt-3 mb-1">💰 Coûts :</p>
+        <ul className="list-disc list-inside space-y-1">
+          <li><strong>📊 Analyser seulement</strong> : ✅ 100% gratuit (Groq Vision)</li>
+          <li><strong>✨ Générer Image Améliorée</strong> : 
+            <ul className="list-disc list-inside ml-4 mt-1">
+              <li>✅ Gratuit avec Hugging Face (recommandé)</li>
+              <li>⚠️ Payant avec Replicate (~$0.002-0.01/image)</li>
+            </ul>
+          </li>
+        </ul>
+        <p className="mt-2 text-xs italic">
+          💡 Astuce : Configurez HUGGINGFACE_API_TOKEN pour générer des images améliorées gratuitement !
         </p>
       </div>
     </div>
