@@ -141,13 +141,32 @@ module.exports = {
       if (isAdmin) {
         // Mode admin : garder le système actuel (token global en mémoire pour le bot)
         // Log du token pour pouvoir le copier dans .env si nécessaire
-        strapi.log.info('[Pinterest OAuth] Token admin obtenu avec scopes:', tokenData.scope);
-        strapi.log.info('[Pinterest OAuth] Pour utiliser ce token dans .env, copiez-le depuis les logs ou utilisez /api/pinterest/me');
+        const expiresInSeconds = tokenData.expires_in || null;
+        const expiresInDays = expiresInSeconds ? Math.round(expiresInSeconds / (24 * 60 * 60)) : 'indéfinie';
+        const expiresAt = expiresInSeconds ? new Date(Date.now() + expiresInSeconds * 1000).toISOString() : null;
+        
+        // Logs détaillés pour faciliter la copie du token
+        strapi.log.info('');
+        strapi.log.info('═══════════════════════════════════════════════════════════');
+        strapi.log.info('🎯 PINTEREST OAUTH - TOKEN ADMIN OBTENU');
+        strapi.log.info('═══════════════════════════════════════════════════════════');
+        strapi.log.info(`📋 Scopes: ${tokenData.scope || 'Non spécifié'}`);
+        strapi.log.info(`⏰ Durée de validité: ${expiresInDays} jour(s)${expiresAt ? ` (expire le ${new Date(expiresAt).toLocaleDateString('fr-FR')})` : ' (pas d\'expiration connue)'}`);
+        strapi.log.info('');
+        strapi.log.info('📝 TOKEN À COPIER DANS backend/.env :');
+        strapi.log.info('───────────────────────────────────────────────────────────');
+        strapi.log.info(`PINTEREST_ACCESS_TOKEN=${accessToken}`);
+        strapi.log.info('───────────────────────────────────────────────────────────');
+        strapi.log.info('');
+        strapi.log.info('💡 Alternative: Récupérez aussi ce token via GET /api/pinterest/me');
+        strapi.log.info('═══════════════════════════════════════════════════════════');
+        strapi.log.info('');
         
         setPinterestAuth({
           accessToken,
           refreshToken: tokenData.refresh_token,
-          expiresIn: tokenData.expires_in,
+          expiresIn: expiresInSeconds,
+          expiresAt: expiresAt,
           tokenType: tokenData.token_type,
           scope: tokenData.scope,
           user: pinterestUser,
@@ -266,6 +285,19 @@ module.exports = {
 
       setPinterestAuth({ user });
 
+      // Calculer la date d'expiration si disponible
+      let expiresAt = null;
+      let expiresInDays = null;
+      if (auth.expiresIn) {
+        expiresAt = new Date(Date.now() + auth.expiresIn * 1000).toISOString();
+        expiresInDays = Math.round(auth.expiresIn / (24 * 60 * 60));
+      } else if (auth.expiresAt) {
+        expiresAt = auth.expiresAt;
+        const expiresDate = new Date(expiresAt);
+        const now = new Date();
+        expiresInDays = Math.round((expiresDate - now) / (24 * 60 * 60 * 1000));
+      }
+
       return ctx.send({
         connected: true,
         username,
@@ -273,6 +305,9 @@ module.exports = {
         // Inclure le token et les scopes pour pouvoir les copier dans .env
         token: auth.accessToken,
         scopes: auth.scope,
+        expiresIn: auth.expiresIn ? `${auth.expiresIn} secondes (${expiresInDays} jour(s))` : 'Non spécifié',
+        expiresAt: expiresAt ? new Date(expiresAt).toLocaleString('fr-FR') : 'Non spécifié',
+        hasRefreshToken: !!auth.refreshToken,
         note: 'Copiez ce token dans PINTEREST_ACCESS_TOKEN de votre .env pour utiliser les permissions d\'écriture',
       });
     } catch (e) {
