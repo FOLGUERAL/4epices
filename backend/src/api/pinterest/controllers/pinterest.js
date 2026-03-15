@@ -728,7 +728,11 @@ module.exports = {
   async cancelTask(ctx) {
     const { taskId } = ctx.params;
 
+    strapi.log.info(`[Pinterest Cancel Task] Tentative d'annulation de la tâche: ${taskId}`);
+    strapi.log.info(`[Pinterest Cancel Task] ctx.params:`, ctx.params);
+
     if (!taskId) {
+      strapi.log.warn('[Pinterest Cancel Task] taskId manquant dans les paramètres');
       return ctx.badRequest('taskId est requis');
     }
 
@@ -736,9 +740,11 @@ module.exports = {
       const queueService = strapi.service('api::recette.pinterest-queue');
       const result = await queueService.cancelTask(taskId);
       
+      strapi.log.info(`[Pinterest Cancel Task] Tâche ${taskId} annulée avec succès`);
       return ctx.send(result);
     } catch (error) {
       if (error.message.includes('non trouvée')) {
+        strapi.log.warn(`[Pinterest Cancel Task] Tâche ${taskId} non trouvée dans la queue`);
         return ctx.notFound(error.message);
       }
       
