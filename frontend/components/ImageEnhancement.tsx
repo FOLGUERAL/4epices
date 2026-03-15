@@ -78,14 +78,32 @@ export default function ImageEnhancement() {
       formData.append('file', selectedImage);
 
       const strapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+      
+      console.log('[ImageEnhancement] Envoi de la requête:', {
+        url: `${strapiUrl}/api/image-enhancement/enhance`,
+        fileName: selectedImage.name,
+        fileSize: selectedImage.size,
+        fileType: selectedImage.type,
+      });
+
       const response = await fetch(`${strapiUrl}/api/image-enhancement/enhance`, {
         method: 'POST',
         body: formData,
+        // Ne pas définir Content-Type manuellement, le navigateur le fera automatiquement avec le boundary
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Erreur serveur' }));
-        throw new Error(error.message || `Erreur ${response.status}`);
+        let errorMessage = `Erreur ${response.status}`;
+        try {
+          const error = await response.json();
+          errorMessage = error.message || error.error?.message || errorMessage;
+          console.error('[ImageEnhancement] Erreur détaillée:', error);
+        } catch (e) {
+          const errorText = await response.text().catch(() => 'Erreur inconnue');
+          errorMessage = errorText || errorMessage;
+          console.error('[ImageEnhancement] Erreur (texte):', errorText);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();

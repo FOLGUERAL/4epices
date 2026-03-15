@@ -14,21 +14,57 @@ module.exports = {
    * - generateEnhanced: (optionnel) Si true, génère aussi une image améliorée
    */
   async enhance(ctx) {
+    // Log pour déboguer
+    strapi.log.info('[Image Enhancement] Requête reçue:', {
+      hasFiles: !!ctx.request.files,
+      filesKeys: ctx.request.files ? Object.keys(ctx.request.files) : [],
+      contentType: ctx.request.headers['content-type'],
+      method: ctx.request.method,
+      body: ctx.request.body ? Object.keys(ctx.request.body) : [],
+    });
+
+    // Strapi parse les fichiers multipart dans ctx.request.files
     const { files } = ctx.request;
     
-    if (!files || !files.file) {
-      return ctx.badRequest('Aucun fichier image fourni');
+    if (!files || Object.keys(files).length === 0) {
+      strapi.log.warn('[Image Enhancement] Aucun fichier trouvé dans ctx.request.files');
+      strapi.log.warn('[Image Enhancement] Headers:', ctx.request.headers);
+      strapi.log.warn('[Image Enhancement] Body keys:', ctx.request.body ? Object.keys(ctx.request.body) : []);
+      return ctx.badRequest('Aucun fichier image fourni. Assurez-vous d\'envoyer le fichier avec la clé "file" dans FormData avec Content-Type: multipart/form-data.');
     }
 
-    const file = Array.isArray(files.file) ? files.file[0] : files.file;
+    // Chercher le fichier avec la clé "file"
+    let file = null;
+    if (files.file) {
+      file = Array.isArray(files.file) ? files.file[0] : files.file;
+    } else {
+      // Si pas de clé "file", prendre le premier fichier disponible
+      const fileKeys = Object.keys(files);
+      if (fileKeys.length > 0) {
+        file = Array.isArray(files[fileKeys[0]]) ? files[fileKeys[0]][0] : files[fileKeys[0]];
+        strapi.log.info(`[Image Enhancement] Fichier trouvé avec la clé "${fileKeys[0]}" au lieu de "file"`);
+      }
+    }
     
     if (!file) {
-      return ctx.badRequest('Fichier invalide');
+      strapi.log.warn('[Image Enhancement] Fichier invalide après parsing');
+      return ctx.badRequest('Fichier invalide. Format de fichier non reconnu.');
     }
 
+    strapi.log.info('[Image Enhancement] Fichier reçu:', {
+      name: file.name,
+      size: file.size,
+      mime: file.mime,
+      type: file.type,
+      path: file.path,
+      buffer: file.buffer ? 'présent' : 'absent',
+    });
+
     // Vérifier que c'est une image
-    if (!file.mime || !file.mime.startsWith('image/')) {
-      return ctx.badRequest('Le fichier doit être une image');
+    const mimeType = file.mime || file.type;
+    if (!mimeType || !mimeType.startsWith('image/')) {
+      strapi.log.warn('[Image Enhancement] Type de fichier invalide:', mimeType);
+      return ctx.badRequest(`Le fichier doit être une image. Type reçu: ${mimeType || 'inconnu'}`);
     }
 
     const generateEnhanced = ctx.request.body?.generateEnhanced === 'true' || 
@@ -37,22 +73,39 @@ module.exports = {
     try {
       const imageEnhancementService = strapi.service('api::image-enhancement.image-enhancement');
       
-      // Lire le fichier
-      const fs = require('fs');
-      const imageBuffer = fs.readFileSync(file.path);
+      // Lire le fichier - essayer buffer d'abord, puis path
+      let imageBuffer;
+      if (file.buffer) {
+        imageBuffer = file.buffer;
+      } else if (file.path) {
+        const fs = require('fs');
+        imageBuffer = fs.readFileSync(file.path);
+      } else if (file.stream) {
+        // Si c'est un stream, le convertir en buffer
+        const chunks = [];
+        for await (const chunk of file.stream) {
+          chunks.push(chunk);
+        }
+        imageBuffer = Buffer.concat(chunks);
+      } else {
+        throw new Error('Impossible de lire le fichier. Format non supporté.');
+      }
       
       // Retoucher l'image
       const result = await imageEnhancementService.enhanceImage(
         imageBuffer,
-        file.mime,
+        mimeType,
         generateEnhanced
       );
 
-      // Nettoyer le fichier temporaire
-      try {
-        fs.unlinkSync(file.path);
-      } catch (unlinkError) {
-        strapi.log.warn('Erreur lors de la suppression du fichier temporaire:', unlinkError);
+      // Nettoyer le fichier temporaire si nécessaire
+      if (file.path) {
+        try {
+          const fs = require('fs');
+          fs.unlinkSync(file.path);
+        } catch (unlinkError) {
+          strapi.log.warn('Erreur lors de la suppression du fichier temporaire:', unlinkError);
+        }
       }
 
       return ctx.send({
@@ -61,11 +114,13 @@ module.exports = {
       });
     } catch (error) {
       // Nettoyer le fichier temporaire en cas d'erreur
-      try {
-        const fs = require('fs');
-        fs.unlinkSync(file.path);
-      } catch (unlinkError) {
-        // Ignorer l'erreur de nettoyage
+      if (file && file.path) {
+        try {
+          const fs = require('fs');
+          fs.unlinkSync(file.path);
+        } catch (unlinkError) {
+          // Ignorer l'erreur de nettoyage
+        }
       }
 
       const errorMessage = error.message || 'Erreur lors de la retouche de l\'image';
@@ -79,6 +134,7 @@ module.exports = {
       }
 
       strapi.log.error('[Image Enhancement Controller] Erreur:', error);
+      strapi.log.error('[Image Enhancement Controller] Stack:', error.stack);
       
       return ctx.internalServerError(errorMessage, {
         error: error.message,

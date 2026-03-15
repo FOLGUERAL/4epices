@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/Toast';
 import AdminAuth from '@/components/AdminAuth';
-import PinterestConnectPanel from '@/components/PinterestConnectPanel';
 import PinterestDashboard from '@/components/PinterestDashboard';
 import CommentsViewer from '@/components/CommentsViewer';
 import ImageEnhancement from '@/components/ImageEnhancement';
@@ -799,8 +798,6 @@ function CreerRecettePageContent() {
         <div className={activeTab === 'create' ? 'max-w-md mx-auto' : 'w-full'}>
           {activeTab === 'create' && (
             <>
-              {/* Connexion Pinterest (OAuth) */}
-              <PinterestConnectPanel />
 
         {/* Sélecteur d'API */}
         <div className="mb-4">
@@ -1080,7 +1077,14 @@ function CreerRecettePageContent() {
 
           {activeTab === 'pinterest' && (
             <div className="space-y-6">
-              <PinterestConnectPanel />
+              {/* Note: Le token Pinterest est maintenant utilisé depuis PINTEREST_ACCESS_TOKEN du .env */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+                <p className="font-semibold mb-1">ℹ️ Configuration Pinterest</p>
+                <p>
+                  L'interface admin utilise le token configuré dans <code className="px-1 py-0.5 bg-blue-100 rounded">PINTEREST_ACCESS_TOKEN</code> du fichier <code className="px-1 py-0.5 bg-blue-100 rounded">backend/.env</code>.
+                  Pour partager depuis une recette, les utilisateurs peuvent se connecter via le bouton Pinterest sur la page de la recette.
+                </p>
+              </div>
               <PinterestDashboard />
             </div>
           )}

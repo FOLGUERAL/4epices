@@ -94,12 +94,13 @@ module.exports = ({ strapi }) => ({
    * Créer un pin Pinterest à partir d'une image spécifique
    */
   async createPinFromImage(recette, imageUrl, pinIndex = 0, boardId = null) {
-    // Priorité: token OAuth utilisateur (démo) > token statique (fallback)
+    // Priorité pour l'admin: token du .env d'abord, puis OAuth en fallback
+    // Cela simplifie l'utilisation : il suffit de configurer PINTEREST_ACCESS_TOKEN dans .env
     const oauthAccessToken = getPinterestAuth()?.accessToken;
-    const accessToken = oauthAccessToken || process.env.PINTEREST_ACCESS_TOKEN;
+    const accessToken = process.env.PINTEREST_ACCESS_TOKEN || oauthAccessToken;
 
     if (!accessToken) {
-      throw new Error('Token Pinterest manquant. Connectez d\'abord Pinterest (OAuth) ou configurez PINTEREST_ACCESS_TOKEN');
+      throw new Error('Token Pinterest manquant. Configurez PINTEREST_ACCESS_TOKEN dans .env ou connectez-vous via OAuth');
     }
 
     // Récupérer le board ID

@@ -18,12 +18,16 @@ function randomState(): string {
 }
 
 /**
- * Panneau admin : connexion OAuth Pinterest + affichage du username.
+ * Panneau de connexion OAuth Pinterest pour les utilisateurs publics.
+ * 
+ * Note: L'interface admin utilise maintenant PINTEREST_ACCESS_TOKEN du .env par défaut.
+ * Ce composant est principalement destiné aux utilisateurs qui veulent partager
+ * leurs recettes sur Pinterest depuis les pages publiques.
  *
  * Flux:
  * - Clic -> redirection vers https://www.pinterest.com/oauth/?response_type=code&...
  * - Pinterest -> redirect_uri (= Strapi /api/pinterest/callback)
- * - Strapi stocke le token (démo: mémoire) puis redirige vers l'admin
+ * - Strapi stocke le token puis redirige
  * - Ici, on appelle /api/pinterest/me (proxy Next -> Strapi) pour afficher le compte connecté
  */
 export default function PinterestConnectPanel() {

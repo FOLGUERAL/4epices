@@ -635,13 +635,15 @@ module.exports = {
   /**
    * GET /api/pinterest/admin/boards
    * Liste les boards Pinterest avec le token admin (pour le dashboard)
+   * Priorité: token du .env > token OAuth (pour simplifier l'utilisation en admin)
    */
   async adminBoards(ctx) {
     const auth = getPinterestAuth();
-    const accessToken = auth?.accessToken || process.env.PINTEREST_ACCESS_TOKEN;
+    // Priorité inversée pour l'admin : token .env d'abord, puis OAuth en fallback
+    const accessToken = process.env.PINTEREST_ACCESS_TOKEN || auth?.accessToken;
 
     if (!accessToken) {
-      return ctx.unauthorized('Token Pinterest manquant. Connectez-vous d\'abord via OAuth ou configurez PINTEREST_ACCESS_TOKEN');
+      return ctx.unauthorized('Token Pinterest manquant. Configurez PINTEREST_ACCESS_TOKEN dans .env ou connectez-vous via OAuth');
     }
 
     try {
