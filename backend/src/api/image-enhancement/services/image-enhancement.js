@@ -158,8 +158,22 @@ async function generateEnhancedImage(enhancementPrompt, originalImageBuffer, ori
   const replicateApiToken = process.env.REPLICATE_API_TOKEN;
   
   // Priorité: Hugging Face (gratuit) > Replicate (payant)
+  // Mais si Hugging Face échoue, essayer Replicate en fallback
   if (huggingFaceToken) {
-    return await generateEnhancedImageWithHuggingFace(enhancementPrompt, originalImageBuffer, originalMimeType, huggingFaceToken);
+    try {
+      return await generateEnhancedImageWithHuggingFace(enhancementPrompt, originalImageBuffer, originalMimeType, huggingFaceToken);
+    } catch (hfError) {
+      strapi.log.warn('[Image Enhancement] Hugging Face a échoué, tentative avec Replicate en fallback...');
+      if (replicateApiToken) {
+        try {
+          return await generateEnhancedImageWithReplicate(enhancementPrompt, originalImageBuffer, originalMimeType, replicateApiToken);
+        } catch (replicateError) {
+          throw new Error(`Hugging Face: ${hfError.message}. Replicate: ${replicateError.message}`);
+        }
+      } else {
+        throw hfError; // Relancer l'erreur Hugging Face si Replicate n'est pas disponible
+      }
+    }
   } else if (replicateApiToken) {
     return await generateEnhancedImageWithReplicate(enhancementPrompt, originalImageBuffer, originalMimeType, replicateApiToken);
   } else {
@@ -173,56 +187,90 @@ async function generateEnhancedImage(enhancementPrompt, originalImageBuffer, ori
 
 /**
  * Génère une image améliorée avec Hugging Face Inference API (GRATUIT)
+ * Note: Hugging Face a des limitations et certains modèles peuvent ne pas être disponibles
  */
 async function generateEnhancedImageWithHuggingFace(enhancementPrompt, originalImageBuffer, originalMimeType, apiToken) {
   try {
     const axios = require('axios');
     
-    // Convertir l'image en base64
-    const base64Image = originalImageBuffer.toString('base64');
+    // Modèles disponibles sur Hugging Face qui fonctionnent avec l'API Inference
+    // Essayer plusieurs modèles en cas d'échec
+    const models = [
+      process.env.HUGGINGFACE_IMAGE_MODEL, // Modèle personnalisé si configuré
+      'runwayml/stable-diffusion-v1-5', // Modèle stable et populaire
+      'CompVis/stable-diffusion-v1-4', // Alternative
+    ].filter(Boolean);
     
-    // Utiliser Stable Diffusion XL pour l'image-to-image
-    // Modèle gratuit sur Hugging Face
-    const model = process.env.HUGGINGFACE_IMAGE_MODEL || 'stabilityai/stable-diffusion-xl-base-1.0';
+    if (models.length === 0) {
+      models.push('runwayml/stable-diffusion-v1-5'); // Par défaut
+    }
     
     strapi.log.info('[Image Enhancement] Génération d\'image améliorée avec Hugging Face (gratuit)...');
     
-    // Hugging Face Inference API pour image-to-image
-    // Note: Hugging Face ne supporte pas directement image-to-image via l'API Inference standard
-    // On utilise donc une approche avec le prompt amélioré pour générer une nouvelle image
-    const response = await axios.post(
-      `https://api-inference.huggingface.co/models/${model}`,
-      {
-        inputs: enhancementPrompt,
-        parameters: {
-          num_inference_steps: 30,
-          guidance_scale: 7.5,
-          width: 1024,
-          height: 1024,
-        },
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-        responseType: 'arraybuffer',
-        timeout: 120000, // 2 minutes
-      }
-    );
+    let lastError = null;
+    
+    // Essayer chaque modèle jusqu'à ce qu'un fonctionne
+    for (const model of models) {
+      try {
+        strapi.log.info(`[Image Enhancement] Tentative avec le modèle: ${model}`);
+        
+        const response = await axios.post(
+          `https://api-inference.huggingface.co/models/${model}`,
+          {
+            inputs: enhancementPrompt,
+            parameters: {
+              num_inference_steps: 30,
+              guidance_scale: 7.5,
+            },
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${apiToken}`,
+              'Content-Type': 'application/json',
+            },
+            responseType: 'arraybuffer',
+            timeout: 120000, // 2 minutes
+          }
+        );
 
-    // Hugging Face retourne directement l'image en PNG
-    const enhancedImageBuffer = Buffer.from(response.data);
+        // Vérifier si la réponse est une image (PNG/JPEG) ou une erreur JSON
+        const contentType = response.headers['content-type'] || '';
+        if (!contentType.startsWith('image/')) {
+          // C'est probablement une erreur JSON
+          const errorText = Buffer.from(response.data).toString('utf-8');
+          try {
+            const errorJson = JSON.parse(errorText);
+            if (errorJson.error) {
+              lastError = new Error(`Modèle ${model}: ${errorJson.error}`);
+              continue; // Essayer le modèle suivant
+            }
+          } catch {
+            // Pas du JSON, continuer
+          }
+        }
+
+        // Hugging Face retourne directement l'image en PNG
+        const enhancedImageBuffer = Buffer.from(response.data);
+        
+        strapi.log.info(`[Image Enhancement] Image améliorée générée avec succès (Hugging Face - ${model})`);
+        
+        return {
+          enhanced: true,
+          imageBuffer: enhancedImageBuffer,
+          imageUrl: null,
+          mimeType: 'image/png',
+          provider: 'huggingface',
+        };
+      } catch (modelError) {
+        lastError = modelError;
+        strapi.log.warn(`[Image Enhancement] Modèle ${model} a échoué, essai du suivant...`);
+        continue;
+      }
+    }
     
-    strapi.log.info('[Image Enhancement] Image améliorée générée avec succès (Hugging Face)');
+    // Tous les modèles ont échoué
+    throw lastError || new Error('Tous les modèles Hugging Face ont échoué');
     
-    return {
-      enhanced: true,
-      imageBuffer: enhancedImageBuffer,
-      imageUrl: null, // Pas d'URL, l'image est directement dans le buffer
-      mimeType: 'image/png',
-      provider: 'huggingface',
-    };
   } catch (error) {
     strapi.log.error('[Image Enhancement] Erreur Hugging Face:', error);
     
@@ -234,12 +282,18 @@ async function generateEnhancedImageWithHuggingFace(enhancementPrompt, originalI
         throw new Error('HUGGINGFACE_API_TOKEN invalide ou expirée');
       }
       
+      if (status === 410) {
+        throw new Error('Le modèle Hugging Face n\'est plus disponible (410). Essayez de configurer REPLICATE_API_TOKEN ou utilisez uniquement l\'analyse (gratuit).');
+      }
+      
       if (status === 503) {
-        // Le modèle est en train de charger, attendre un peu
         throw new Error('Le modèle Hugging Face est en cours de chargement. Réessayez dans quelques secondes.');
       }
       
-      throw new Error(errorData?.error || `Erreur Hugging Face API (${status})`);
+      const errorMessage = typeof errorData === 'object' && errorData.error 
+        ? errorData.error 
+        : `Erreur Hugging Face API (${status})`;
+      throw new Error(errorMessage);
     }
     
     throw new Error(error.message || 'Erreur lors de la génération d\'image avec Hugging Face');
