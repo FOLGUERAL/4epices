@@ -420,6 +420,10 @@ async function generateEnhancedImageWithReplicate(enhancementPrompt, originalIma
         throw new Error('REPLICATE_API_TOKEN invalide ou expirée');
       }
       
+      if (status === 402) {
+        throw new Error('Replicate: Paiement requis. Votre compte Replicate n\'a pas de crédits ou n\'est pas configuré pour payer. Ajoutez des crédits sur https://replicate.com/account/billing');
+      }
+      
       throw new Error(errorData?.detail || `Erreur Replicate API (${status})`);
     }
     
