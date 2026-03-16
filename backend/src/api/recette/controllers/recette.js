@@ -42,7 +42,7 @@ async function findOrCreateTag(strapi, tagName) {
       },
     });
 
-    strapi.log.info(`Tag "${trimmedName}" créé automatiquement depuis une recette`);
+    strapi.log.info(`✅ Tag "${trimmedName}" créé automatiquement (ID: ${newTag.id})`);
     return newTag.id;
   } catch (error) {
     strapi.log.error(`Erreur lors de la recherche/création du tag "${trimmedName}":`, error);
@@ -52,6 +52,11 @@ async function findOrCreateTag(strapi, tagName) {
 
 /**
  * Traiter les tags pour convertir les noms en IDs et créer les tags manquants
+ * Gère les formats suivants :
+ * - Tableau de strings (noms de tags) : ["tag1", "tag2"] -> crée les tags manquants
+ * - Tableau d'IDs : [1, 2, 3] -> utilise les IDs tels quels
+ * - Tableau d'objets avec ID : [{id: 1}, {id: 2}] -> extrait les IDs
+ * - Tableau d'objets avec nom : [{nom: "tag1"}, {nom: "tag2"}] -> crée les tags manquants
  */
 async function processTags(strapi, tags) {
   if (!tags || !Array.isArray(tags)) {
@@ -63,11 +68,34 @@ async function processTags(strapi, tags) {
   for (const tag of tags) {
     // Si c'est déjà un ID numérique
     if (typeof tag === 'number') {
-      processedTags.push(tag);
+      // Vérifier que le tag existe avant de l'ajouter
+      try {
+        const existingTag = await strapi.entityService.findOne('api::tag.tag', tag);
+        if (existingTag) {
+          processedTags.push(tag);
+        } else {
+          strapi.log.warn(`Tag avec ID ${tag} n'existe pas, ignoré`);
+        }
+      } catch (error) {
+        strapi.log.warn(`Erreur lors de la vérification du tag ID ${tag}:`, error.message);
+      }
     }
     // Si c'est un objet avec un ID
     else if (tag && typeof tag === 'object' && tag.id) {
-      processedTags.push(tag.id);
+      const tagId = typeof tag.id === 'number' ? tag.id : parseInt(tag.id, 10);
+      if (!isNaN(tagId)) {
+        // Vérifier que le tag existe avant de l'ajouter
+        try {
+          const existingTag = await strapi.entityService.findOne('api::tag.tag', tagId);
+          if (existingTag) {
+            processedTags.push(tagId);
+          } else {
+            strapi.log.warn(`Tag avec ID ${tagId} n'existe pas, ignoré`);
+          }
+        } catch (error) {
+          strapi.log.warn(`Erreur lors de la vérification du tag ID ${tagId}:`, error.message);
+        }
+      }
     }
     // Si c'est un objet avec un nom (création automatique)
     else if (tag && typeof tag === 'object' && tag.nom) {
@@ -76,9 +104,9 @@ async function processTags(strapi, tags) {
         processedTags.push(tagId);
       }
     }
-    // Si c'est une chaîne de caractères (nom du tag)
-    else if (typeof tag === 'string') {
-      const tagId = await findOrCreateTag(strapi, tag);
+    // Si c'est une chaîne de caractères (nom du tag) - création automatique
+    else if (typeof tag === 'string' && tag.trim()) {
+      const tagId = await findOrCreateTag(strapi, tag.trim());
       if (tagId) {
         processedTags.push(tagId);
       }
@@ -98,16 +126,22 @@ module.exports = createCoreController('api::recette.recette', ({ strapi }) => ({
     // Traiter les tags pour créer automatiquement ceux qui n'existent pas
     // Gérer les différents formats : data.tags, meta.connect, meta.set
     if (data.tags) {
+      strapi.log.info(`[Recette Create] Traitement de ${Array.isArray(data.tags) ? data.tags.length : 0} tag(s)`);
       data.tags = await processTags(strapi, data.tags);
+      if (data.tags) {
+        strapi.log.info(`[Recette Create] ${data.tags.length} tag(s) traités avec succès`);
+      }
     }
     
     // Gérer meta.connect pour les relations (format admin Strapi)
     if (meta && meta.connect && meta.connect.tags) {
+      strapi.log.info(`[Recette Create] Traitement de ${Array.isArray(meta.connect.tags) ? meta.connect.tags.length : 0} tag(s) via meta.connect`);
       meta.connect.tags = await processTags(strapi, meta.connect.tags);
     }
     
     // Gérer meta.set pour remplacer toutes les relations (format admin Strapi)
     if (meta && meta.set && meta.set.tags) {
+      strapi.log.info(`[Recette Create] Traitement de ${Array.isArray(meta.set.tags) ? meta.set.tags.length : 0} tag(s) via meta.set`);
       meta.set.tags = await processTags(strapi, meta.set.tags);
     }
     

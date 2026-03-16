@@ -32,7 +32,8 @@ interface CommentsViewerProps {
 export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewerProps) {
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [filter, setFilter] = useState<'all' | 'approved' | 'pending'>('all');
+  // Par défaut, afficher uniquement les avis publiés (approuvés)
+  const [filter, setFilter] = useState<'all' | 'approved' | 'pending'>('approved');
 
   const fetchComments = async () => {
     setLoading(true);
@@ -104,10 +105,13 @@ export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewe
     fetchComments();
   }, [recetteId, recetteSlug, filter]);
 
+  // Filtrer les commentaires selon le filtre sélectionné
+  // Le filtrage se fait aussi côté API, mais on garde le filtrage côté client
+  // pour permettre de changer rapidement de filtre sans recharger
   const filteredComments = comments.filter((comment) => {
     if (filter === 'approved') return comment.attributes.approuve;
     if (filter === 'pending') return !comment.attributes.approuve;
-    return true;
+    return true; // 'all' : afficher tous les commentaires
   });
 
   const pendingCount = comments.filter((c) => !c.attributes.approuve).length;
