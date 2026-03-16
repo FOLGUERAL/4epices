@@ -7,10 +7,9 @@ import { toast } from './Toast';
 interface RatingFormProps {
   recetteId: number;
   recetteTitle: string;
-  onRatingAdded?: () => void;
 }
 
-export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: RatingFormProps) {
+export default function RatingForm({ recetteId, recetteTitle }: RatingFormProps) {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -41,10 +40,11 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
       setComment('');
       setAuthor('');
       toast.success('Votre avis a été soumis avec succès ! Il sera publié après modération.');
-      if (onRatingAdded) {
-        onRatingAdded();
-      }
-      setTimeout(() => setSubmitted(false), 3000);
+      
+      // Rafraîchir la page après un court délai pour afficher le nouvel avis
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error) {
       console.error('Erreur lors de l\'ajout de l\'avis:', error);
       toast.error('Une erreur est survenue. Veuillez réessayer.');

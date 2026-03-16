@@ -355,10 +355,6 @@ export default async function RecettePage({ params }: { params: { slug: string }
               <RatingForm
                 recetteId={recette.id}
                 recetteTitle={recette.attributes.titre}
-                onRatingAdded={() => {
-                  // Rafraîchir la liste des avis après ajout
-                  window.location.reload();
-                }}
               />
               
               <RatingList recetteId={recette.id} />

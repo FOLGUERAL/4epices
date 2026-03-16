@@ -5,10 +5,9 @@ import { getAvis, Avis } from '@/lib/strapi';
 
 interface RatingListProps {
   recetteId: number;
-  onRatingAdded?: () => void;
 }
 
-export default function RatingList({ recetteId, onRatingAdded }: RatingListProps) {
+export default function RatingList({ recetteId }: RatingListProps) {
   const [ratings, setRatings] = useState<Avis[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -31,17 +30,6 @@ export default function RatingList({ recetteId, onRatingAdded }: RatingListProps
   useEffect(() => {
     fetchRatings();
   }, [recetteId]);
-
-  // Réécouter si un avis est ajouté
-  useEffect(() => {
-    if (onRatingAdded) {
-      // Attendre un peu pour laisser le temps à l'API de traiter
-      const timeout = setTimeout(() => {
-        fetchRatings();
-      }, 2000);
-      return () => clearTimeout(timeout);
-    }
-  }, [onRatingAdded]);
 
   if (loading) {
     return (
