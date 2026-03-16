@@ -386,7 +386,16 @@ module.exports = ({ strapi }) => ({
 
       // Vérifier que l'image a bien un nom et une URL
       const imageName = image.name || image.attributes?.name;
-      const imageUrl = image.url || image.attributes?.url;
+      const imageHash = image.hash || image.attributes?.hash;
+      const imageExt = image.ext || image.attributes?.ext || '.png';
+      let imageUrl = image.url || image.attributes?.url;
+      
+      // Log des informations de l'image pour debug
+      strapi.log.info(`🔍 Image Strapi (ID: ${imageId}):`);
+      strapi.log.info(`   - Nom: ${imageName || 'inconnu'}`);
+      strapi.log.info(`   - Hash: ${imageHash || 'inconnu'}`);
+      strapi.log.info(`   - Extension: ${imageExt}`);
+      strapi.log.info(`   - URL brute: ${imageUrl || 'manquante'}`);
       
       if (!imageUrl) {
         strapi.log.warn(`⚠️ Image sans URL dans Strapi (ID: ${imageId}, Nom: ${imageName || 'inconnu'})`);
@@ -404,7 +413,7 @@ module.exports = ({ strapi }) => ({
       
       let fullUrl;
 
-      // Si l'URL est déjà complète, la retourner telle quelle
+      // Si l'URL est déjà complète, la nettoyer si nécessaire
       if (imageUrl.startsWith('http')) {
         // Vérifier que l'URL n'est pas localhost (non accessible depuis Pinterest)
         if (imageUrl.includes('localhost') || imageUrl.includes('127.0.0.1')) {
@@ -412,7 +421,7 @@ module.exports = ({ strapi }) => ({
           // Essayer de construire une URL publique si disponible
           const publicBaseUrl = process.env.PUBLIC_STRAPI_URL || process.env.PUBLIC_URL || process.env.STRAPI_PUBLIC_URL;
           if (publicBaseUrl && !publicBaseUrl.includes('localhost') && !publicBaseUrl.includes('127.0.0.1')) {
-            // Extraire le chemin de l'URL locale
+            // Extraire le chemin de l'URL locale (enlever le domaine)
             const urlPath = imageUrl.replace(/^https?:\/\/[^\/]+/, '');
             fullUrl = `${publicBaseUrl}${urlPath}`;
             strapi.log.info(`🔵 URL image corrigée pour Pinterest: ${fullUrl}`);
@@ -420,11 +429,68 @@ module.exports = ({ strapi }) => ({
             fullUrl = imageUrl;
           }
         } else {
-          fullUrl = imageUrl;
+          // Nettoyer l'URL si elle contient des chemins incorrects (comme /api/pinterest/callback)
+          // Cela peut arriver si l'URL a été mal construite précédemment
+          if (imageUrl.includes('/api/pinterest/callback')) {
+            strapi.log.warn(`⚠️ URL image contient un chemin incorrect (/api/pinterest/callback), nettoyage...`);
+            // Extraire uniquement le chemin /uploads/...
+            const uploadsMatch = imageUrl.match(/(\/uploads\/[^?#]+)/);
+            if (uploadsMatch) {
+              const cleanPath = uploadsMatch[1];
+              // Construire l'URL correcte avec le baseUrl
+              fullUrl = `${baseUrl}${cleanPath}`;
+              strapi.log.info(`🔵 URL image nettoyée: ${fullUrl}`);
+            } else {
+              // Si on ne trouve pas /uploads/, essayer de construire l'URL avec le hash
+              if (imageHash && imageName) {
+                const cleanFileName = imageName.replace(/\.[^.]+$/, ''); // Enlever l'extension
+                const fileName = `${cleanFileName}${imageExt}`;
+                fullUrl = `${baseUrl}/uploads/${fileName}`;
+                strapi.log.info(`🔵 URL image reconstruite avec le nom: ${fullUrl}`);
+              } else {
+                fullUrl = imageUrl;
+              }
+            }
+          } else {
+            fullUrl = imageUrl;
+          }
         }
       } else {
+        // URL relative - nettoyer si elle contient des chemins incorrects
+        if (imageUrl.includes('/api/pinterest/callback')) {
+          strapi.log.warn(`⚠️ URL relative contient un chemin incorrect (/api/pinterest/callback), nettoyage...`);
+          // Extraire uniquement le chemin /uploads/...
+          const uploadsMatch = imageUrl.match(/(\/uploads\/[^?#]+)/);
+          if (uploadsMatch) {
+            imageUrl = uploadsMatch[1];
+          } else if (imageUrl.startsWith('/uploads/')) {
+            // Déjà correct
+          } else {
+            // Construire le chemin avec le hash si disponible
+            if (imageHash && imageName) {
+              const cleanFileName = imageName.replace(/\.[^.]+$/, ''); // Enlever l'extension
+              const fileName = `${cleanFileName}${imageExt}`;
+              imageUrl = `/uploads/${fileName}`;
+              strapi.log.info(`🔵 Chemin image reconstruit: ${imageUrl}`);
+            }
+          }
+        }
+        
+        // S'assurer que l'URL commence par /uploads/
+        if (!imageUrl.startsWith('/uploads/') && !imageUrl.startsWith('uploads/')) {
+          // Construire le chemin correct avec le nom du fichier
+          if (imageHash && imageName) {
+            const cleanFileName = imageName.replace(/\.[^.]+$/, ''); // Enlever l'extension
+            const fileName = `${cleanFileName}${imageExt}`;
+            imageUrl = `/uploads/${fileName}`;
+            strapi.log.info(`🔵 Chemin image corrigé: ${imageUrl}`);
+          } else {
+            strapi.log.warn(`⚠️ Impossible de construire le chemin de l'image (hash ou nom manquant)`);
+          }
+        }
+        
         // Construire l'URL complète avec le baseUrl
-        fullUrl = `${baseUrl}${imageUrl}`;
+        fullUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
       }
       
       // Vérifier que l'URL n'est pas localhost (non accessible depuis Pinterest)
@@ -443,6 +509,27 @@ module.exports = ({ strapi }) => ({
         const validation = await this.validateImageUrl(fullUrl);
         if (!validation.valid) {
           strapi.log.error(`❌ Image non accessible: ${fullUrl} - ${validation.error}`);
+          
+          // Si l'image n'est pas accessible et qu'on a le hash actuel, essayer de reconstruire l'URL
+          if (imageHash && imageName && validation.error?.includes('404')) {
+            strapi.log.info(`🔄 Tentative de reconstruction de l'URL avec le hash actuel...`);
+            // Construire le nom de fichier avec le hash actuel
+            const cleanFileName = imageName.replace(/\.[^.]+$/, ''); // Enlever l'extension
+            const fileName = `${cleanFileName}${imageExt}`;
+            const reconstructedUrl = `${baseUrl}/uploads/${fileName}`;
+            
+            strapi.log.info(`🔵 URL reconstruite: ${reconstructedUrl}`);
+            
+            // Valider la nouvelle URL
+            const newValidation = await this.validateImageUrl(reconstructedUrl);
+            if (newValidation.valid) {
+              strapi.log.info(`✅ Image accessible avec l'URL reconstruite: ${reconstructedUrl}`);
+              return reconstructedUrl;
+            } else {
+              strapi.log.warn(`⚠️ URL reconstruite également inaccessible: ${reconstructedUrl} - ${newValidation.error}`);
+            }
+          }
+          
           strapi.log.error(`❌ Cela peut arriver si l'image vient d'être modifiée dans Strapi. Vérifiez que l'image est bien sauvegardée et accessible.`);
           // On retourne quand même l'URL pour que l'erreur soit gérée par Pinterest
           // Mais on log l'avertissement
