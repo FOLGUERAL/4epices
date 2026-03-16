@@ -135,8 +135,13 @@ module.exports = {
       const username = pinterestUser.username || pinterestUser.profile?.username || null;
 
       // Détecter si c'est un admin (via state dans l'URL) ou un utilisateur normal
-      const isAdmin = ctx.query?.admin === 'true' || ctx.query?.state?.includes('admin');
+      // Le frontend admin envoie state avec le préfixe "admin_"
+      const stateParam = ctx.query?.state || '';
+      const isAdmin = ctx.query?.admin === 'true' || 
+                     (typeof stateParam === 'string' && stateParam.includes('admin'));
       const { userId, sessionId } = getUserIdOrSession(ctx);
+      
+      strapi.log.info(`[Pinterest OAuth] Détection admin: state="${stateParam}", isAdmin=${isAdmin}`);
 
       if (isAdmin) {
         // Mode admin : garder le système actuel (token global en mémoire pour le bot)
@@ -173,12 +178,16 @@ module.exports = {
         });
 
         // Rediriger vers l'admin Strapi si c'est une connexion admin
+        // IMPORTANT: Pour les connexions admin, on redirige toujours vers l'admin Strapi,
+        // pas vers le frontend, même si PINTEREST_POST_AUTH_REDIRECT est configuré
         const strapiAdminUrl = process.env.STRAPI_ADMIN_URL || 
                                process.env.ADMIN_URL || 
                                (process.env.PUBLIC_STRAPI_URL || process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 1337}`) + '/admin';
-        const postAuthRedirect =
-          process.env.PINTEREST_POST_AUTH_REDIRECT ||
-          `${strapiAdminUrl}?pinterest=connected`;
+        
+        // Pour les connexions admin, on ignore PINTEREST_POST_AUTH_REDIRECT et on redirige toujours vers l'admin
+        // PINTEREST_POST_AUTH_REDIRECT est utilisé uniquement pour les connexions utilisateurs normaux
+        const postAuthRedirect = `${strapiAdminUrl}?pinterest=connected`;
+        strapi.log.info(`[Pinterest OAuth] Redirection admin vers: ${postAuthRedirect}`);
         ctx.redirect(postAuthRedirect);
       } else {
         // Mode utilisateur : stocker dans la base de données
