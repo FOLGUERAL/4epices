@@ -102,27 +102,29 @@ export default function IngredientsAdjuster({ ingredients, basePortions, recipeS
   };
 
   const adjustedIngredients = useMemo(() => {
+    // Si le nombre de personnes n'a pas changé, retourner les ingrédients tels quels
+    if (selectedPortions === basePortions) {
+      return ingredients;
+    }
+    
     const ratio = selectedPortions / basePortions;
     
     return ingredients.map((ing: any) => {
-      // Format simple (string)
+      // Format simple (string) - parsing simplifié
       if (typeof ing === 'string') {
-        // Pattern pour extraire: quantité (avec unité optionnelle) + reste
-        // Ex: "500g de pâtes" -> quantité: "500g", reste: "de pâtes"
-        const quantiteMatch = ing.match(/^([\d\.\/\s]+[a-z]*)\s*(.+)$/i);
+        // Pattern simplifié : extraire un nombre ou une fraction au début
+        // Ex: "2 cuillères à soupe" -> "2" au début
+        // Ex: "1/2 cuillère à café" -> "1/2" au début
+        const quantiteMatch = ing.match(/^(\d+(?:\/\d+)?(?:\.\d+)?)\s*(.+)$/);
         if (quantiteMatch) {
           const quantiteStr = quantiteMatch[1].trim();
           const reste = quantiteMatch[2].trim();
           const quantite = parseQuantity(quantiteStr);
           
-          if (quantite !== null) {
+          if (quantite !== null && ratio !== 1) {
             const newQuantite = quantite * ratio;
             const formattedQuantite = formatQuantity(newQuantite, quantiteStr);
-            // Extraire l'unité uniquement de la partie quantité (ex: "500g" -> "g")
-            const unitMatch = quantiteStr.match(/^\d+\.?\d*\s*([a-z]+)$/i);
-            const unit = unitMatch ? unitMatch[1] : '';
-            // Si on a une unité, l'ajouter après la quantité, sinon juste le reste
-            return unit ? `${formattedQuantite} ${unit} ${reste}`.trim() : `${formattedQuantite} ${reste}`.trim();
+            return `${formattedQuantite} ${reste}`.trim();
           }
         }
         return ing;
@@ -130,18 +132,15 @@ export default function IngredientsAdjuster({ ingredients, basePortions, recipeS
       
       // Format structuré (objet)
       if (typeof ing === 'object' && ing !== null) {
-        // Nettoyer la quantité pour supprimer les doublons (ex: "1/2 /2" -> "1/2")
-        let quantiteStr = ing.quantite || '';
-        quantiteStr = quantiteStr.replace(/(\d+\/\d+)\s*\/\d+/g, '$1').replace(/(\d+)\s+\1(?:\s|$)/g, '$1 ').trim();
+        const quantiteStr = (ing.quantite || '').trim();
         const ingredient = ing.ingredient || '';
         const quantite = parseQuantity(quantiteStr);
         
-        if (quantite !== null) {
+        if (quantite !== null && ratio !== 1) {
           const newQuantite = quantite * ratio;
           const formattedQuantite = formatQuantity(newQuantite, quantiteStr);
-          const unit = extractUnit(quantiteStr);
           return {
-            quantite: `${formattedQuantite}${unit ? ' ' + unit : ''}`.trim(),
+            quantite: formattedQuantite,
             ingredient: ingredient
           };
         }
@@ -191,10 +190,10 @@ export default function IngredientsAdjuster({ ingredients, basePortions, recipeS
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-5">Ingrédients</h2>
         <ul className="space-y-3 text-gray-700 font-medium">
           {adjustedIngredients.map((ingredient: any, index: number) => {
-            // Format simple (string)
+            // Format simple (string) - affichage direct sans parsing
             if (typeof ingredient === 'string') {
               return (
-                <li key={index} className="ml-4 break-words">
+                <li key={index} className="ml-4">
                   {ingredient}
                 </li>
               );
@@ -204,9 +203,10 @@ export default function IngredientsAdjuster({ ingredients, basePortions, recipeS
             if (typeof ingredient === 'object' && ingredient !== null) {
               const quantite = ingredient.quantite || '';
               const ing = ingredient.ingredient || '';
+              const displayText = quantite ? `${quantite} ${ing}`.trim() : ing;
               return (
-                <li key={index} className="ml-4 break-words">
-                  <span className="font-medium">{quantite}</span> <span className="break-words">{ing}</span>
+                <li key={index} className="ml-4">
+                  {displayText}
                 </li>
               );
             }
