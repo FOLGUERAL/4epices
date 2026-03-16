@@ -62,7 +62,7 @@ export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewe
   const handleApprove = async (commentId: number) => {
     try {
       const strapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
-      await axios.put(`${strapiUrl}/api/avis/${commentId}`, {
+      await axios.put(`${strapiUrl}/api/avis-recettes/${commentId}`, {
         data: { approuve: true },
       });
       toast.success('Avis approuvé');
@@ -80,7 +80,7 @@ export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewe
 
     try {
       const strapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
-      await axios.delete(`${strapiUrl}/api/avis/${commentId}`);
+      await axios.delete(`${strapiUrl}/api/avis-recettes/${commentId}`);
       toast.success('Avis supprimé');
       fetchComments();
     } catch (error) {

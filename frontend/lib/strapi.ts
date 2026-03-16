@@ -317,7 +317,7 @@ export interface CreateAvisData {
 
 export async function createAvis(data: CreateAvisData): Promise<StrapiResponse<Avis>> {
   const strapiUrl = getStrapiUrl();
-  const url = `${strapiUrl}/api/avis`;
+  const url = `${strapiUrl}/api/avis-recettes`;
   
   const response = await fetch(url, {
     method: 'POST',
@@ -371,5 +371,5 @@ export async function getAvis(params?: {
   queryParams.append('populate', 'recette');
   queryParams.append('sort', 'createdAt:desc');
 
-  return fetchAPI<Avis[]>(`/avis?${queryParams.toString()}`);
+  return fetchAPI<Avis[]>(`/avis-recettes?${queryParams.toString()}`);
 }

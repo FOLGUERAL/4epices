@@ -3,7 +3,7 @@
   "collectionName": "avis",
   "info": {
     "singularName": "avis",
-    "pluralName": "avis",
+    "pluralName": "avis-recettes",
     "displayName": "Avis",
     "description": "Avis et notes des utilisateurs sur les recettes"
   },
