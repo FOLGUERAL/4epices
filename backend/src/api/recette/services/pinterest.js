@@ -142,11 +142,23 @@ module.exports = ({ strapi }) => ({
     const recipeUrl = `${frontendUrl}/recettes/${recetteData.slug}`;
 
     try {
+      // Vérifier que l'URL de l'image est accessible publiquement
+      if (imageUrl.includes('localhost') || imageUrl.includes('127.0.0.1')) {
+        throw new Error(
+          `L'URL de l'image pointe vers localhost et n'est pas accessible depuis Pinterest.\n` +
+          `URL: ${imageUrl}\n\n` +
+          `Solution : Configurez PUBLIC_STRAPI_URL dans votre .env avec une URL publique (HTTPS).\n` +
+          `Exemple : PUBLIC_STRAPI_URL=https://api.4epices.fr`
+        );
+      }
+
       // Récupérer l'URL de base de l'API Pinterest (sandbox ou production)
       const useSandbox = process.env.PINTEREST_USE_SANDBOX !== 'false';
       const apiBaseUrl = useSandbox 
         ? 'https://api-sandbox.pinterest.com'
         : 'https://api.pinterest.com';
+      
+      strapi.log.info(`[Pinterest] Création du pin #${pinIndex} avec l'image: ${imageUrl}`);
       
       const response = await axios.post(
         `${apiBaseUrl}/v5/pins`,
@@ -170,6 +182,7 @@ module.exports = ({ strapi }) => ({
         }
       );
 
+      strapi.log.info(`[Pinterest] Pin #${pinIndex} créé avec succès (ID: ${response.data?.id})`);
       return response.data;
     } catch (error) {
       const status = error?.response?.status;
@@ -184,6 +197,17 @@ module.exports = ({ strapi }) => ({
           `Scopes requis : pins:read, pins:write, boards:read, boards:write, user_accounts:read\n\n` +
           `Solution : Voir PINTEREST_TOKEN_SCOPES.md pour obtenir un token avec les bons scopes.\n` +
           `Ou utilisez OAuth qui demande automatiquement les bons scopes.`;
+      } else if (status === 400 && data?.message && data.message.includes('could not fetch the image')) {
+        errorMessage = `Pinterest ne peut pas récupérer l'image.\n\n` +
+          `URL de l'image : ${imageUrl}\n\n` +
+          `Causes possibles :\n` +
+          `1. L'URL pointe vers localhost (non accessible depuis Pinterest)\n` +
+          `2. L'URL n'est pas accessible publiquement\n` +
+          `3. L'URL n'est pas en HTTPS (Pinterest exige HTTPS)\n` +
+          `4. L'image n'existe pas à cette URL\n\n` +
+          `Solution : Configurez PUBLIC_STRAPI_URL dans votre .env avec une URL publique en HTTPS.\n` +
+          `Exemple : PUBLIC_STRAPI_URL=https://api.4epices.fr\n\n` +
+          `Vérifiez que l'URL est accessible depuis un navigateur externe.`;
       }
       
       strapi.log.error(`[Pinterest] Erreur lors de la création du pin #${pinIndex}:`, {
@@ -191,6 +215,7 @@ module.exports = ({ strapi }) => ({
         status,
         data,
         errorMessage,
+        imageUrl,
       });
       
       throw new Error(errorMessage);
@@ -300,6 +325,40 @@ module.exports = ({ strapi }) => ({
   },
 
   /**
+   * Vérifier que l'image est accessible (HEAD request)
+   */
+  async validateImageUrl(imageUrl) {
+    try {
+      const response = await axios.head(imageUrl, {
+        timeout: 5000,
+        validateStatus: (status) => status < 500, // Accepter les codes 2xx, 3xx, 4xx mais pas 5xx
+      });
+      
+      // Vérifier que c'est bien une image
+      const contentType = response.headers['content-type'] || '';
+      const isImage = contentType.startsWith('image/');
+      
+      if (response.status >= 200 && response.status < 300 && isImage) {
+        return { valid: true, status: response.status };
+      } else if (response.status === 404) {
+        return { valid: false, error: 'Image introuvable (404)' };
+      } else if (!isImage) {
+        return { valid: false, error: `Type de contenu invalide: ${contentType}` };
+      } else {
+        return { valid: false, error: `Status HTTP: ${response.status}` };
+      }
+    } catch (error) {
+      // Si c'est une erreur réseau (timeout, DNS, etc.), on considère que l'URL n'est pas accessible
+      if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND') {
+        return { valid: false, error: `Image non accessible: ${error.message}` };
+      }
+      // Pour les autres erreurs, on log mais on continue quand même
+      strapi.log.warn(`⚠️ Erreur lors de la validation de l'image ${imageUrl}:`, error.message);
+      return { valid: true, warning: error.message }; // On continue quand même
+    }
+  },
+
+  /**
    * Récupérer l'URL de l'image depuis Strapi
    */
   async getImageUrl(imageData) {
@@ -321,6 +380,16 @@ module.exports = ({ strapi }) => ({
       });
 
       if (!image) {
+        strapi.log.warn(`⚠️ Image introuvable dans Strapi (ID: ${imageId})`);
+        return null;
+      }
+
+      // Vérifier que l'image a bien un nom et une URL
+      const imageName = image.name || image.attributes?.name;
+      const imageUrl = image.url || image.attributes?.url;
+      
+      if (!imageUrl) {
+        strapi.log.warn(`⚠️ Image sans URL dans Strapi (ID: ${imageId}, Nom: ${imageName || 'inconnu'})`);
         return null;
       }
 
@@ -333,24 +402,58 @@ module.exports = ({ strapi }) => ({
                       (process.env.NEXT_PUBLIC_STRAPI_URL && typeof process.env.NEXT_PUBLIC_STRAPI_URL !== 'undefined' ? process.env.NEXT_PUBLIC_STRAPI_URL : null) ||
                       `http://localhost:${process.env.PORT || 1337}`;
       
-      const imageUrl = image.url || image.attributes?.url;
-      
-      if (!imageUrl) {
-        return null;
-      }
+      let fullUrl;
 
       // Si l'URL est déjà complète, la retourner telle quelle
       if (imageUrl.startsWith('http')) {
-        return imageUrl;
+        // Vérifier que l'URL n'est pas localhost (non accessible depuis Pinterest)
+        if (imageUrl.includes('localhost') || imageUrl.includes('127.0.0.1')) {
+          strapi.log.warn(`⚠️ URL image pointe vers localhost (non accessible depuis Pinterest): ${imageUrl}`);
+          // Essayer de construire une URL publique si disponible
+          const publicBaseUrl = process.env.PUBLIC_STRAPI_URL || process.env.PUBLIC_URL || process.env.STRAPI_PUBLIC_URL;
+          if (publicBaseUrl && !publicBaseUrl.includes('localhost') && !publicBaseUrl.includes('127.0.0.1')) {
+            // Extraire le chemin de l'URL locale
+            const urlPath = imageUrl.replace(/^https?:\/\/[^\/]+/, '');
+            fullUrl = `${publicBaseUrl}${urlPath}`;
+            strapi.log.info(`🔵 URL image corrigée pour Pinterest: ${fullUrl}`);
+          } else {
+            fullUrl = imageUrl;
+          }
+        } else {
+          fullUrl = imageUrl;
+        }
+      } else {
+        // Construire l'URL complète avec le baseUrl
+        fullUrl = `${baseUrl}${imageUrl}`;
       }
-
-      // Construire l'URL complète avec le baseUrl
-      const fullUrl = `${baseUrl}${imageUrl}`;
-      strapi.log.info(`🔵 URL image construite pour Pinterest: ${fullUrl}`);
+      
+      // Vérifier que l'URL n'est pas localhost (non accessible depuis Pinterest)
+      if (fullUrl.includes('localhost') || fullUrl.includes('127.0.0.1')) {
+        strapi.log.warn(`⚠️ URL image pointe vers localhost (non accessible depuis Pinterest): ${fullUrl}`);
+        strapi.log.warn(`⚠️ Pinterest ne peut pas récupérer les images depuis localhost. Configurez PUBLIC_STRAPI_URL avec une URL publique (HTTPS) dans votre .env`);
+      } else if (!fullUrl.startsWith('https://')) {
+        strapi.log.warn(`⚠️ URL image n'est pas en HTTPS: ${fullUrl}`);
+        strapi.log.warn(`⚠️ Pinterest recommande fortement HTTPS pour les images`);
+      }
+      
+      strapi.log.info(`🔵 URL image construite pour Pinterest: ${fullUrl} (Image: ${imageName || 'sans nom'}, ID: ${imageId})`);
+      
+      // Valider que l'image est accessible (sauf si c'est localhost, car ça échouera de toute façon)
+      if (!fullUrl.includes('localhost') && !fullUrl.includes('127.0.0.1')) {
+        const validation = await this.validateImageUrl(fullUrl);
+        if (!validation.valid) {
+          strapi.log.error(`❌ Image non accessible: ${fullUrl} - ${validation.error}`);
+          strapi.log.error(`❌ Cela peut arriver si l'image vient d'être modifiée dans Strapi. Vérifiez que l'image est bien sauvegardée et accessible.`);
+          // On retourne quand même l'URL pour que l'erreur soit gérée par Pinterest
+          // Mais on log l'avertissement
+        } else {
+          strapi.log.info(`✅ Image validée et accessible: ${fullUrl}`);
+        }
+      }
       
       return fullUrl;
     } catch (error) {
-      strapi.log.error('Erreur lors de la récupération de l\'image:', error);
+      strapi.log.error(`Erreur lors de la récupération de l'image (ID: ${imageId}):`, error);
       return null;
     }
   },
