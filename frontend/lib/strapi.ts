@@ -285,3 +285,94 @@ export function getStrapiMediaUrl(url: string): string {
   return `${publicUrl}${url}`;
 }
 
+
+
+export interface Avis {
+  id: number;
+  attributes: {
+    rating: number;
+    comment?: string;
+    author?: string;
+    approuve: boolean;
+    recette?: {
+      data: {
+        id: number;
+        attributes: {
+          titre: string;
+          slug: string;
+        };
+      };
+    };
+    createdAt: string;
+    updatedAt: string;
+    publishedAt?: string;
+  };
+}
+
+export interface CreateAvisData {
+  recette: number;
+  rating: number;
+  comment?: string;
+  author?: string;
+  approuve?: boolean;
+}
+
+export async function createAvis(data: CreateAvisData): Promise<StrapiResponse<Avis>> {
+  const strapiUrl = getStrapiUrl();
+  const url = ${strapiUrl}/api/avis;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      data: {
+        recette: data.recette,
+        rating: data.rating,
+        comment: data.comment || undefined,
+        author: data.author || undefined,
+        approuve: data.approuve ?? false,
+      },
+    }),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(API error ():, errorText);
+    throw new Error(API error:  );
+  }
+
+  return response.json();
+}
+
+export async function getAvis(params?: {
+  recetteId?: number;
+  approuve?: boolean;
+  page?: number;
+  pageSize?: number;
+}): Promise<StrapiResponse<Avis[]>> {
+  const queryParams = new URLSearchParams();
+  
+  if (params?.recetteId) {
+    queryParams.append('filters[recette][id][]', params.recetteId.toString());
+  }
+  
+  if (params?.approuve !== undefined) {
+    queryParams.append('filters[approuve][]', params.approuve.toString());
+  }
+  
+  if (params?.page) {
+    queryParams.append('pagination[page]', params.page.toString());
+  }
+  if (params?.pageSize) {
+    queryParams.append('pagination[pageSize]', params.pageSize.toString());
+  }
+  
+  queryParams.append('populate', 'recette');
+  queryParams.append('sort', 'createdAt:desc');
+
+  return fetchAPI<Avis[]>(/avis?);
+}
+
