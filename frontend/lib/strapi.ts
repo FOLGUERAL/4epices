@@ -285,8 +285,6 @@ export function getStrapiMediaUrl(url: string): string {
   return `${publicUrl}${url}`;
 }
 
-
-
 export interface Avis {
   id: number;
   attributes: {
@@ -319,7 +317,7 @@ export interface CreateAvisData {
 
 export async function createAvis(data: CreateAvisData): Promise<StrapiResponse<Avis>> {
   const strapiUrl = getStrapiUrl();
-  const url = ${strapiUrl}/api/avis;
+  const url = `${strapiUrl}/api/avis`;
   
   const response = await fetch(url, {
     method: 'POST',
@@ -340,8 +338,8 @@ export async function createAvis(data: CreateAvisData): Promise<StrapiResponse<A
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(API error ():, errorText);
-    throw new Error(API error:  );
+    console.error(`API error (${response.status}):`, errorText);
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
   }
 
   return response.json();
@@ -356,11 +354,11 @@ export async function getAvis(params?: {
   const queryParams = new URLSearchParams();
   
   if (params?.recetteId) {
-    queryParams.append('filters[recette][id][]', params.recetteId.toString());
+    queryParams.append('filters[recette][id][$eq]', params.recetteId.toString());
   }
   
   if (params?.approuve !== undefined) {
-    queryParams.append('filters[approuve][]', params.approuve.toString());
+    queryParams.append('filters[approuve][$eq]', params.approuve.toString());
   }
   
   if (params?.page) {
@@ -373,6 +371,5 @@ export async function getAvis(params?: {
   queryParams.append('populate', 'recette');
   queryParams.append('sort', 'createdAt:desc');
 
-  return fetchAPI<Avis[]>(/avis?);
+  return fetchAPI<Avis[]>(`/avis?${queryParams.toString()}`);
 }
-
