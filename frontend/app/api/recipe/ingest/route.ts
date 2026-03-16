@@ -264,6 +264,46 @@ async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): 
         .substring(0, 100); // Limiter la longueur
     };
 
+    // Trouver un slug unique en vérifiant s'il existe déjà
+    const findUniqueSlug = async (baseSlug: string): Promise<string> => {
+      let slug = baseSlug;
+      let counter = 1;
+      
+      while (true) {
+        // Vérifier si une recette avec ce slug existe déjà
+        const checkResponse = await fetch(
+          `${strapiUrl}/api/recettes?filters[slug][$eq]=${encodeURIComponent(slug)}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${apiToken}`,
+            },
+          }
+        );
+
+        if (checkResponse.ok) {
+          const checkData = await checkResponse.json();
+          if (!checkData.data || checkData.data.length === 0) {
+            // Le slug est disponible
+            return slug;
+          }
+        }
+
+        // Le slug existe déjà, générer un nouveau avec un suffixe
+        const baseSlugWithoutSuffix = baseSlug.replace(/-\d+$/, ''); // Enlever un suffixe existant
+        slug = `${baseSlugWithoutSuffix}-${counter}`;
+        counter++;
+        
+        // Limite de sécurité pour éviter une boucle infinie
+        if (counter > 100) {
+          // Si on atteint 100, ajouter un timestamp pour garantir l'unicité
+          slug = `${baseSlugWithoutSuffix}-${Date.now()}`;
+          break;
+        }
+      }
+      
+      return slug;
+    };
+
     // Fonction pour générer metaTitle (copie de la logique backend)
     const generateMetaTitle = (titre: string): string => {
       const trimmedTitre = (titre || '').trim();
@@ -317,11 +357,15 @@ async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): 
       return metaDesc;
     };
 
+    // Générer un slug unique
+    const baseSlug = generateSlug(parsedRecipe.titre);
+    const uniqueSlug = await findUniqueSlug(baseSlug);
+
     // Préparer les données pour Strapi (format exact du schéma)
     const recipeData: any = {
       data: {
         titre: parsedRecipe.titre,
-        slug: generateSlug(parsedRecipe.titre), // Générer le slug explicitement
+        slug: uniqueSlug, // Utiliser le slug unique
         description: parsedRecipe.description || parsedRecipe.titre,
         ingredients: ingredientsFormatted, // JSON array (strings ou objets {quantite, ingredient})
         etapes: etapesHtml, // RichText (HTML)
