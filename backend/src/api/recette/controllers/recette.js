@@ -9,6 +9,18 @@ const { createCoreController } = require('@strapi/strapi').factories;
 /**
  * Trouver ou créer un tag par nom et retourner son ID
  */
+/**
+ * Génère un slug à partir d'un nom
+ */
+function generateSlug(name) {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Supprimer les accents
+    .replace(/[^a-z0-9]+/g, '-') // Remplacer les caractères non alphanumériques par des tirets
+    .replace(/^-+|-+$/g, ''); // Supprimer les tirets en début et fin
+}
+
 async function findOrCreateTag(strapi, tagName) {
   if (!tagName || typeof tagName !== 'string' || !tagName.trim()) {
     return null;
@@ -34,15 +46,19 @@ async function findOrCreateTag(strapi, tagName) {
       return existingTag.id;
     }
 
-    // Créer un nouveau tag (sera automatiquement publié par le lifecycle)
+    // Générer le slug à partir du nom
+    const slug = generateSlug(trimmedName);
+
+    // Créer un nouveau tag avec le slug généré
     const newTag = await strapi.entityService.create('api::tag.tag', {
       data: {
         nom: trimmedName,
+        slug: slug,
         publishedAt: new Date().toISOString(), // Sera géré par le lifecycle
       },
     });
 
-    strapi.log.info(`✅ Tag "${trimmedName}" créé automatiquement (ID: ${newTag.id})`);
+    strapi.log.info(`✅ Tag "${trimmedName}" créé automatiquement (ID: ${newTag.id}, slug: ${slug})`);
     return newTag.id;
   } catch (error) {
     strapi.log.error(`Erreur lors de la recherche/création du tag "${trimmedName}":`, error);
