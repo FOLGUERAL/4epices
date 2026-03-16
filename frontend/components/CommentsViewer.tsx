@@ -1,28 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getAvis, Avis } from '@/lib/strapi';
 import { toast } from './Toast';
-
-interface Comment {
-  id: number;
-  attributes: {
-    contenu: string;
-    auteur?: string;
-    email?: string;
-    approuve: boolean;
-    createdAt: string;
-    recette?: {
-      data: {
-        id: number;
-        attributes: {
-          titre: string;
-          slug: string;
-        };
-      };
-    };
-  };
-}
+import axios from 'axios';
 
 interface CommentsViewerProps {
   recetteId?: number;
@@ -31,45 +12,48 @@ interface CommentsViewerProps {
 
 export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewerProps) {
   const [loading, setLoading] = useState(true);
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<Avis[]>([]);
   // Par défaut, afficher uniquement les avis publiés (approuvés)
   const [filter, setFilter] = useState<'all' | 'approved' | 'pending'>('approved');
 
   const fetchComments = async () => {
     setLoading(true);
     try {
-      let url = '/api/comments';
-      const params: any = {};
-      
+      let params: {
+        recetteId?: number;
+        approuve?: boolean;
+      } = {};
+
       if (recetteId) {
-        params['filters[recette][id][$eq]'] = recetteId;
+        params.recetteId = recetteId;
       } else if (recetteSlug) {
         // Récupérer d'abord l'ID de la recette depuis le slug
-        const recetteResponse = await axios.get(`/api/recettes?filters[slug][$eq]=${recetteSlug}`);
-        if (recetteResponse.data.data && recetteResponse.data.data.length > 0) {
-          params['filters[recette][id][$eq]'] = recetteResponse.data.data[0].id;
+        try {
+          const response = await fetch(`/api/recettes?filters[slug][$eq]=${recetteSlug}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.data && data.data.length > 0) {
+              params.recetteId = data.data[0].id;
+            }
+          }
+        } catch (error) {
+          console.error('Erreur lors de la récupération de la recette:', error);
         }
       }
 
+      // Appliquer le filtre
       if (filter === 'approved') {
-        params['filters[approuve][$eq]'] = true;
+        params.approuve = true;
       } else if (filter === 'pending') {
-        params['filters[approuve][$eq]'] = false;
+        params.approuve = false;
       }
 
-      const response = await axios.get(url, { params });
-      
-      // Gérer les deux formats possibles (Strapi v4)
-      const commentsData = response.data.data || response.data || [];
-      setComments(Array.isArray(commentsData) ? commentsData : []);
+      const response = await getAvis(params);
+      setComments(response.data || []);
     } catch (error: any) {
-      // Si l'endpoint n'existe pas encore, afficher un message
-      if (error.response?.status === 404) {
-        setComments([]);
-      } else {
-        console.error('Erreur lors du chargement des commentaires:', error);
-        toast.error('Erreur lors du chargement des commentaires');
-      }
+      console.error('Erreur lors du chargement des avis:', error);
+      toast.error('Erreur lors du chargement des avis');
+      setComments([]);
     } finally {
       setLoading(false);
     }
@@ -77,26 +61,30 @@ export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewe
 
   const handleApprove = async (commentId: number) => {
     try {
-      await axios.put(`/api/comments/${commentId}`, {
+      const strapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+      await axios.put(`${strapiUrl}/api/avis/${commentId}`, {
         data: { approuve: true },
       });
-      toast.success('Commentaire approuvé');
+      toast.success('Avis approuvé');
       fetchComments();
     } catch (error) {
+      console.error('Erreur lors de l\'approbation:', error);
       toast.error('Erreur lors de l\'approbation');
     }
   };
 
   const handleDelete = async (commentId: number) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce commentaire ?')) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cet avis ?')) {
       return;
     }
 
     try {
-      await axios.delete(`/api/comments/${commentId}`);
-      toast.success('Commentaire supprimé');
+      const strapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+      await axios.delete(`${strapiUrl}/api/avis/${commentId}`);
+      toast.success('Avis supprimé');
       fetchComments();
     } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
       toast.error('Erreur lors de la suppression');
     }
   };
@@ -106,8 +94,6 @@ export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewe
   }, [recetteId, recetteSlug, filter]);
 
   // Filtrer les commentaires selon le filtre sélectionné
-  // Le filtrage se fait aussi côté API, mais on garde le filtrage côté client
-  // pour permettre de changer rapidement de filtre sans recharger
   const filteredComments = comments.filter((comment) => {
     if (filter === 'approved') return comment.attributes.approuve;
     if (filter === 'pending') return !comment.attributes.approuve;
@@ -169,15 +155,27 @@ export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewe
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-gray-900">
-                      {comment.attributes.auteur || 'Anonyme'}
+                      {comment.attributes.author || 'Anonyme'}
                     </span>
-                    {comment.attributes.approuve ? (
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <svg
+                          key={star}
+                          className={`w-4 h-4 ${
+                            star <= comment.attributes.rating
+                              ? 'text-yellow-400 fill-current'
+                              : 'text-gray-300'
+                          }`}
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      ))}
+                    </div>
+                    {comment.attributes.approuve && (
                       <span className="px-2 py-1 text-xs font-medium bg-green-500 text-white rounded-full">
-                        Approuvé
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 text-xs font-medium bg-orange-500 text-white rounded-full">
-                        En attente
+                        Publié
                       </span>
                     )}
                   </div>
@@ -186,39 +184,41 @@ export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewe
                       📝 {comment.attributes.recette.data.attributes.titre}
                     </div>
                   )}
-                  <div className="text-sm text-gray-700 mb-2">
-                    {comment.attributes.contenu}
-                  </div>
+                  {comment.attributes.comment && (
+                    <div className="text-sm text-gray-700 mb-2 mt-2">
+                      {comment.attributes.comment}
+                    </div>
+                  )}
                   <div className="text-xs text-gray-500">
                     📅 {new Date(comment.attributes.createdAt).toLocaleString('fr-FR')}
-                    {comment.attributes.email && ` • ✉️ ${comment.attributes.email}`}
                   </div>
                 </div>
               </div>
-              {!comment.attributes.approuve && (
-                <div className="flex items-center gap-2 mt-3">
+              <div className="flex items-center gap-2 mt-3">
+                {!comment.attributes.approuve && (
                   <button
                     onClick={() => handleApprove(comment.id)}
                     className="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
                   >
                     ✅ Approuver
                   </button>
-                  <button
-                    onClick={() => handleDelete(comment.id)}
-                    className="px-3 py-1 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    🗑️ Supprimer
-                  </button>
-                </div>
-              )}
+                )}
+                <button
+                  onClick={() => handleDelete(comment.id)}
+                  className="px-3 py-1 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  🗑️ Supprimer
+                </button>
+              </div>
             </div>
           ))}
         </div>
       ) : (
         <div className="text-center py-8 text-gray-500">
-          <p>📭 Aucun commentaire {filter !== 'all' && filter === 'approved' ? 'approuvé' : 'en attente'}</p>
+          <p>📭 Aucun avis {filter !== 'all' && filter === 'approved' ? 'publié' : filter === 'pending' ? 'en attente' : ''}</p>
           <p className="text-xs mt-2">
-            {filter === 'all' && 'Les commentaires apparaîtront ici une fois le système configuré'}
+            {filter === 'pending' && 'Les avis en attente nécessitent une modération'}
+            {filter === 'all' && comments.length === 0 && 'Les avis déposés sur les pages recettes apparaîtront ici'}
           </p>
         </div>
       )}

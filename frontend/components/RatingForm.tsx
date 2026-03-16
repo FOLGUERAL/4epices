@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { addRating, getRatings } from '@/lib/ratings';
+import { createAvis } from '@/lib/strapi';
 import { toast } from './Toast';
 
 interface RatingFormProps {
@@ -16,8 +16,9 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
   const [comment, setComment] = useState('');
   const [author, setAuthor] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (rating === 0) {
@@ -25,25 +26,30 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
       return;
     }
 
-    const success = addRating({
-      recetteId,
-      rating,
-      comment: comment.trim() || undefined,
-      author: author.trim() || undefined,
-    });
+    setLoading(true);
+    try {
+      await createAvis({
+        recette: recetteId,
+        rating,
+        comment: comment.trim() || undefined,
+        author: author.trim() || undefined,
+        approuve: false, // Les avis doivent être approuvés par l'admin
+      });
 
-    if (success) {
       setSubmitted(true);
       setRating(0);
       setComment('');
       setAuthor('');
-      toast.success('Votre avis a été publié avec succès !');
+      toast.success('Votre avis a été soumis avec succès ! Il sera publié après modération.');
       if (onRatingAdded) {
         onRatingAdded();
       }
       setTimeout(() => setSubmitted(false), 3000);
-    } else {
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout de l\'avis:', error);
       toast.error('Une erreur est survenue. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -127,10 +133,10 @@ export default function RatingForm({ recetteId, recetteTitle, onRatingAdded }: R
 
         <button
           type="submit"
-          disabled={rating === 0}
+          disabled={rating === 0 || loading}
           className="w-full bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-3 rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all duration-200 font-bold disabled:bg-gray-300 disabled:cursor-not-allowed disabled:from-gray-300 disabled:to-gray-300 shadow-md hover:shadow-lg transform hover:scale-105"
         >
-          ✨ Publier mon avis
+          {loading ? '⏳ Envoi...' : '✨ Publier mon avis'}
         </button>
       </form>
     </div>

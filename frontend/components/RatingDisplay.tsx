@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getAverageRating, getRatingCount } from '@/lib/ratings';
+import { getAvis } from '@/lib/strapi';
 
 interface RatingDisplayProps {
   recetteId: number;
@@ -12,10 +12,39 @@ interface RatingDisplayProps {
 export default function RatingDisplay({ recetteId, size = 'md', showCount = true }: RatingDisplayProps) {
   const [average, setAverage] = useState(0);
   const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setAverage(getAverageRating(recetteId));
-    setCount(getRatingCount(recetteId));
+    const fetchRatings = async () => {
+      try {
+        setLoading(true);
+        const response = await getAvis({
+          recetteId,
+          approuve: true, // Calculer uniquement avec les avis approuvés
+        });
+        
+        const avis = response.data || [];
+        const count = avis.length;
+        
+        if (count > 0) {
+          const sum = avis.reduce((acc, avis) => acc + avis.attributes.rating, 0);
+          const avg = Math.round((sum / count) * 10) / 10;
+          setAverage(avg);
+        } else {
+          setAverage(0);
+        }
+        
+        setCount(count);
+      } catch (error) {
+        console.error('Erreur lors de la récupération des notes:', error);
+        setAverage(0);
+        setCount(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRatings();
   }, [recetteId]);
 
   const starSize = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5';
