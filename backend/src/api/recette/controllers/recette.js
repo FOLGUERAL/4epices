@@ -126,10 +126,14 @@ module.exports = createCoreController('api::recette.recette', ({ strapi }) => ({
     // Traiter les tags pour créer automatiquement ceux qui n'existent pas
     // Gérer les différents formats : data.tags, meta.connect, meta.set
     if (data.tags) {
-      strapi.log.info(`[Recette Create] Traitement de ${Array.isArray(data.tags) ? data.tags.length : 0} tag(s)`);
+      const tagsCount = Array.isArray(data.tags) ? data.tags.length : 0;
+      strapi.log.info(`[Recette Create] Traitement de ${tagsCount} tag(s)`);
+      strapi.log.info(`[Recette Create] Format des tags:`, data.tags.map((t: any) => typeof t === 'number' ? `ID:${t}` : typeof t === 'string' ? `String:"${t}"` : typeof t));
       data.tags = await processTags(strapi, data.tags);
       if (data.tags) {
         strapi.log.info(`[Recette Create] ${data.tags.length} tag(s) traités avec succès`);
+      } else {
+        strapi.log.warn(`[Recette Create] Aucun tag traité (peut être normal si aucun tag n'a été fourni)`);
       }
     }
     

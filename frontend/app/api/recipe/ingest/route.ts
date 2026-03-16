@@ -234,13 +234,20 @@ async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): 
     }
 
     // Trouver ou créer les tags
+    // Si la création échoue côté frontend, on enverra les tags comme des strings
+    // pour que le controller Strapi les crée automatiquement
     const tagIds: number[] = [];
+    const tagNames: string[] = []; // Tags qui n'ont pas pu être créés
     if (parsedRecipe.tags && Array.isArray(parsedRecipe.tags)) {
       for (const tagName of parsedRecipe.tags) {
         if (tagName && tagName.trim()) {
           const tagId = await findOrCreateTag(tagName.trim());
           if (tagId) {
             tagIds.push(tagId);
+          } else {
+            // Si la création a échoué, garder le nom pour l'envoyer comme string
+            tagNames.push(tagName.trim());
+            console.warn(`[Ingest] Impossible de créer le tag "${tagName.trim()}", sera envoyé comme string à Strapi`);
           }
         }
       }
@@ -334,12 +341,14 @@ async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): 
       recipeData.data.imagePrincipale = imageId;
     }
 
-    // Ajouter les relations (catégories et tags) - Strapi attend des arrays d'IDs
+    // Ajouter les relations (catégories et tags)
     if (categoryIds.length > 0) {
       recipeData.data.categories = categoryIds;
     }
-    if (tagIds.length > 0) {
-      recipeData.data.tags = tagIds;
+    // Envoyer les tags : IDs pour ceux créés, strings pour ceux qui n'ont pas pu être créés
+    // Le controller Strapi créera automatiquement les tags envoyés comme strings
+    if (tagIds.length > 0 || tagNames.length > 0) {
+      recipeData.data.tags = [...tagIds, ...tagNames];
     }
 
     // Créer la recette avec authentification
