@@ -397,19 +397,54 @@ module.exports = ({ strapi }) => ({
       strapi.log.info(`   - Extension: ${imageExt}`);
       strapi.log.info(`   - URL brute: ${imageUrl || 'manquante'}`);
       
+      // Si on a le nom du fichier mais que l'URL contient un hash différent, utiliser le nom
+      // Cela peut arriver quand l'image a été modifiée dans Strapi
+      if (imageName && imageUrl) {
+        const fileNameFromUrl = imageUrl.split('/').pop() || '';
+        const fileNameFromName = imageName;
+        
+        // Si le nom du fichier dans l'URL ne correspond pas au nom actuel, reconstruire l'URL
+        if (fileNameFromUrl !== fileNameFromName && !fileNameFromUrl.includes(fileNameFromName.replace(/\.[^.]+$/, ''))) {
+          strapi.log.warn(`⚠️ Le nom du fichier dans l'URL ne correspond pas au nom actuel`);
+          strapi.log.warn(`   URL: ${fileNameFromUrl}`);
+          strapi.log.warn(`   Nom actuel: ${fileNameFromName}`);
+          strapi.log.info(`🔵 Reconstruction de l'URL avec le nom actuel du fichier`);
+          // Utiliser le nom actuel pour construire l'URL
+          imageUrl = `/uploads/${imageName}`;
+        }
+      }
+      
       if (!imageUrl) {
-        strapi.log.warn(`⚠️ Image sans URL dans Strapi (ID: ${imageId}, Nom: ${imageName || 'inconnu'})`);
-        return null;
+        // Si pas d'URL mais qu'on a le nom, construire l'URL
+        if (imageName) {
+          imageUrl = `/uploads/${imageName}`;
+          strapi.log.info(`🔵 URL construite depuis le nom: ${imageUrl}`);
+        } else {
+          strapi.log.warn(`⚠️ Image sans URL et sans nom dans Strapi (ID: ${imageId})`);
+          return null;
+        }
       }
 
       // Construire l'URL complète
       // En production, utiliser l'URL publique de l'API Strapi (accessible depuis l'extérieur)
       // Priorité: PUBLIC_STRAPI_URL > PUBLIC_URL > STRAPI_PUBLIC_URL > fallback localhost
-      const baseUrl = process.env.PUBLIC_STRAPI_URL || 
-                      process.env.PUBLIC_URL || 
-                      process.env.STRAPI_PUBLIC_URL ||
-                      (process.env.NEXT_PUBLIC_STRAPI_URL && typeof process.env.NEXT_PUBLIC_STRAPI_URL !== 'undefined' ? process.env.NEXT_PUBLIC_STRAPI_URL : null) ||
-                      `http://localhost:${process.env.PORT || 1337}`;
+      let baseUrl = process.env.PUBLIC_STRAPI_URL || 
+                    process.env.PUBLIC_URL || 
+                    process.env.STRAPI_PUBLIC_URL ||
+                    (process.env.NEXT_PUBLIC_STRAPI_URL && typeof process.env.NEXT_PUBLIC_STRAPI_URL !== 'undefined' ? process.env.NEXT_PUBLIC_STRAPI_URL : null) ||
+                    `http://localhost:${process.env.PORT || 1337}`;
+      
+      // Nettoyer le baseUrl pour enlever les chemins incorrects comme /api/pinterest/callback
+      if (baseUrl.includes('/api/pinterest/callback')) {
+        strapi.log.warn(`⚠️ baseUrl contient un chemin incorrect (/api/pinterest/callback), nettoyage...`);
+        baseUrl = baseUrl.replace(/\/api\/pinterest\/callback\/?$/, '').replace(/\/$/, '');
+        strapi.log.info(`🔵 baseUrl nettoyé: ${baseUrl}`);
+      }
+      
+      // S'assurer que le baseUrl ne se termine pas par un slash
+      baseUrl = baseUrl.replace(/\/$/, '');
+      
+      strapi.log.info(`🔍 baseUrl utilisé: ${baseUrl}`);
       
       let fullUrl;
 
@@ -490,7 +525,33 @@ module.exports = ({ strapi }) => ({
         }
         
         // Construire l'URL complète avec le baseUrl
-        fullUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+        // S'assurer que imageUrl commence par /uploads/
+        if (!imageUrl.startsWith('/uploads/')) {
+          if (imageUrl.startsWith('uploads/')) {
+            imageUrl = '/' + imageUrl;
+          } else if (imageUrl.startsWith('/')) {
+            // Si ça commence par / mais pas /uploads/, essayer de construire avec le nom du fichier
+            if (imageHash && imageName) {
+              const cleanFileName = imageName.replace(/\.[^.]+$/, ''); // Enlever l'extension
+              const fileName = `${cleanFileName}${imageExt}`;
+              imageUrl = `/uploads/${fileName}`;
+              strapi.log.info(`🔵 Chemin image reconstruit depuis le nom: ${imageUrl}`);
+            }
+          } else {
+            // Construire avec le nom du fichier si disponible
+            if (imageHash && imageName) {
+              const cleanFileName = imageName.replace(/\.[^.]+$/, ''); // Enlever l'extension
+              const fileName = `${cleanFileName}${imageExt}`;
+              imageUrl = `/uploads/${fileName}`;
+              strapi.log.info(`🔵 Chemin image construit depuis le nom: ${imageUrl}`);
+            } else {
+              imageUrl = `/uploads/${imageUrl}`;
+            }
+          }
+        }
+        
+        // Construire l'URL complète (baseUrl ne se termine pas par /, imageUrl commence par /)
+        fullUrl = `${baseUrl}${imageUrl}`;
       }
       
       // Vérifier que l'URL n'est pas localhost (non accessible depuis Pinterest)
