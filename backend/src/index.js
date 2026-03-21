@@ -87,7 +87,9 @@ module.exports = {
         .findOne({ where: { type: 'public' } });
 
       if (publicRole) {
-        const actions = [
+        // IDs d’action Strapi v4 : api::<apiName>.<controller>.<action>
+        // Ne pas reconstruire avec split('.') : ça casse "recette.recette" en "recette::recette".
+        const actionIds = [
           'api::recette.recette.find',
           'api::recette.recette.findOne',
           'api::categorie.categorie.find',
@@ -96,11 +98,7 @@ module.exports = {
           'api::tag.tag.findOne',
         ];
 
-        for (const action of actions) {
-          const [api, controller, actionName] = action.split('.');
-          const actionId = `${api}::${controller}.${actionName}`;
-
-          // Vérifier si la permission existe déjà
+        for (const actionId of actionIds) {
           const existingPermission = await strapi
             .query('plugin::users-permissions.permission')
             .findOne({
@@ -111,7 +109,6 @@ module.exports = {
             });
 
           if (existingPermission) {
-            // Mettre à jour si elle existe mais est désactivée
             if (!existingPermission.enabled) {
               await strapi
                 .query('plugin::users-permissions.permission')
@@ -121,7 +118,6 @@ module.exports = {
                 });
             }
           } else {
-            // Créer la permission si elle n'existe pas
             await strapi
               .query('plugin::users-permissions.permission')
               .create({
