@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Script from "next/script";
 import Navigation from "@/components/Navigation";
+import AdSenseScript from "@/components/AdSenseScript";
 import ShoppingList from "@/components/ShoppingList";
 import ToastContainer from "@/components/Toast";
 import "./globals.css";
@@ -24,12 +24,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body>
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9219883229313117"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
+        <AdSenseScript />
         <Navigation />
         {children}
         <ShoppingList />

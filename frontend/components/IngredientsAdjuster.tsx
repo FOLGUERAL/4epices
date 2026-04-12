@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 interface Ingredient {
   quantite?: string;
@@ -70,24 +70,24 @@ function extractUnit(quantite: string): string {
 }
 
 export default function IngredientsAdjuster({ ingredients, basePortions, recipeSlug }: IngredientsAdjusterProps) {
-  // Récupérer le nombre de personnes sauvegardé depuis localStorage
-  const getSavedPortions = (): number => {
-    if (typeof window === 'undefined' || !recipeSlug) return basePortions;
+  // Toujours démarrer avec basePortions pour que SSR et premier rendu client coïncident (évite React #418).
+  const [selectedPortions, setSelectedPortions] = useState(basePortions);
+
+  useEffect(() => {
+    setSelectedPortions(basePortions);
+    if (!recipeSlug) return;
     try {
       const saved = localStorage.getItem(`recipe_portions_${recipeSlug}`);
       if (saved) {
         const parsed = parseInt(saved, 10);
         if (!isNaN(parsed) && parsed > 0 && parsed <= 12) {
-          return parsed;
+          setSelectedPortions(parsed);
         }
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des portions:', error);
     }
-    return basePortions;
-  };
-
-  const [selectedPortions, setSelectedPortions] = useState(getSavedPortions);
+  }, [recipeSlug, basePortions]);
 
   // Sauvegarder le nombre de personnes dans localStorage
   const handlePortionsChange = (newPortions: number) => {
