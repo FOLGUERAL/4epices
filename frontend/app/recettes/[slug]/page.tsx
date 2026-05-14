@@ -99,8 +99,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
     }
     if (typeof ing === 'object' && ing !== null) {
       // Format structuré : {quantite, ingredient}
-      const quantite = (ing.quantite || '').trim();
-      const ingredient = (ing.ingredient || '').trim();
+      const quantite = String(ing.quantite ?? '').trim();
+      const ingredient = String(ing.ingredient ?? '').trim();
       return quantite ? `${quantite} ${ingredient}`.trim() : ingredient;
     }
     return String(ing).trim();
@@ -146,9 +146,18 @@ export default async function RecettePage({ params }: { params: { slug: string }
     "totalTime": tempsTotal > 0 ? `PT${tempsTotal}M` : undefined,
     "recipeYield": recette.attributes.nombrePersonnes?.toString() || "4",
     "recipeIngredient": ingredientsForStructuredData,
-    "recipeInstructions": recette.attributes.etapes,
-    "recipeCategory": recette.attributes.categories?.data?.map(cat => cat.attributes.nom).join(", ") || undefined,
-    "keywords": recette.attributes.tags?.data?.map(tag => tag.attributes.nom).join(", ") || undefined
+    "recipeInstructions":
+      typeof recette.attributes.etapes === 'string' ? recette.attributes.etapes : '',
+    "recipeCategory":
+      recette.attributes.categories?.data
+        ?.map((cat) => cat.attributes?.nom)
+        .filter(Boolean)
+        .join(', ') || undefined,
+    "keywords":
+      recette.attributes.tags?.data
+        ?.map((tag) => tag.attributes?.nom)
+        .filter(Boolean)
+        .join(', ') || undefined,
   });
 
   return (
@@ -167,7 +176,9 @@ export default async function RecettePage({ params }: { params: { slug: string }
           ];
           if (recette.attributes.categories?.data && recette.attributes.categories.data.length > 0) {
             const cat = recette.attributes.categories.data[0].attributes;
-            crumbs.push({ label: cat.nom, href: `/categories/${cat.slug}` });
+            if (cat?.slug && cat?.nom) {
+              crumbs.push({ label: cat.nom, href: `/categories/${cat.slug}` });
+            }
           }
           crumbs.push({ label: recette.attributes.titre });
           return <Breadcrumbs crumbs={crumbs} />;
@@ -301,7 +312,9 @@ export default async function RecettePage({ params }: { params: { slug: string }
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Préparation</h2>
               <div
                 className="prose max-w-none text-gray-700"
-                dangerouslySetInnerHTML={{ __html: recette.attributes.etapes }}
+                dangerouslySetInnerHTML={{
+                  __html: typeof recette.attributes.etapes === 'string' ? recette.attributes.etapes : '',
+                }}
               />
             </div>
 
@@ -314,31 +327,39 @@ export default async function RecettePage({ params }: { params: { slug: string }
             </div>
 
             <div className="flex flex-wrap gap-4">
-              {recette.attributes.categories?.data && recette.attributes.categories.data.length > 0 && (
+              {recette.attributes.categories?.data &&
+                recette.attributes.categories.data.filter((c) => c.attributes?.slug && c.attributes?.nom)
+                  .length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   <span className="text-sm font-medium text-gray-500 mr-2">Catégories :</span>
-                  {recette.attributes.categories.data.map((categorie) => (
+                  {recette.attributes.categories.data
+                    .filter((c) => c.attributes?.slug && c.attributes?.nom)
+                    .map((categorie) => (
                     <Link
                       key={categorie.id}
-                      href={`/categories/${categorie.attributes.slug}`}
+                      href={`/categories/${categorie.attributes!.slug}`}
                       className="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300 transition-colors"
                     >
-                      {categorie.attributes.nom}
+                      {categorie.attributes!.nom}
                     </Link>
                   ))}
                 </div>
               )}
               
-              {recette.attributes.tags?.data && recette.attributes.tags.data.length > 0 && (
+              {recette.attributes.tags?.data &&
+                recette.attributes.tags.data.filter((t) => t.attributes?.slug && t.attributes?.nom).length >
+                  0 && (
                 <div className="flex flex-wrap gap-2">
                   <span className="text-sm font-medium text-gray-500 mr-2">Tags :</span>
-                  {recette.attributes.tags.data.map((tag) => (
+                  {recette.attributes.tags.data
+                    .filter((t) => t.attributes?.slug && t.attributes?.nom)
+                    .map((tag) => (
                     <Link
                       key={tag.id}
-                      href={`/tags/${tag.attributes.slug}`}
+                      href={`/tags/${tag.attributes!.slug}`}
                       className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm hover:bg-orange-200 transition-colors"
                     >
-                      #{tag.attributes.nom}
+                      #{tag.attributes!.nom}
                     </Link>
                   ))}
                 </div>
