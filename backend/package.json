@@ -7,7 +7,13 @@
     "develop": "strapi develop",
     "start": "strapi start",
     "build": "strapi build",
-    "strapi": "strapi"
+    "strapi": "strapi",
+    "rebuild:sqlite": "npm rebuild better-sqlite3",
+    "migrate:ingredients-lignes": "node scripts/migrate-ingredients-lignes.js",
+    "migrate:ingredients-lignes:strapi": "node scripts/migrate-ingredients-lignes-strapi.js",
+    "migrate:etapes-liste:strapi": "node scripts/migrate-etapes-liste-strapi.js",
+    "backfill:seo-enrichi": "node scripts/backfill-seo-enrichi-strapi.js",
+    "backfill:seo-enrichi:dry-run": "node scripts/backfill-seo-enrichi-strapi.js --dry-run"
   },
   "dependencies": {
     "@strapi/strapi": "^4.19.1",
@@ -31,7 +37,7 @@
     "uuid": "4epices-backend-uuid"
   },
   "engines": {
-    "node": ">=18.0.0 <=22.x.x",
+    "node": ">=18.0.0 <=20.x.x",
     "npm": ">=6.0.0"
   },
   "license": "MIT"
