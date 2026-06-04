@@ -94,14 +94,27 @@ module.exports = ({ strapi }) => ({
    * Créer un pin Pinterest à partir d'une image spécifique
    */
   async createPinFromImage(recette, imageUrl, pinIndex = 0, boardId = null) {
-    // Priorité pour l'admin: token du .env d'abord, puis OAuth en fallback
-    // Cela simplifie l'utilisation : il suffit de configurer PINTEREST_ACCESS_TOKEN dans .env
+    // Priorité admin : PINTEREST_ACCESS_TOKEN (.env) puis OAuth en mémoire (perdu au redémarrage)
+    const envToken = (process.env.PINTEREST_ACCESS_TOKEN || '').trim() || null;
     const oauthAccessToken = getPinterestAuth()?.accessToken;
-    const accessToken = process.env.PINTEREST_ACCESS_TOKEN || oauthAccessToken;
+    const accessToken = envToken || oauthAccessToken;
+    const tokenSource = envToken
+      ? 'PINTEREST_ACCESS_TOKEN (.env)'
+      : oauthAccessToken
+        ? 'OAuth (mémoire)'
+        : null;
 
     if (!accessToken) {
       throw new Error('Token Pinterest manquant. Configurez PINTEREST_ACCESS_TOKEN dans .env ou connectez-vous via OAuth');
     }
+
+    const useSandbox = process.env.PINTEREST_USE_SANDBOX !== 'false';
+    const apiBaseUrl = useSandbox
+      ? 'https://api-sandbox.pinterest.com'
+      : 'https://api.pinterest.com';
+    strapi.log.info(
+      `[Pinterest] Auth: ${tokenSource} | API: ${useSandbox ? 'sandbox' : 'production'} (${apiBaseUrl})`
+    );
 
     // Note: Les scopes requis sont : pins:read, pins:write, boards:read, boards:write, user_accounts:read
     // Si vous obtenez une erreur 401 avec "Missing: ['boards:write', 'pins:write']",
@@ -152,12 +165,6 @@ module.exports = ({ strapi }) => ({
         );
       }
 
-      // Récupérer l'URL de base de l'API Pinterest (sandbox ou production)
-      const useSandbox = process.env.PINTEREST_USE_SANDBOX !== 'false';
-      const apiBaseUrl = useSandbox 
-        ? 'https://api-sandbox.pinterest.com'
-        : 'https://api.pinterest.com';
-      
       strapi.log.info(`[Pinterest] Création du pin #${pinIndex} avec l'image: ${imageUrl}`);
       
       const response = await axios.post(
@@ -197,6 +204,15 @@ module.exports = ({ strapi }) => ({
           `Scopes requis : pins:read, pins:write, boards:read, boards:write, user_accounts:read\n\n` +
           `Solution : Voir PINTEREST_TOKEN_SCOPES.md pour obtenir un token avec les bons scopes.\n` +
           `Ou utilisez OAuth qui demande automatiquement les bons scopes.`;
+      } else if (status === 401) {
+        errorMessage =
+          `Authentification Pinterest échouée (401). Source du token : ${tokenSource}.\n` +
+          `API utilisée : ${useSandbox ? 'sandbox (api-sandbox.pinterest.com)' : 'production (api.pinterest.com)'}.\n\n` +
+          `Vérifications :\n` +
+          `1. En production : PINTEREST_USE_SANDBOX=false (défaut = sandbox)\n` +
+          `2. Token expiré : reconnectez OAuth admin puis recopiez le token dans PINTEREST_ACCESS_TOKEN\n` +
+          `3. Si .env contient un ancien token, il masque OAuth — mettez à jour ou videz PINTEREST_ACCESS_TOKEN\n` +
+          `4. Scopes requis : pins:read, pins:write, boards:read, boards:write, user_accounts:read`;
       } else if (status === 400 && data?.message && data.message.includes('could not fetch the image')) {
         errorMessage = `Pinterest ne peut pas récupérer l'image.\n\n` +
           `URL de l'image : ${imageUrl}\n\n` +
