@@ -1,7 +1,9 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { getRecetteBySlug, getStrapiMediaUrl, getRecettesSimilaires, Recette } from '@/lib/strapi';
+import { buildRecipeJsonLd, getSiteUrl } from '@/lib/seo';
 import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
 import ShareRecipe from '@/components/ShareRecipe';
@@ -32,7 +34,11 @@ const RatingDisplay = dynamic(() => import('@/components/RatingDisplay'), {
   ssr: false,
 });
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
   let recette = null;
   try {
     const response = await getRecetteBySlug(params.slug);
@@ -44,18 +50,41 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!recette) {
     return {
       title: 'Recette non trouvée',
+      robots: { index: false, follow: false },
     };
   }
 
+  const attrs = recette.attributes;
+  const title = attrs.metaTitle || attrs.titre;
+  const description =
+    attrs.metaDescription ||
+    attrs.description?.slice(0, 160) ||
+    `Recette : ${attrs.titre}`;
+  const canonicalPath = `/recettes/${attrs.slug}`;
+  const imageUrl = attrs.imagePrincipale?.data?.attributes?.url
+    ? getStrapiMediaUrl(attrs.imagePrincipale.data.attributes.url)
+    : undefined;
+
   return {
-    title: recette.attributes.metaTitle || recette.attributes.titre,
-    description: recette.attributes.metaDescription || recette.attributes.description,
+    title,
+    description,
+    alternates: {
+      canonical: canonicalPath,
+    },
     openGraph: {
-      title: recette.attributes.titre,
-      description: recette.attributes.description,
-      images: recette.attributes.imagePrincipale?.data?.attributes?.url
-        ? [getStrapiMediaUrl(recette.attributes.imagePrincipale.data.attributes.url)]
-        : [],
+      title: attrs.titre,
+      description: attrs.metaDescription || attrs.description,
+      url: canonicalPath,
+      type: 'article',
+      locale: 'fr_FR',
+      siteName: '4épices',
+      ...(imageUrl ? { images: [{ url: imageUrl, alt: attrs.titre }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: attrs.titre,
+      description: attrs.metaDescription || attrs.description,
+      ...(imageUrl ? { images: [imageUrl] } : {}),
     },
   };
 }
@@ -113,42 +142,28 @@ export default async function RecettePage({ params }: { params: { slug: string }
   const tempsCuisson = recette.attributes.tempsCuisson || 0;
   const tempsTotal = tempsPrep + tempsCuisson;
   
-  // Structured data pour le SEO (JSON-LD)
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const siteUrl = getSiteUrl();
   const recetteUrl = `${siteUrl}/recettes/${recette.attributes.slug}`;
-  const imageUrlForShare = imageUrl ? getStrapiMediaUrl(imageUrl) : undefined;
-  
-  // Fonction pour nettoyer les valeurs undefined
-  const cleanObject = (obj: any): any => {
-    const cleaned: any = {};
-    for (const key in obj) {
-      if (obj[key] !== undefined) {
-        cleaned[key] = obj[key];
-      }
-    }
-    return cleaned;
-  };
-  
-  const structuredData = cleanObject({
-    "@context": "https://schema.org/",
-    "@type": "Recipe",
-    "name": recette.attributes.titre,
-    "description": recette.attributes.description,
-    "image": imageUrlForStructuredData,
-    "url": recetteUrl,
-    "author": {
-      "@type": "Organization",
-      "name": "4épices"
-    },
-    "datePublished": recette.attributes.publishedAt,
-    "prepTime": recette.attributes.tempsPreparation ? `PT${recette.attributes.tempsPreparation}M` : undefined,
-    "cookTime": recette.attributes.tempsCuisson ? `PT${recette.attributes.tempsCuisson}M` : undefined,
-    "totalTime": tempsTotal > 0 ? `PT${tempsTotal}M` : undefined,
-    "recipeYield": recette.attributes.nombrePersonnes?.toString() || "4",
-    "recipeIngredient": ingredientsForStructuredData,
-    "recipeInstructions": recette.attributes.etapes,
-    "recipeCategory": recette.attributes.categories?.data?.map(cat => cat.attributes.nom).join(", ") || undefined,
-    "keywords": recette.attributes.tags?.data?.map(tag => tag.attributes.nom).join(", ") || undefined
+
+  const structuredData = buildRecipeJsonLd({
+    name: recette.attributes.titre,
+    description: recette.attributes.description,
+    image: imageUrlForStructuredData.startsWith('http')
+      ? imageUrlForStructuredData
+      : `${siteUrl}${imageUrlForStructuredData}`,
+    url: recetteUrl,
+    datePublished: recette.attributes.publishedAt,
+    prepMinutes: recette.attributes.tempsPreparation,
+    cookMinutes: recette.attributes.tempsCuisson,
+    yield: recette.attributes.nombrePersonnes,
+    ingredients: ingredientsForStructuredData,
+    etapesHtml: recette.attributes.etapes,
+    categories:
+      recette.attributes.categories?.data?.map((cat) => cat.attributes.nom).join(', ') ||
+      undefined,
+    keywords:
+      recette.attributes.tags?.data?.map((tag) => tag.attributes.nom).join(', ') ||
+      undefined,
   });
 
   return (

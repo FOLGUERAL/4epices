@@ -1,9 +1,14 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getCategorieBySlug, getRecettesByCategory, Recette } from '@/lib/strapi';
 import OptimizedImage from '@/components/OptimizedImage';
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
   let categorie = null;
   try {
     const response = await getCategorieBySlug(params.slug);
@@ -18,9 +23,23 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     };
   }
 
+  const nom = categorie.attributes.nom;
+  const description =
+    categorie.attributes.description ||
+    `Découvrez toutes nos recettes de la catégorie ${nom} : idées faciles et gourmandes.`;
+
   return {
-    title: `${categorie.attributes.nom} - 4épices`,
-    description: categorie.attributes.description || `Découvrez toutes nos recettes de la catégorie ${categorie.attributes.nom}`,
+    title: `Recettes ${nom}`,
+    description,
+    alternates: {
+      canonical: `/categories/${params.slug}`,
+    },
+    openGraph: {
+      title: `Recettes ${nom}`,
+      description,
+      url: `/categories/${params.slug}`,
+      type: 'website',
+    },
   };
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { isAdSenseEnabled } from '@/lib/seo';
 
 interface GoogleAdSenseProps {
   adSlot?: string;
@@ -23,6 +24,10 @@ export default function GoogleAdSense({
   style,
   className = '',
 }: GoogleAdSenseProps) {
+  if (!isAdSenseEnabled()) {
+    return null;
+  }
+
   // Utiliser le slot fourni ou celui de l'environnement
   const finalAdSlot = adSlot || process.env.NEXT_PUBLIC_GOOGLE_ADS_SLOT || '';
 

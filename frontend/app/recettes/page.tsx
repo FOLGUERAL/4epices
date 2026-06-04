@@ -1,7 +1,23 @@
+import type { Metadata } from 'next';
 import { getRecettes, Recette } from '@/lib/strapi';
 import RecipesFiltersClient from '@/components/RecipesFiltersClient';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Toutes les recettes',
+  description:
+    'Parcourez toutes nos recettes faciles et gourmandes : filtres par temps, difficulté et type de plat.',
+  alternates: {
+    canonical: '/recettes',
+  },
+  openGraph: {
+    title: 'Toutes les recettes | 4épices',
+    description:
+      'Parcourez toutes nos recettes faciles et gourmandes.',
+    url: '/recettes',
+  },
+};
 
 export default async function RecipesPage() {
   let recettes: Recette[] = [];
