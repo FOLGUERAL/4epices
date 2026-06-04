@@ -238,7 +238,9 @@ export default function CuisineModePage() {
     return steps.length > 0 ? steps : [html];
   };
 
-  const steps = extractSteps(recette.attributes.etapes);
+  const steps = extractSteps(
+    typeof recette.attributes.etapes === 'string' ? recette.attributes.etapes : ''
+  );
   const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url || null;
   const tempsPrep = recette.attributes.tempsPreparation || 0;
   const tempsCuisson = recette.attributes.tempsCuisson || 0;
@@ -411,7 +413,10 @@ export default function CuisineModePage() {
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Préparation</h2>
           <div className="prose max-w-none">
             <div
-              dangerouslySetInnerHTML={{ __html: recette.attributes.etapes }}
+              dangerouslySetInnerHTML={{
+                __html:
+                  typeof recette.attributes.etapes === 'string' ? recette.attributes.etapes : '',
+              }}
               className="text-gray-700"
             />
           </div>

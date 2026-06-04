@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { getAvis, Avis } from '@/lib/strapi';
 import { toast } from './Toast';
-import axios from 'axios';
 
 interface CommentsViewerProps {
   recetteId?: number;
@@ -61,10 +60,24 @@ export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewe
 
   const handleApprove = async (commentId: number) => {
     try {
-      const strapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
-      await axios.put(`${strapiUrl}/api/avis-recettes/${commentId}`, {
-        data: { approuve: true },
+      const adminSecret =
+        typeof window !== 'undefined' ? sessionStorage.getItem('admin_token') : null;
+      if (!adminSecret) {
+        toast.error('Session admin requise pour modérer les avis');
+        return;
+      }
+      const response = await fetch(`/api/admin/avis-recettes/${commentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Secret': adminSecret,
+        },
+        body: JSON.stringify({ data: { approuve: true } }),
       });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || response.statusText);
+      }
       toast.success('Avis approuvé');
       fetchComments();
     } catch (error) {
@@ -79,8 +92,22 @@ export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewe
     }
 
     try {
-      const strapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
-      await axios.delete(`${strapiUrl}/api/avis-recettes/${commentId}`);
+      const adminSecret =
+        typeof window !== 'undefined' ? sessionStorage.getItem('admin_token') : null;
+      if (!adminSecret) {
+        toast.error('Session admin requise pour modérer les avis');
+        return;
+      }
+      const response = await fetch(`/api/admin/avis-recettes/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'X-Admin-Secret': adminSecret,
+        },
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || response.statusText);
+      }
       toast.success('Avis supprimé');
       fetchComments();
     } catch (error) {
