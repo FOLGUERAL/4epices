@@ -115,6 +115,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
   const imageUrlForStructuredData = imageUrl
     ? getStrapiMediaUrl(imageUrl)
     : '/placeholder-recipe.svg';
+  const imageUrlForShare = imageUrl ? getStrapiMediaUrl(imageUrl) : undefined;
 
   // Gérer les deux formats d'ingrédients : tableau de strings ou tableau d'objets
   const rawIngredients = Array.isArray(recette.attributes.ingredients)
