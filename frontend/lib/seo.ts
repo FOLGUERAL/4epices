@@ -91,3 +91,89 @@ export function buildRecipeJsonLd(options: {
 
   return payload;
 }
+
+export interface SeoEnrichiFaqItem {
+  question: string;
+  answer: string;
+}
+
+export interface SeoEnrichi {
+  faq?: SeoEnrichiFaqItem[];
+  conseils?: string;
+  variantes?: string;
+  conservation?: string;
+  ingredientPrincipal?: string;
+  typeCuisine?: string;
+  niveau?: string;
+  motsClesSeo?: string[];
+}
+
+/** JSON-LD FAQPage — à n'injecter que si faq.length >= 2 */
+export function buildFaqJsonLd(
+  faq: SeoEnrichiFaqItem[],
+  pageUrl: string
+): Record<string, unknown> | null {
+  const items = faq.filter((item) => item.question?.trim() && item.answer?.trim());
+  if (items.length < 2) return null;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((item) => ({
+      '@type': 'Question',
+      name: item.question.trim(),
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer.trim(),
+      },
+    })),
+    url: pageUrl,
+  };
+}
+
+export function parseSeoEnrichi(raw: unknown): SeoEnrichi | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const faq = Array.isArray(o.faq)
+    ? o.faq
+        .filter(
+          (item): item is SeoEnrichiFaqItem =>
+            !!item &&
+            typeof item === 'object' &&
+            typeof (item as SeoEnrichiFaqItem).question === 'string' &&
+            typeof (item as SeoEnrichiFaqItem).answer === 'string'
+        )
+        .map((item) => ({
+          question: item.question.trim(),
+          answer: item.answer.trim(),
+        }))
+    : undefined;
+
+  const str = (key: string) => {
+    const v = o[key];
+    return typeof v === 'string' && v.trim() ? v.trim() : undefined;
+  };
+
+  const motsClesSeo = Array.isArray(o.motsClesSeo)
+    ? o.motsClesSeo.map((k) => String(k).trim()).filter(Boolean)
+    : undefined;
+
+  const result: SeoEnrichi = {
+    faq,
+    conseils: str('conseils'),
+    variantes: str('variantes'),
+    conservation: str('conservation'),
+    ingredientPrincipal: str('ingredientPrincipal'),
+    typeCuisine: str('typeCuisine'),
+    niveau: str('niveau'),
+    motsClesSeo,
+  };
+
+  const hasContent =
+    (faq && faq.length > 0) ||
+    result.conseils ||
+    result.variantes ||
+    result.conservation;
+
+  return hasContent ? result : null;
+}

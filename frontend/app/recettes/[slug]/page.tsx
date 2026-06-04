@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { getRecetteBySlug, getStrapiMediaUrl, getRecettesSimilaires, Recette } from '@/lib/strapi';
-import { buildRecipeJsonLd, getSiteUrl } from '@/lib/seo';
+import { buildRecipeJsonLd, buildFaqJsonLd, getSiteUrl, parseSeoEnrichi } from '@/lib/seo';
+import RecipeEnrichedSections from '@/components/RecipeEnrichedSections';
 import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
 import ShareRecipe from '@/components/ShareRecipe';
@@ -146,6 +147,12 @@ export default async function RecettePage({ params }: { params: { slug: string }
   const siteUrl = getSiteUrl();
   const recetteUrl = `${siteUrl}/recettes/${recette.attributes.slug}`;
 
+  const seoEnrichi = parseSeoEnrichi(recette.attributes.seoEnrichi);
+  const faqJsonLd =
+    seoEnrichi?.faq && seoEnrichi.faq.length >= 2
+      ? buildFaqJsonLd(seoEnrichi.faq, recetteUrl)
+      : null;
+
   const structuredData = buildRecipeJsonLd({
     name: recette.attributes.titre,
     description: recette.attributes.description,
@@ -173,6 +180,12 @@ export default async function RecettePage({ params }: { params: { slug: string }
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Breadcrumbs */}
@@ -320,6 +333,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
                 dangerouslySetInnerHTML={{ __html: recette.attributes.etapes }}
               />
             </div>
+
+            {seoEnrichi && <RecipeEnrichedSections seoEnrichi={seoEnrichi} />}
 
             {/* Annonce Google AdSense après la préparation */}
             <div className="mb-8 flex justify-center">

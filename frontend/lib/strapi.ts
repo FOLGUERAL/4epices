@@ -67,6 +67,16 @@ export interface Recette {
     publishedAt: string;
     metaTitle?: string;
     metaDescription?: string;
+    seoEnrichi?: {
+      faq?: Array<{ question: string; answer: string }>;
+      conseils?: string;
+      variantes?: string;
+      conservation?: string;
+      ingredientPrincipal?: string;
+      typeCuisine?: string;
+      niveau?: string;
+      motsClesSeo?: string[];
+    };
     pinterestPinId?: string;
     pinterestAutoPublish?: boolean;
   };

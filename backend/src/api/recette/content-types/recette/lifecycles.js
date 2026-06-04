@@ -1,8 +1,33 @@
 'use strict';
 
+const { shouldGenerateSeoEnrichi } = require('../../../../utils/recipeSeoEnrichi');
+
 /**
  * Lifecycle callbacks for the recette model.
  */
+
+async function applySeoEnrichiGeneration(data, { previous = null, isCreate = false }) {
+  if (!shouldGenerateSeoEnrichi({ data, previous, isCreate })) {
+    return;
+  }
+
+  const merged = { ...(previous || {}), ...data };
+  if (!merged.titre || !merged.ingredients || !merged.etapes) {
+    return;
+  }
+
+  if (!process.env.GROQ_API_KEY) {
+    strapi.log.warn('[SEO Enrichi] GROQ_API_KEY absente — génération ignorée');
+    return;
+  }
+
+  try {
+    const service = strapi.service('api::recette.recipe-seo-enrichment');
+    data.seoEnrichi = await service.generate(merged);
+  } catch (error) {
+    strapi.log.warn(`[SEO Enrichi] Génération échouée: ${error.message}`);
+  }
+}
 
 /**
  * Génère automatiquement le metaTitle si il est vide
@@ -113,6 +138,8 @@ module.exports = {
     if (!data.metaDescription || !data.metaDescription.trim()) {
       data.metaDescription = generateMetaDescription(data);
     }
+
+    await applySeoEnrichiGeneration(data, { isCreate: true });
   },
 
   /**
@@ -120,7 +147,8 @@ module.exports = {
    */
   async beforeUpdate(event) {
     const { data, where } = event.params;
-    
+    let previousForSeo = null;
+
     // Stocker l'état précédent pour le comparer dans afterUpdate
     // Récupérer la recette avant la mise à jour
     try {
@@ -129,9 +157,24 @@ module.exports = {
       
       if (recetteId) {
         const previousRecette = await strapi.entityService.findOne('api::recette.recette', recetteId, {
-          fields: ['id', 'pinterestAutoPublish', 'publishedAt', 'pinterestPinId'],
+          fields: [
+            'id',
+            'titre',
+            'description',
+            'ingredients',
+            'etapes',
+            'tempsPreparation',
+            'tempsCuisson',
+            'nombrePersonnes',
+            'difficulte',
+            'seoEnrichi',
+            'pinterestAutoPublish',
+            'publishedAt',
+            'pinterestPinId',
+          ],
         });
-        
+        previousForSeo = previousRecette;
+
         // Stocker dans event.state pour y accéder dans afterUpdate
         if (!event.state) {
           event.state = {};
@@ -144,13 +187,15 @@ module.exports = {
     
     // Générer metaTitle si vide
     if (!data.metaTitle || !data.metaTitle.trim()) {
-      data.metaTitle = generateMetaTitle(data);
+      data.metaTitle = generateMetaTitle({ ...previousForSeo, ...data });
     }
     
     // Générer metaDescription si vide
     if (!data.metaDescription || !data.metaDescription.trim()) {
-      data.metaDescription = generateMetaDescription(data);
+      data.metaDescription = generateMetaDescription({ ...previousForSeo, ...data });
     }
+
+    await applySeoEnrichiGeneration(data, { previous: previousForSeo, isCreate: false });
   },
 
   /**
