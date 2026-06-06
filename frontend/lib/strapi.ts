@@ -476,3 +476,26 @@ export async function getAvis(params?: {
 
   return fetchAPI<Avis[]>(`/avis-recettes?${queryParams.toString()}`);
 }
+
+/** Note moyenne des avis approuvés (pour JSON-LD aggregateRating). */
+export async function getRecetteAggregateRating(
+  recetteId: number
+): Promise<{ ratingValue: number; reviewCount: number } | null> {
+  try {
+    const response = await getAvis({
+      recetteId,
+      approuve: true,
+      pageSize: 100,
+    });
+    const avis = response.data ?? [];
+    if (avis.length === 0) return null;
+
+    const sum = avis.reduce((acc, item) => acc + (item.attributes.rating ?? 0), 0);
+    const ratingValue = Math.round((sum / avis.length) * 10) / 10;
+
+    return { ratingValue, reviewCount: avis.length };
+  } catch (error) {
+    console.error('Erreur agrégation notes pour JSON-LD:', error);
+    return null;
+  }
+}

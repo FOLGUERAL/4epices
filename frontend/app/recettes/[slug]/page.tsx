@@ -6,6 +6,7 @@ import {
   getRecetteBySlug,
   getStrapiMediaUrl,
   getRecettesSimilairesWithFallback,
+  getRecetteAggregateRating,
   extractRelationIds,
   Recette,
 } from '@/lib/strapi';
@@ -99,20 +100,26 @@ export async function generateMetadata({
 export default async function RecettePage({ params }: { params: { slug: string } }) {
   let recette = null;
   let recettesSimilaires: Recette[] = [];
-  
+  let aggregateRating: { ratingValue: number; reviewCount: number } | null = null;
+
   try {
     const response = await getRecetteBySlug(params.slug);
     recette = response.data;
-    
+
     if (recette) {
-      recettesSimilaires = await getRecettesSimilairesWithFallback(
-        recette.id,
-        {
-          categoryIds: extractRelationIds(recette.attributes.categories),
-          tagIds: extractRelationIds(recette.attributes.tags),
-        },
-        4
-      );
+      const [similaires, rating] = await Promise.all([
+        getRecettesSimilairesWithFallback(
+          recette.id,
+          {
+            categoryIds: extractRelationIds(recette.attributes.categories),
+            tagIds: extractRelationIds(recette.attributes.tags),
+          },
+          4
+        ),
+        getRecetteAggregateRating(recette.id),
+      ]);
+      recettesSimilaires = similaires;
+      aggregateRating = rating;
     }
   } catch (error) {
     console.error('Erreur lors de la récupération de la recette:', error);
@@ -182,6 +189,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
     keywords:
       recette.attributes.tags?.data?.map((tag) => tag.attributes.nom).join(', ') ||
       undefined,
+    aggregateRating: aggregateRating ?? undefined,
   });
 
   return (

@@ -52,6 +52,7 @@ export function buildRecipeJsonLd(options: {
   etapesHtml: string;
   categories?: string;
   keywords?: string;
+  aggregateRating?: { ratingValue: number; reviewCount: number };
 }) {
   const prep = options.prepMinutes || 0;
   const cook = options.cookMinutes || 0;
@@ -88,6 +89,17 @@ export function buildRecipeJsonLd(options: {
   if (recipeInstructions) payload.recipeInstructions = recipeInstructions;
   if (options.categories) payload.recipeCategory = options.categories;
   if (options.keywords) payload.keywords = options.keywords;
+
+  const rating = options.aggregateRating;
+  if (rating && rating.reviewCount > 0 && rating.ratingValue > 0) {
+    payload.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: rating.ratingValue,
+      reviewCount: rating.reviewCount,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
 
   return payload;
 }
