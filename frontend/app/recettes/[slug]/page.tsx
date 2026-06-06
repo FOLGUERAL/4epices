@@ -2,7 +2,13 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { getRecetteBySlug, getStrapiMediaUrl, getRecettesSimilaires, Recette } from '@/lib/strapi';
+import {
+  getRecetteBySlug,
+  getStrapiMediaUrl,
+  getRecettesSimilairesWithFallback,
+  extractRelationIds,
+  Recette,
+} from '@/lib/strapi';
 import { buildRecipeJsonLd, buildFaqJsonLd, getSiteUrl, parseSeoEnrichi } from '@/lib/seo';
 import RecipeEnrichedSections from '@/components/RecipeEnrichedSections';
 import OptimizedImage from '@/components/OptimizedImage';
@@ -98,11 +104,15 @@ export default async function RecettePage({ params }: { params: { slug: string }
     const response = await getRecetteBySlug(params.slug);
     recette = response.data;
     
-    // Récupérer les recettes similaires si la recette existe
-    if (recette && recette.attributes.categories?.data && recette.attributes.categories.data.length > 0) {
-      const categoryIds = recette.attributes.categories.data.map(cat => cat.id);
-      const similairesResponse = await getRecettesSimilaires(recette.id, categoryIds, 4);
-      recettesSimilaires = similairesResponse.data || [];
+    if (recette) {
+      recettesSimilaires = await getRecettesSimilairesWithFallback(
+        recette.id,
+        {
+          categoryIds: extractRelationIds(recette.attributes.categories),
+          tagIds: extractRelationIds(recette.attributes.tags),
+        },
+        4
+      );
     }
   } catch (error) {
     console.error('Erreur lors de la récupération de la recette:', error);

@@ -235,27 +235,120 @@ export async function getRecettesByTag(
   return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
 }
 
+/** Extrait les IDs d'une relation Strapi (format { data: [...] } ou tableau direct). */
+export function extractRelationIds(
+  relation?: { data?: Array<{ id: number }> } | Array<{ id: number }> | null
+): number[] {
+  if (!relation) return [];
+  const list = Array.isArray(relation) ? relation : relation.data;
+  if (!Array.isArray(list)) return [];
+  return list.map((item) => item.id).filter((id) => typeof id === 'number');
+}
+
+async function getRecettesSimilairesByCategory(
+  recetteId: number,
+  categoryId: number,
+  limit: number
+): Promise<Recette[]> {
+  const queryParams = new URLSearchParams();
+  queryParams.append('filters[id][$ne]', recetteId.toString());
+  queryParams.append('filters[categories][id][$eq]', categoryId.toString());
+  queryParams.append('populate', 'imagePrincipale,categories,tags');
+  queryParams.append('pagination[pageSize]', limit.toString());
+  queryParams.append('sort', 'publishedAt:desc');
+
+  const response = await fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+  return response.data ?? [];
+}
+
+async function getRecettesSimilairesByTag(
+  recetteId: number,
+  tagId: number,
+  limit: number
+): Promise<Recette[]> {
+  const queryParams = new URLSearchParams();
+  queryParams.append('filters[id][$ne]', recetteId.toString());
+  queryParams.append('filters[tags][id][$eq]', tagId.toString());
+  queryParams.append('populate', 'imagePrincipale,categories,tags');
+  queryParams.append('pagination[pageSize]', limit.toString());
+  queryParams.append('sort', 'publishedAt:desc');
+
+  const response = await fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+  return response.data ?? [];
+}
+
+async function getRecettesRecentesExcluding(recetteId: number, limit: number): Promise<Recette[]> {
+  const queryParams = new URLSearchParams();
+  queryParams.append('filters[id][$ne]', recetteId.toString());
+  queryParams.append('populate', 'imagePrincipale,categories,tags');
+  queryParams.append('pagination[pageSize]', limit.toString());
+  queryParams.append('sort', 'publishedAt:desc');
+
+  const response = await fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+  return response.data ?? [];
+}
+
+/**
+ * Recettes similaires avec fallbacks :
+ * 1. même catégorie (toutes les catégories de la recette)
+ * 2. mêmes tags
+ * 3. dernières recettes publiées
+ */
+export async function getRecettesSimilairesWithFallback(
+  recetteId: number,
+  options: { categoryIds?: number[]; tagIds?: number[] },
+  limit: number = 4
+): Promise<Recette[]> {
+  const categoryIds = options.categoryIds ?? [];
+  const tagIds = options.tagIds ?? [];
+  const seen = new Set<number>([recetteId]);
+  const results: Recette[] = [];
+
+  const appendUnique = (candidates: Recette[]) => {
+    for (const r of candidates) {
+      if (results.length >= limit) break;
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      results.push(r);
+    }
+  };
+
+  for (const categoryId of categoryIds) {
+    if (results.length >= limit) break;
+    const batch = await getRecettesSimilairesByCategory(
+      recetteId,
+      categoryId,
+      limit - results.length
+    );
+    appendUnique(batch);
+  }
+
+  for (const tagId of tagIds) {
+    if (results.length >= limit) break;
+    const batch = await getRecettesSimilairesByTag(recetteId, tagId, limit - results.length);
+    appendUnique(batch);
+  }
+
+  if (results.length < limit) {
+    const batch = await getRecettesRecentesExcluding(recetteId, limit - results.length);
+    appendUnique(batch);
+  }
+
+  return results;
+}
+
+/** @deprecated Préférer getRecettesSimilairesWithFallback */
 export async function getRecettesSimilaires(
   recetteId: number,
   categoryIds: number[],
   limit: number = 4
 ): Promise<StrapiResponse<Recette[]>> {
-  if (categoryIds.length === 0) {
-    return { data: [] };
-  }
-
-  const queryParams = new URLSearchParams();
-  queryParams.append('filters[id][$ne]', recetteId.toString());
-  
-  // Utiliser la première catégorie pour trouver des recettes similaires
-  // On pourrait améliorer avec $or pour plusieurs catégories, mais cela fonctionne bien
-  queryParams.append('filters[categories][id][$eq]', categoryIds[0].toString());
-  
-  queryParams.append('populate', 'imagePrincipale,categories');
-  queryParams.append('pagination[pageSize]', limit.toString());
-  queryParams.append('sort', 'publishedAt:desc');
-
-  return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+  const data = await getRecettesSimilairesWithFallback(
+    recetteId,
+    { categoryIds },
+    limit
+  );
+  return { data };
 }
 
 export async function searchRecettes(
