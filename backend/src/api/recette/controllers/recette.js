@@ -5,23 +5,13 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const {
+  findMatchingTag,
+  generateSlug,
+  loadAllTags,
+} = require('../../../utils/tagMatching');
 
-/**
- * Trouver ou créer un tag par nom et retourner son ID
- */
-/**
- * Génère un slug à partir d'un nom
- */
-function generateSlug(name) {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Supprimer les accents
-    .replace(/[^a-z0-9]+/g, '-') // Remplacer les caractères non alphanumériques par des tirets
-    .replace(/^-+|-+$/g, ''); // Supprimer les tirets en début et fin
-}
-
-async function findOrCreateTag(strapi, tagName) {
+async function findOrCreateTag(strapi, tagName, allTagsCache) {
   if (!tagName || typeof tagName !== 'string' || !tagName.trim()) {
     return null;
   }
@@ -29,33 +19,38 @@ async function findOrCreateTag(strapi, tagName) {
   const trimmedName = tagName.trim();
 
   try {
-    // Chercher un tag existant par nom
-    const existingTags = await strapi.entityService.findMany('api::tag.tag', {
-      filters: { nom: { $eq: trimmedName } },
-      limit: 1,
-    });
+    const existingTag = findMatchingTag(trimmedName, allTagsCache);
 
-    if (existingTags && existingTags.length > 0) {
-      // Si le tag existe mais n'est pas publié, le publier
-      const existingTag = existingTags[0];
+    if (existingTag) {
       if (!existingTag.publishedAt) {
         await strapi.entityService.update('api::tag.tag', existingTag.id, {
           data: { publishedAt: new Date().toISOString() },
         });
+        existingTag.publishedAt = new Date().toISOString();
+      }
+      if (existingTag.nom !== trimmedName) {
+        strapi.log.info(
+          `♻️ Tag réutilisé: "${trimmedName}" → "${existingTag.nom}" (ID: ${existingTag.id})`
+        );
       }
       return existingTag.id;
     }
 
-    // Générer le slug à partir du nom
     const slug = generateSlug(trimmedName);
 
-    // Créer un nouveau tag avec le slug généré
     const newTag = await strapi.entityService.create('api::tag.tag', {
       data: {
         nom: trimmedName,
         slug: slug,
-        publishedAt: new Date().toISOString(), // Sera géré par le lifecycle
+        publishedAt: new Date().toISOString(),
       },
+    });
+
+    allTagsCache.push({
+      id: newTag.id,
+      nom: trimmedName,
+      slug,
+      publishedAt: newTag.publishedAt,
     });
 
     strapi.log.info(`✅ Tag "${trimmedName}" créé automatiquement (ID: ${newTag.id}, slug: ${slug})`);
@@ -79,6 +74,7 @@ async function processTags(strapi, tags) {
     return tags;
   }
 
+  const allTagsCache = await loadAllTags(strapi);
   const processedTags = [];
 
   for (const tag of tags) {
@@ -115,14 +111,14 @@ async function processTags(strapi, tags) {
     }
     // Si c'est un objet avec un nom (création automatique)
     else if (tag && typeof tag === 'object' && tag.nom) {
-      const tagId = await findOrCreateTag(strapi, tag.nom);
+      const tagId = await findOrCreateTag(strapi, tag.nom, allTagsCache);
       if (tagId) {
         processedTags.push(tagId);
       }
     }
     // Si c'est une chaîne de caractères (nom du tag) - création automatique
     else if (typeof tag === 'string' && tag.trim()) {
-      const tagId = await findOrCreateTag(strapi, tag.trim());
+      const tagId = await findOrCreateTag(strapi, tag.trim(), allTagsCache);
       if (tagId) {
         processedTags.push(tagId);
       }

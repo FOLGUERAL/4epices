@@ -1,4 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  ExistingCategory,
+  fetchExistingCategories,
+  findMatchingCategory,
+} from '@/lib/categoryMatching';
+import {
+  ExistingTag,
+  fetchExistingTags,
+  findMatchingTag,
+  generateTagSlug,
+} from '@/lib/tagMatching';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -90,43 +101,50 @@ async function uploadImageToStrapi(imageFile: File): Promise<number | null> {
   }
 }
 
-/**
- * Trouver ou créer une catégorie par nom
- */
-async function findOrCreateCategory(categoryName: string): Promise<number | null> {
-  try {
-    const strapiUrl = getStrapiUrl();
-    const apiToken = getStrapiApiToken();
-    
-    if (!apiToken) return null;
-
-    // Chercher la catégorie existante
-    const searchResponse = await fetch(
-      `${strapiUrl}/api/categories?filters[nom][$eq]=${encodeURIComponent(categoryName)}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-        },
-      }
+/** Trouve une catégorie existante par nom (pas de création). */
+function findExistingCategory(
+  categoryName: string,
+  allCategoriesCache: ExistingCategory[]
+): number | null {
+  const match = findMatchingCategory(categoryName, allCategoriesCache);
+  if (match && match.nom !== categoryName.trim()) {
+    console.log(
+      `[Ingest] Catégorie réutilisée: "${categoryName.trim()}" → "${match.nom}" (ID: ${match.id})`
     );
+  }
+  return match?.id ?? null;
+}
 
-    if (searchResponse.ok) {
-      const searchData = await searchResponse.json();
-      if (searchData.data && searchData.data.length > 0) {
-        return searchData.data[0].id;
+/**
+ * Trouver ou créer un tag par nom (réutilise les tags existants si correspondance).
+ */
+async function findOrCreateTag(
+  tagName: string,
+  allTagsCache: ExistingTag[],
+  strapiUrl: string,
+  apiToken: string
+): Promise<number | null> {
+  try {
+    const trimmedName = tagName.trim();
+    if (!trimmedName) return null;
+
+    const existing = findMatchingTag(trimmedName, allTagsCache);
+    if (existing) {
+      if (existing.nom !== trimmedName) {
+        console.log(`[Ingest] Tag réutilisé: "${trimmedName}" → "${existing.nom}" (ID: ${existing.id})`);
       }
+      return existing.id;
     }
 
-    // Créer la catégorie si elle n'existe pas
-    const createResponse = await fetch(`${strapiUrl}/api/categories`, {
+    const createResponse = await fetch(`${strapiUrl}/api/tags`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiToken}`,
+        Authorization: `Bearer ${apiToken}`,
       },
       body: JSON.stringify({
         data: {
-          nom: categoryName,
+          nom: trimmedName,
           publishedAt: new Date().toISOString(),
         },
       }),
@@ -134,61 +152,16 @@ async function findOrCreateCategory(categoryName: string): Promise<number | null
 
     if (createResponse.ok) {
       const createData = await createResponse.json();
-      return createData.data?.id || null;
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Erreur lors de la recherche/création de catégorie:', error);
-    return null;
-  }
-}
-
-/**
- * Trouver ou créer un tag par nom
- */
-async function findOrCreateTag(tagName: string): Promise<number | null> {
-  try {
-    const strapiUrl = getStrapiUrl();
-    const apiToken = getStrapiApiToken();
-    
-    if (!apiToken) return null;
-
-    // Chercher le tag existant
-    const searchResponse = await fetch(
-      `${strapiUrl}/api/tags?filters[nom][$eq]=${encodeURIComponent(tagName)}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-        },
+      const newId = createData.data?.id;
+      if (newId) {
+        allTagsCache.push({
+          id: newId,
+          nom: trimmedName,
+          slug: generateTagSlug(trimmedName),
+        });
+        console.log(`[Ingest] Tag créé: "${trimmedName}" (ID: ${newId})`);
       }
-    );
-
-    if (searchResponse.ok) {
-      const searchData = await searchResponse.json();
-      if (searchData.data && searchData.data.length > 0) {
-        return searchData.data[0].id;
-      }
-    }
-
-    // Créer le tag s'il n'existe pas (il sera automatiquement publié par le lifecycle)
-    const createResponse = await fetch(`${strapiUrl}/api/tags`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiToken}`,
-      },
-      body: JSON.stringify({
-        data: {
-          nom: tagName,
-          publishedAt: new Date().toISOString(), // Publier automatiquement lors de la création
-        },
-      }),
-    });
-
-    if (createResponse.ok) {
-      const createData = await createResponse.json();
-      return createData.data?.id || null;
+      return newId || null;
     }
 
     return null;
@@ -220,34 +193,39 @@ async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): 
       .map((etape: string, index: number) => `<p><strong>Étape ${index + 1} :</strong> ${etape}</p>`)
       .join('\n');
 
-    // Trouver ou créer les catégories
+    // Catégories : réutilisation uniquement (pas de création)
+    const allCategoriesCache = await fetchExistingCategories(strapiUrl, apiToken);
     const categoryIds: number[] = [];
     if (parsedRecipe.categories && Array.isArray(parsedRecipe.categories)) {
       for (const categoryName of parsedRecipe.categories) {
         if (categoryName && categoryName.trim()) {
-          const categoryId = await findOrCreateCategory(categoryName.trim());
+          const categoryId = findExistingCategory(categoryName.trim(), allCategoriesCache);
           if (categoryId) {
             categoryIds.push(categoryId);
+          } else {
+            console.log(
+              `[Ingest] Catégorie ignorée (aucune correspondance): "${categoryName.trim()}"`
+            );
           }
         }
       }
     }
 
-    // Trouver ou créer les tags
-    // Si la création échoue côté frontend, on enverra les tags comme des strings
-    // pour que le controller Strapi les crée automatiquement
+    // Trouver ou créer les tags (réutilisation prioritaire via cache Strapi)
+    const allTagsCache = await fetchExistingTags(strapiUrl, apiToken);
     const tagIds: number[] = [];
-    const tagNames: string[] = []; // Tags qui n'ont pas pu être créés
+    const tagNames: string[] = [];
     if (parsedRecipe.tags && Array.isArray(parsedRecipe.tags)) {
       for (const tagName of parsedRecipe.tags) {
         if (tagName && tagName.trim()) {
-          const tagId = await findOrCreateTag(tagName.trim());
+          const tagId = await findOrCreateTag(tagName.trim(), allTagsCache, strapiUrl, apiToken);
           if (tagId) {
             tagIds.push(tagId);
           } else {
-            // Si la création a échoué, garder le nom pour l'envoyer comme string
             tagNames.push(tagName.trim());
-            console.warn(`[Ingest] Impossible de créer le tag "${tagName.trim()}", sera envoyé comme string à Strapi`);
+            console.warn(
+              `[Ingest] Impossible de créer le tag "${tagName.trim()}", sera envoyé comme string à Strapi`
+            );
           }
         }
       }

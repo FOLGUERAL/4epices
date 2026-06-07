@@ -1,4 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  buildExistingCategoriesPromptSection,
+  fetchExistingCategories,
+  resolveCategoryNames,
+} from '@/lib/categoryMatching';
+import {
+  buildExistingTagsPromptSection,
+  fetchExistingTags,
+  resolveTagNames,
+} from '@/lib/tagMatching';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -131,6 +141,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const strapiUrl =
+      process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+    const strapiToken = process.env.STRAPI_API_TOKEN || null;
+    const [existingTags, existingCategories] = await Promise.all([
+      fetchExistingTags(strapiUrl, strapiToken),
+      fetchExistingCategories(strapiUrl, strapiToken),
+    ]);
+    const tagsPromptSection = buildExistingTagsPromptSection(existingTags);
+    const categoriesPromptSection = buildExistingCategoriesPromptSection(existingCategories);
+
     const prompt = `Tu es un chef cuisinier professionnel. Génère une recette COMPLÈTE au format JSON.
 
 RÈGLES CRITIQUES :
@@ -166,9 +186,13 @@ Structure JSON OBLIGATOIRE :
   "tempsCuisson": 50,
   "nombrePersonnes": 4,
   "difficulte": "moyen",
-  "categories": ["Plat principal"],
+  "categories": [],
   "tags": ["traditionnel", "maghrébin"]
 }
+
+${categoriesPromptSection}
+
+${tagsPromptSection}
 
 IMPORTANT : 
 - "ingredients" : array avec MINIMUM 5 ingrédients, même si non mentionnés
@@ -348,13 +372,23 @@ ${text.trim()}
       ? parsedRecipe.difficulte
       : 'facile';
 
-    // Normaliser les catégories (array de noms)
-    const categories = Array.isArray(parsedRecipe.categories) 
-      ? parsedRecipe.categories 
-      : (parsedRecipe.categorie ? [parsedRecipe.categorie] : []);
+    // Catégories : uniquement réutilisation (pas de création)
+    const rawCategories = Array.isArray(parsedRecipe.categories)
+      ? parsedRecipe.categories
+      : parsedRecipe.categorie
+        ? [parsedRecipe.categorie]
+        : [];
+    const categories = resolveCategoryNames(
+      rawCategories.map((c: unknown) => String(c)),
+      existingCategories
+    );
 
-    // Normaliser les tags (array de noms)
-    const tags = Array.isArray(parsedRecipe.tags) ? parsedRecipe.tags : [];
+    // Normaliser les tags : réutiliser les existants quand possible
+    const rawTags = Array.isArray(parsedRecipe.tags) ? parsedRecipe.tags : [];
+    const tags = resolveTagNames(
+      rawTags.map((t: unknown) => String(t)),
+      existingTags
+    );
 
     const normalizedRecipe = {
       titre: String(parsedRecipe.titre),
@@ -365,8 +399,8 @@ ${text.trim()}
       tempsCuisson: parsedRecipe.tempsCuisson ? Number(parsedRecipe.tempsCuisson) : null,
       nombrePersonnes: Number(parsedRecipe.nombrePersonnes) || 4,
       difficulte: difficulte as 'facile' | 'moyen' | 'difficile',
-      categories: categories.map((c: any) => String(c)), // Noms de catégories
-      tags: tags.map((t: any) => String(t)), // Noms de tags
+      categories,
+      tags,
     };
 
     return NextResponse.json({
