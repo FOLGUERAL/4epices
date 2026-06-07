@@ -50,7 +50,7 @@ async function callGroq(prompt) {
       ],
       temperature: 0.5,
       response_format: { type: 'json_object' },
-      max_tokens: 2500,
+      max_tokens: 2800,
     },
     {
       headers: {
@@ -64,6 +64,20 @@ async function callGroq(prompt) {
   const content = response.data.choices[0]?.message?.content;
   if (!content) throw new Error('Aucune réponse Groq');
   return content;
+}
+
+function normalizeMetaTitle(value, fallbackTitre) {
+  let s = String(value || '').trim();
+  if (!s) s = String(fallbackTitre || '').trim();
+  if (s.length <= 60) return s;
+  return `${s.substring(0, 57)}...`;
+}
+
+function normalizeMetaDescription(value) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  if (s.length <= 160) return s;
+  return `${s.substring(0, 157)}...`;
 }
 
 function normalizeSeoEnrichi(raw) {
@@ -100,8 +114,8 @@ function normalizeSeoEnrichi(raw) {
 
 module.exports = ({ strapi }) => ({
   /**
-   * Génère seoEnrichi (FAQ, conseils, variantes, conservation, métadonnées SEO).
-   * @param {Object} recetteData - Champs recette (titre, description, ingredients, etapes, …)
+   * Génère seoEnrichi + metaTitle + metaDescription via un seul appel Groq.
+   * @returns {{ seoEnrichi: object, metaTitle: string, metaDescription: string }}
    */
   async generate(recetteData) {
     const titre = recetteData.titre || 'Recette';
@@ -112,30 +126,33 @@ module.exports = ({ strapi }) => ({
     const ingredientsText = formatIngredients(recetteData.ingredients);
     const tempsPrep = recetteData.tempsPreparation || 0;
     const tempsCuisson = recetteData.tempsCuisson || 0;
+    const tempsTotal = tempsPrep + tempsCuisson;
     const difficulte = recetteData.difficulte || 'facile';
     const personnes = recetteData.nombrePersonnes || 4;
 
-    const prompt = `Génère du contenu SEO enrichi pour cette recette française.
+    const prompt = `Génère du contenu SEO enrichi pour cette recette française (blog 4épices).
 
-TITRE : ${titre}
+TITRE AFFICHÉ (H1) : ${titre}
 DESCRIPTION : ${description}
 INGRÉDIENTS : ${ingredientsText || 'Non fournis'}
 ÉTAPES (texte) : ${etapesText || 'Non fournies'}
 TEMPS PRÉPARATION (min) : ${tempsPrep}
 TEMPS CUISSON (min) : ${tempsCuisson}
+TEMPS TOTAL (min) : ${tempsTotal}
 DIFFICULTÉ : ${difficulte}
 PORTIONS : ${personnes}
 
-RÈGLES :
-1. FAQ : 3 à 4 questions réalistes que les internautes posent (four, air fryer, avance, conservation, substitutions). Réponses courtes (2-4 phrases), basées UNIQUEMENT sur la recette ; si une info manque, dis-le honnêtement.
-2. conseils, variantes, conservation : paragraphes en texte brut (pas de HTML), 2-4 phrases chacun si pertinent.
-3. ingredientPrincipal : un ingrédient star (ex: "poulet")
-4. typeCuisine : ex. "française", "italienne", "fusion"
-5. niveau : reprendre la difficulté ("facile", "moyen", "difficile")
-6. motsClesSeo : 5 à 8 mots-clés français pertinents (tableau de strings)
+RÈGLES SEO :
+1. metaTitle : titre pour Google, intention de recherche (facile, rapide, maison, au four…), MAX 60 caractères. Peut reprendre le nom du plat + bénéfice ou temps si pertinent. Pas de guillemets.
+2. metaDescription : 145-160 caractères, incitative, avec temps ou difficulté si connus. Pas de guillemets.
+3. FAQ : 3 à 4 questions réalistes (four, air fryer, avance, conservation). Réponses courtes, basées sur la recette uniquement.
+4. conseils, variantes, conservation : texte brut, 2-4 phrases chacun si pertinent.
+5. ingredientPrincipal, typeCuisine, niveau (facile/moyen/difficile), motsClesSeo (5-8 mots-clés français).
 
 JSON attendu :
 {
+  "metaTitle": "...",
+  "metaDescription": "...",
   "faq": [{"question": "...", "answer": "..."}],
   "conseils": "...",
   "variantes": "...",
@@ -156,8 +173,14 @@ JSON attendu :
       throw new Error('Réponse Groq invalide (JSON)');
     }
 
-    const result = normalizeSeoEnrichi(parsed);
-    strapi.log.info(`[SEO Enrichi] Généré pour: ${titre} (${result.faq.length} FAQ)`);
-    return result;
+    const seoEnrichi = normalizeSeoEnrichi(parsed);
+    const metaTitle = normalizeMetaTitle(parsed.metaTitle, titre);
+    const metaDescription = normalizeMetaDescription(parsed.metaDescription);
+
+    strapi.log.info(
+      `[SEO Enrichi] Généré pour: ${titre} (${seoEnrichi.faq.length} FAQ, meta: ${metaTitle.length}c)`
+    );
+
+    return { seoEnrichi, metaTitle, metaDescription };
   },
 });

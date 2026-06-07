@@ -23,7 +23,10 @@ async function applySeoEnrichiGeneration(data, { previous = null, isCreate = fal
 
   try {
     const service = strapi.service('api::recette.recipe-seo-enrichment');
-    data.seoEnrichi = await service.generate(merged);
+    const result = await service.generate(merged);
+    data.seoEnrichi = result.seoEnrichi;
+    if (result.metaTitle) data.metaTitle = result.metaTitle;
+    if (result.metaDescription) data.metaDescription = result.metaDescription;
   } catch (error) {
     strapi.log.warn(`[SEO Enrichi] Génération échouée: ${error.message}`);
   }
@@ -128,18 +131,15 @@ module.exports = {
    */
   async beforeCreate(event) {
     const { data } = event.params;
-    
-    // Générer metaTitle si vide
+
+    await applySeoEnrichiGeneration(data, { isCreate: true });
+
     if (!data.metaTitle || !data.metaTitle.trim()) {
       data.metaTitle = generateMetaTitle(data);
     }
-    
-    // Générer metaDescription si vide
     if (!data.metaDescription || !data.metaDescription.trim()) {
       data.metaDescription = generateMetaDescription(data);
     }
-
-    await applySeoEnrichiGeneration(data, { isCreate: true });
   },
 
   /**
@@ -168,6 +168,8 @@ module.exports = {
             'nombrePersonnes',
             'difficulte',
             'seoEnrichi',
+            'metaTitle',
+            'metaDescription',
             'pinterestAutoPublish',
             'publishedAt',
             'pinterestPinId',
@@ -185,17 +187,15 @@ module.exports = {
       strapi.log.error('Erreur lors de la récupération de la recette précédente:', error);
     }
     
-    // Générer metaTitle si vide
-    if (!data.metaTitle || !data.metaTitle.trim()) {
-      data.metaTitle = generateMetaTitle({ ...previousForSeo, ...data });
-    }
-    
-    // Générer metaDescription si vide
-    if (!data.metaDescription || !data.metaDescription.trim()) {
-      data.metaDescription = generateMetaDescription({ ...previousForSeo, ...data });
-    }
-
     await applySeoEnrichiGeneration(data, { previous: previousForSeo, isCreate: false });
+
+    const mergedForMeta = { ...(previousForSeo || {}), ...data };
+    if (!data.metaTitle || !data.metaTitle.trim()) {
+      data.metaTitle = generateMetaTitle(mergedForMeta);
+    }
+    if (!data.metaDescription || !data.metaDescription.trim()) {
+      data.metaDescription = generateMetaDescription(mergedForMeta);
+    }
   },
 
   /**

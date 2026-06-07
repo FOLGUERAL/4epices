@@ -45,6 +45,7 @@ export function buildRecipeJsonLd(options: {
   image: string;
   url: string;
   datePublished?: string | null;
+  dateModified?: string | null;
   prepMinutes?: number;
   cookMinutes?: number;
   yield?: number;
@@ -83,6 +84,7 @@ export function buildRecipeJsonLd(options: {
   };
 
   if (options.datePublished) payload.datePublished = options.datePublished;
+  if (options.dateModified) payload.dateModified = options.dateModified;
   if (prep > 0) payload.prepTime = `PT${prep}M`;
   if (cook > 0) payload.cookTime = `PT${cook}M`;
   if (total > 0) payload.totalTime = `PT${total}M`;

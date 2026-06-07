@@ -34,8 +34,33 @@ function shouldGenerateSeoEnrichi({ data, previous, isCreate }) {
   return true;
 }
 
+/** Meta générée par défaut (titre seul ou description vide) — candidat à l'optimisation Groq. */
+function isMetaWeak({ metaTitle, metaDescription, titre }) {
+  const mt = (metaTitle || '').trim();
+  const t = (titre || '').trim();
+  const md = (metaDescription || '').trim();
+  if (!mt || mt === t) return true;
+  if (!md) return true;
+  return false;
+}
+
+function shouldProcessBackfill(recette, { force = false, forceMeta = false }) {
+  const seo = force || isSeoEnrichiEmpty(recette.seoEnrichi);
+  const meta =
+    force ||
+    forceMeta ||
+    isMetaWeak({
+      metaTitle: recette.metaTitle,
+      metaDescription: recette.metaDescription,
+      titre: recette.titre,
+    });
+  return { seo, meta, any: seo || meta };
+}
+
 module.exports = {
   isSeoEnrichiEmpty,
+  isMetaWeak,
   contentFieldsChanged,
   shouldGenerateSeoEnrichi,
+  shouldProcessBackfill,
 };

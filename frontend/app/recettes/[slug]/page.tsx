@@ -86,6 +86,9 @@ export async function generateMetadata({
       type: 'article',
       locale: 'fr_FR',
       siteName: '4épices',
+      ...(attrs.publishedAt ? { publishedTime: attrs.publishedAt } : {}),
+      ...(attrs.updatedAt ? { modifiedTime: attrs.updatedAt } : {}),
+      authors: ['4épices'],
       ...(imageUrl ? { images: [{ url: imageUrl, alt: attrs.titre }] } : {}),
     },
     twitter: {
@@ -178,6 +181,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
       : `${siteUrl}${imageUrlForStructuredData}`,
     url: recetteUrl,
     datePublished: recette.attributes.publishedAt,
+    dateModified: recette.attributes.updatedAt,
     prepMinutes: recette.attributes.tempsPreparation,
     cookMinutes: recette.attributes.tempsCuisson,
     yield: recette.attributes.nombrePersonnes,
