@@ -13,7 +13,9 @@
     "migrate:ingredients-lignes:strapi": "node scripts/migrate-ingredients-lignes-strapi.js",
     "migrate:etapes-liste:strapi": "node scripts/migrate-etapes-liste-strapi.js",
     "backfill:seo-enrichi": "node scripts/backfill-seo-enrichi-strapi.js",
-    "backfill:seo-enrichi:dry-run": "node scripts/backfill-seo-enrichi-strapi.js --dry-run"
+    "backfill:seo-enrichi:dry-run": "node scripts/backfill-seo-enrichi-strapi.js --dry-run",
+    "backfill:tags-seo": "node scripts/backfill-tags-seo-strapi.js",
+    "backfill:tags-seo:dry-run": "node scripts/backfill-tags-seo-strapi.js --dry-run"
   },
   "dependencies": {
     "@strapi/strapi": "^4.19.1",

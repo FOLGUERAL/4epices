@@ -123,6 +123,27 @@ export interface SeoEnrichi {
 }
 
 /** JSON-LD FAQPage — à n'injecter que si faq.length >= 2 */
+/** JSON-LD ItemList pour pages hub (catégories, tags). */
+export function buildItemListJsonLd(
+  items: { name: string; url: string }[],
+  pageUrl: string
+): Record<string, unknown> | null {
+  if (items.length === 0) return null;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    url: pageUrl,
+    numberOfItems: items.length,
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      url: item.url,
+    })),
+  };
+}
+
 export function buildFaqJsonLd(
   faq: SeoEnrichiFaqItem[],
   pageUrl: string

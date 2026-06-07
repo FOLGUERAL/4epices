@@ -11,9 +11,16 @@ module.exports = {
   async beforeCreate(event) {
     const { data } = event.params;
 
-    // Si publishedAt n'est pas défini, le définir pour publier automatiquement le tag
     if (!data.publishedAt) {
       data.publishedAt = new Date().toISOString();
+    }
+
+    const nom = (data.nom || '').trim();
+    if (nom && !(data.description || '').trim()) {
+      data.description = `Découvrez nos recettes ${nom} : idées faciles et gourmandes sur 4épices.`;
+    }
+    if (nom && !(data.metaTitle || '').trim()) {
+      data.metaTitle = nom.length <= 50 ? `Recettes ${nom}` : `Recettes ${nom}`.substring(0, 57) + '...';
     }
   },
 

@@ -196,6 +196,9 @@ export interface Tag {
   attributes: {
     nom: string;
     slug: string;
+    description?: string;
+    metaTitle?: string;
+    metaDescription?: string;
   };
 }
 
@@ -233,6 +236,12 @@ export async function getRecettesByTag(
   queryParams.append('sort', 'publishedAt:desc');
 
   return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+}
+
+/** Nombre de recettes publiées pour un tag (pagination Strapi). */
+export async function getRecetteCountByTag(tagSlug: string): Promise<number> {
+  const response = await getRecettesByTag(tagSlug, { pageSize: 1 });
+  return response.meta?.pagination?.total ?? 0;
 }
 
 /** Extrait les IDs d'une relation Strapi (format { data: [...] } ou tableau direct). */

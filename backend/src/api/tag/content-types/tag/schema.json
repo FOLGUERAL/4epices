@@ -22,6 +22,18 @@
       "targetField": "nom",
       "required": true
     },
+    "description": {
+      "type": "text",
+      "required": false
+    },
+    "metaTitle": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "metaDescription": {
+      "type": "text",
+      "maxLength": 160
+    },
     "recettes": {
       "type": "relation",
       "relation": "manyToMany",
