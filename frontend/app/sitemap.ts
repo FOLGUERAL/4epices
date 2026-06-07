@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { getAllIngredients, MIN_RECIPES_FOR_INDEX } from '@/lib/ingredients';
 import { getRecettes, getCategories, getTags } from '@/lib/strapi';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -17,6 +18,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/ingredients`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.7,
     },
   ];
 
@@ -68,6 +75,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('Erreur lors de la récupération des tags pour le sitemap:', error);
   }
 
-  return [...staticRoutes, ...recettesRoutes, ...categoriesRoutes, ...tagsRoutes];
+  let ingredientsRoutes: MetadataRoute.Sitemap = [];
+  try {
+    const ingredients = await getAllIngredients();
+    ingredientsRoutes = ingredients
+      .filter((ingredient) => ingredient.recetteCount >= MIN_RECIPES_FOR_INDEX)
+      .map((ingredient) => ({
+        url: `${baseUrl}/ingredients/${ingredient.slug}`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.6,
+      }));
+  } catch (error) {
+    console.error('Erreur lors de la récupération des ingrédients pour le sitemap:', error);
+  }
+
+  return [
+    ...staticRoutes,
+    ...recettesRoutes,
+    ...categoriesRoutes,
+    ...tagsRoutes,
+    ...ingredientsRoutes,
+  ];
 }
 

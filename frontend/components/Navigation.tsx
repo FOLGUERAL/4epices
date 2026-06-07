@@ -39,6 +39,12 @@ export default async function Navigation() {
               <WhiskIcon />
               <span className="hidden sm:inline">Recettes</span>
             </Link>
+            <Link
+              href="/ingredients"
+              className="text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base hidden md:inline duration-200"
+            >
+              Ingrédients
+            </Link>
             <Link 
               href="/favoris" 
               className="text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1.5 duration-200"
