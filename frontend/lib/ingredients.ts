@@ -1,5 +1,10 @@
 import { cache } from 'react';
 import { generateTagSlug } from '@/lib/tagMatching';
+import {
+  getDictionaryEntryBySlug,
+  matchDictionaryIngredients,
+  resolveIngredientSlugAndNom,
+} from '@/lib/ingredientDictionary';
 import { getRecettes, Recette } from '@/lib/strapi';
 
 export const MIN_RECIPES_FOR_INDEX = 3;
@@ -30,9 +35,13 @@ export function ingredientSlugFromName(name: string): string {
 type IndexEntry = {
   nameCounts: Map<string, number>;
   recettes: Recette[];
+  recetteIds: Set<number>;
 };
 
-function pickCanonicalName(nameCounts: Map<string, number>): string {
+function pickCanonicalName(slug: string, nameCounts: Map<string, number>): string {
+  const dictEntry = getDictionaryEntryBySlug(slug);
+  if (dictEntry) return dictEntry.nom;
+
   let bestName = '';
   let bestCount = -1;
 
@@ -47,6 +56,47 @@ function pickCanonicalName(nameCounts: Map<string, number>): string {
   }
 
   return bestName;
+}
+
+function addRecipeToHub(
+  bySlug: Map<string, IndexEntry>,
+  slug: string,
+  displayName: string,
+  recette: Recette
+): void {
+  if (!slug) return;
+
+  let entry = bySlug.get(slug);
+  if (!entry) {
+    entry = { nameCounts: new Map(), recettes: [], recetteIds: new Set() };
+    bySlug.set(slug, entry);
+  }
+
+  if (!entry.recetteIds.has(recette.id)) {
+    entry.recetteIds.add(recette.id);
+    entry.recettes.push(recette);
+  }
+
+  entry.nameCounts.set(displayName, (entry.nameCounts.get(displayName) || 0) + 1);
+}
+
+/** Sources hub pour une recette : dictionnaire (titre + ingrédients) + ingredientPrincipal Groq. */
+function getRecipeHubSources(recette: Recette): Array<{ slug: string; nom: string }> {
+  const sources = new Map<string, string>();
+
+  for (const entry of matchDictionaryIngredients(recette)) {
+    sources.set(entry.slug, entry.nom);
+  }
+
+  const principal = getIngredientPrincipal(recette);
+  if (principal) {
+    const resolved = resolveIngredientSlugAndNom(principal);
+    if (!sources.has(resolved.slug)) {
+      sources.set(resolved.slug, resolved.nom);
+    }
+  }
+
+  return Array.from(sources.entries()).map(([slug, nom]) => ({ slug, nom }));
 }
 
 async function fetchAllPublishedRecettes(): Promise<Recette[]> {
@@ -78,27 +128,17 @@ function buildIngredientsIndex(
   const bySlug = new Map<string, IndexEntry>();
 
   for (const recette of recettes) {
-    const principal = getIngredientPrincipal(recette);
-    if (!principal) continue;
-
-    const slug = ingredientSlugFromName(principal);
-    if (!slug) continue;
-
-    let entry = bySlug.get(slug);
-    if (!entry) {
-      entry = { nameCounts: new Map(), recettes: [] };
-      bySlug.set(slug, entry);
+    const sources = getRecipeHubSources(recette);
+    for (const { slug, nom } of sources) {
+      addRecipeToHub(bySlug, slug, nom, recette);
     }
-
-    entry.nameCounts.set(principal, (entry.nameCounts.get(principal) || 0) + 1);
-    entry.recettes.push(recette);
   }
 
   const result = new Map<string, { nom: string; recettes: Recette[] }>();
 
   for (const [slug, entry] of bySlug) {
     result.set(slug, {
-      nom: pickCanonicalName(entry.nameCounts),
+      nom: pickCanonicalName(slug, entry.nameCounts),
       recettes: entry.recettes,
     });
   }
