@@ -119,17 +119,34 @@ export function matchDictionaryIngredients(recette: {
   return matched;
 }
 
+function normalizeSingular(word: string): string {
+  const n = normalizeTagKey(word);
+  if (n.endsWith('aux')) return n.slice(0, -3) + 'al';
+  if (n.endsWith('eaux')) return n.slice(0, -4) + 'eau';
+  if (n.endsWith('es')) return n.slice(0, -2);
+  if (n.endsWith('s')) return n.slice(0, -1);
+  return n;
+}
+
 /** Slug d'un ingredientPrincipal Groq, avec nom canonique dictionnaire si connu. */
 export function resolveIngredientSlugAndNom(principal: string): { slug: string; nom: string } {
-  const slug = generateTagSlug(principal);
+  const trimmed = principal.trim();
+  const slug = generateTagSlug(trimmed);
   const dictEntry = dictionaryBySlug.get(slug);
   if (dictEntry) return { slug: dictEntry.slug, nom: dictEntry.nom };
 
   for (const entry of INGREDIENT_HUB_DICTIONARY) {
-    if (entry.keywords.some((keyword) => matchesKeyword(principal, keyword))) {
+    if (entry.keywords.some((keyword) => matchesKeyword(trimmed, keyword))) {
       return { slug: entry.slug, nom: entry.nom };
     }
   }
 
-  return { slug, nom: principal.trim() };
+  const principalStem = normalizeSingular(trimmed);
+  for (const entry of INGREDIENT_HUB_DICTIONARY) {
+    if (normalizeSingular(entry.nom) === principalStem) {
+      return { slug: entry.slug, nom: entry.nom };
+    }
+  }
+
+  return { slug, nom: trimmed };
 }

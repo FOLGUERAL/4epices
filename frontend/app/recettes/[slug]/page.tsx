@@ -10,7 +10,7 @@ import {
   extractRelationIds,
   Recette,
 } from '@/lib/strapi';
-import { ingredientSlugFromName } from '@/lib/ingredients';
+import { resolveIngredientSlugAndNom } from '@/lib/ingredientDictionary';
 import { buildRecipeJsonLd, buildFaqJsonLd, getSiteUrl, parseSeoEnrichi } from '@/lib/seo';
 import RecipeEnrichedSections from '@/components/RecipeEnrichedSections';
 import OptimizedImage from '@/components/OptimizedImage';
@@ -174,8 +174,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
     typeof rawIngredientPrincipal === 'string' && rawIngredientPrincipal.trim()
       ? rawIngredientPrincipal.trim()
       : null;
-  const ingredientSlug = ingredientPrincipal
-    ? ingredientSlugFromName(ingredientPrincipal)
+  const ingredientLink = ingredientPrincipal
+    ? resolveIngredientSlugAndNom(ingredientPrincipal)
     : null;
   const faqJsonLd =
     seoEnrichi?.faq && seoEnrichi.faq.length >= 2
@@ -376,14 +376,14 @@ export default async function RecettePage({ params }: { params: { slug: string }
             </div>
 
             <div className="flex flex-wrap gap-4">
-              {ingredientPrincipal && ingredientSlug && (
+              {ingredientLink && (
                 <div className="flex flex-wrap gap-2">
                   <span className="text-sm font-medium text-gray-500 mr-2">Ingrédient :</span>
                   <Link
-                    href={`/ingredients/${ingredientSlug}`}
+                    href={`/ingredients/${ingredientLink.slug}`}
                     className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition-colors capitalize"
                   >
-                    {ingredientPrincipal}
+                    {ingredientLink.nom}
                   </Link>
                 </div>
               )}
