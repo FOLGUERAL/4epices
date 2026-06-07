@@ -19,6 +19,26 @@ export interface IngredientDetail extends IngredientHub {
   recettes: Recette[];
 }
 
+/** Recette allégée pour le mixeur d'ingrédients (client). */
+export interface MixerRecipe {
+  id: number;
+  slug: string;
+  titre: string;
+  description: string;
+  imageUrl: string | null;
+  imageAlt: string;
+  tempsPreparation?: number;
+  tempsCuisson?: number;
+  nombrePersonnes?: number;
+  difficulte?: string;
+  ingredientSlugs: string[];
+}
+
+export interface IngredientMixerData {
+  ingredients: IngredientHub[];
+  recipes: MixerRecipe[];
+}
+
 function getIngredientPrincipal(recette: Recette): string | null {
   const raw = recette.attributes.seoEnrichi;
   if (!raw || typeof raw !== 'object') return null;
@@ -180,6 +200,50 @@ export async function getIngredientBySlug(slug: string): Promise<IngredientDetai
 export async function getRecetteCountByIngredient(slug: string): Promise<number> {
   const ingredient = await getIngredientBySlug(slug);
   return ingredient?.recetteCount ?? 0;
+}
+
+function recetteToMixerRecipe(recette: Recette): MixerRecipe {
+  const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url ?? null;
+  return {
+    id: recette.id,
+    slug: recette.attributes.slug,
+    titre: recette.attributes.titre,
+    description: recette.attributes.description,
+    imageUrl,
+    imageAlt:
+      recette.attributes.imagePrincipale?.data?.attributes?.alternativeText ||
+      recette.attributes.titre,
+    tempsPreparation: recette.attributes.tempsPreparation,
+    tempsCuisson: recette.attributes.tempsCuisson,
+    nombrePersonnes: recette.attributes.nombrePersonnes,
+    difficulte: recette.attributes.difficulte,
+    ingredientSlugs: getRecipeHubSources(recette).map((s) => s.slug),
+  };
+}
+
+/** Données sérialisées pour le mixeur multi-ingrédients (hub /ingredients). */
+export async function getIngredientMixerData(): Promise<IngredientMixerData> {
+  const recettes = await fetchAllPublishedRecettes();
+  const ingredients = await getAllIngredients();
+
+  return {
+    ingredients,
+    recipes: recettes
+      .map(recetteToMixerRecipe)
+      .filter((r) => r.ingredientSlugs.length > 0),
+  };
+}
+
+/** Filtre AND : la recette doit contenir tous les slugs sélectionnés. */
+export function filterRecipesByIngredientSlugs(
+  recipes: MixerRecipe[],
+  selectedSlugs: string[]
+): MixerRecipe[] {
+  if (selectedSlugs.length === 0) return [];
+
+  return recipes.filter((recipe) =>
+    selectedSlugs.every((slug) => recipe.ingredientSlugs.includes(slug))
+  );
 }
 
 export function buildIngredientMetaTitle(nom: string): string {

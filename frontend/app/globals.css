@@ -46,6 +46,68 @@ h1, h2, h3, h4, h5, h6 {
     @apply focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2;
   }
   
+  .ingredient-mixer-whisk {
+    animation: ingredient-whisk-mix 0.35s ease-in-out infinite;
+    transform-origin: 20% 85%;
+  }
+
+  .ingredient-mixer-bowl {
+    animation: ingredient-bowl-pulse 0.7s ease-in-out infinite;
+  }
+
+  .ingredient-mixer-chip {
+    opacity: 0.85;
+    transition: transform 0.2s ease;
+  }
+
+  .ingredient-mixer-chip-0 { top: 12%; left: 18%; }
+  .ingredient-mixer-chip-1 { top: 20%; right: 14%; }
+  .ingredient-mixer-chip-2 { bottom: 22%; left: 12%; }
+  .ingredient-mixer-chip-3 { bottom: 16%; right: 18%; }
+
+  .ingredient-mixer-chip-active {
+    animation: ingredient-chip-orbit 0.5s ease-in-out infinite alternate;
+  }
+
+  .ingredient-mixer-chip-0.ingredient-mixer-chip-active { animation-delay: 0s; }
+  .ingredient-mixer-chip-1.ingredient-mixer-chip-active { animation-delay: 0.1s; }
+  .ingredient-mixer-chip-2.ingredient-mixer-chip-active { animation-delay: 0.2s; }
+  .ingredient-mixer-chip-3.ingredient-mixer-chip-active { animation-delay: 0.3s; }
+
+  .ingredient-mixer-results {
+    animation: ingredient-results-in 0.45s ease-out both;
+  }
+
+  @keyframes ingredient-whisk-mix {
+    0% { transform: rotate(-18deg) translateX(-2px); }
+    50% { transform: rotate(28deg) translateX(3px); }
+    100% { transform: rotate(-18deg) translateX(-2px); }
+  }
+
+  @keyframes ingredient-bowl-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+  }
+
+  @keyframes ingredient-chip-orbit {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    100% { transform: translate(2px, -3px) rotate(8deg); }
+  }
+
+  @keyframes ingredient-results-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ingredient-mixer-whisk,
+    .ingredient-mixer-bowl,
+    .ingredient-mixer-chip-active,
+    .ingredient-mixer-results {
+      animation: none !important;
+    }
+  }
+
   .focus-ring-accent {
     @apply focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-2;
   }
