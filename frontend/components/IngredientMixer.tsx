@@ -9,6 +9,7 @@ import {
   MixerRecipe,
 } from '@/lib/ingredients';
 import OptimizedImage from '@/components/OptimizedImage';
+import WhiskIcon from '@/components/WhiskIcon';
 
 const MAX_SELECTION = 6;
 const MIX_DURATION_MS = 1400;
@@ -16,32 +17,6 @@ const MIX_DURATION_MS = 1400;
 interface IngredientMixerProps {
   ingredients: IngredientHub[];
   recipes: MixerRecipe[];
-}
-
-function WhiskSvg({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M8 56c0-8 6-14 14-14h4c2 0 4-1 5-3l14-22a4 4 0 00-6-5L25 34h-3C12 34 4 42 4 52"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M30 8c0 4-2 7-5 9M38 6c2 3 2 7 0 10M46 8c-1 4-4 7-8 8"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 function parseSlugsFromSearchParams(searchParams: URLSearchParams): string[] {
@@ -227,10 +202,11 @@ export default function IngredientMixer({ ingredients, recipes }: IngredientMixe
                 {ing.nom}
               </span>
             ))}
-            <WhiskSvg
+            <WhiskIcon
               className={`w-12 h-12 sm:w-14 sm:h-14 text-orange-600 ${
                 phase === 'mixing' ? 'ingredient-mixer-whisk' : ''
               }`}
+              strokeWidth={1.75}
             />
           </div>
 
@@ -260,7 +236,7 @@ export default function IngredientMixer({ ingredients, recipes }: IngredientMixe
               disabled={!canMix}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
             >
-              <WhiskSvg className="w-5 h-5" />
+              <WhiskIcon className="w-5 h-5" strokeWidth={2} />
               {phase === 'mixing' ? 'Mélange en cours…' : 'Mélanger !'}
             </button>
 
