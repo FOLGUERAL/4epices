@@ -285,7 +285,7 @@ async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): 
     // Fonction pour générer metaTitle (copie de la logique backend)
     const generateMetaTitle = (titre: string): string => {
       const trimmedTitre = (titre || '').trim();
-      if (!trimmedTitre) return 'Recette | 4épices';
+      if (!trimmedTitre) return 'Recette | 4 épices';
       if (trimmedTitre.length <= 60) return trimmedTitre;
       return trimmedTitre.substring(0, 57) + '...';
     };

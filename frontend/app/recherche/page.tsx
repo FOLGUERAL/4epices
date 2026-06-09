@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { searchRecettes, Recette } from '@/lib/strapi';
 import OptimizedImage from '@/components/OptimizedImage';
+import { SITE_NAME } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,13 +14,13 @@ export async function generateMetadata({ searchParams }: SearchPageProps) {
   
   if (query) {
     return {
-      title: `Recherche: ${query} - 4épices`,
+      title: `Recherche: ${query} | ${SITE_NAME}`,
       description: `Résultats de recherche pour "${query}"`,
     };
   }
   
   return {
-    title: 'Recherche - 4épices',
+    title: `Recherche | ${SITE_NAME}`,
     description: 'Recherchez une recette',
   };
 }

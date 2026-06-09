@@ -95,19 +95,25 @@ async function fetchAPI<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<StrapiResponse<T>> {
-  // Récupérer l'URL dynamiquement à chaque appel
   const strapiUrl = getStrapiUrl();
   const url = `${strapiUrl}/api${endpoint}`;
-  
+  const isServer = typeof window === 'undefined';
+  const isMutation = Boolean(options.method && options.method !== 'GET');
+
   try {
     const response = await fetch(url, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      ...options,
-      // Désactiver le cache pour le développement
-      cache: 'no-store',
+      // Serveur : revalidation ISR (compatible build statique Next.js)
+      // Client : pas de cache pour données fraîches (avis, favoris…)
+      ...(isMutation
+        ? { cache: 'no-store' as const }
+        : isServer
+          ? { next: { revalidate: 300 } }
+          : { cache: 'no-store' as const }),
     });
 
     if (!response.ok) {

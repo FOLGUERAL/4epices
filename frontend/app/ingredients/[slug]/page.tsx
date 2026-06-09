@@ -9,7 +9,7 @@ import {
   buildIngredientDescription,
   MIN_RECIPES_FOR_INDEX,
 } from '@/lib/ingredients';
-import { buildItemListJsonLd, getSiteUrl } from '@/lib/seo';
+import { buildItemListJsonLd, getSiteUrl, SITE_NAME } from '@/lib/seo';
 import OptimizedImage from '@/components/OptimizedImage';
 
 export async function generateMetadata({
@@ -57,7 +57,7 @@ export async function generateMetadata({
       url: canonicalPath,
       type: 'website',
       locale: 'fr_FR',
-      siteName: '4épices',
+      siteName: SITE_NAME,
     },
     twitter: {
       card: 'summary',

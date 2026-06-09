@@ -6,6 +6,7 @@ import {
   resolveIngredientSlugAndNom,
 } from '@/lib/ingredientDictionary';
 import { getRecettes, Recette } from '@/lib/strapi';
+import { SITE_NAME } from '@/lib/seo';
 
 export const MIN_RECIPES_FOR_INDEX = 3;
 
@@ -255,15 +256,15 @@ export function buildIngredientMetaDescription(nom: string, count: number): stri
   const base = `Découvrez nos recettes à base de ${nom}`;
   const suffix =
     count > 0
-      ? ` : ${count} ${count === 1 ? 'idée' : 'idées'} faciles et gourmandes sur 4épices.`
-      : ' : idées faciles et gourmandes sur 4épices.';
+      ? ` : ${count} ${count === 1 ? 'idée' : 'idées'} faciles et gourmandes sur ${SITE_NAME}.`
+      : ` : idées faciles et gourmandes sur ${SITE_NAME}.`;
   const desc = base + suffix;
   return desc.length <= 160 ? desc : desc.substring(0, 157) + '...';
 }
 
 export function buildIngredientDescription(nom: string, count: number): string {
   if (count === 0) {
-    return `Recettes à base de ${nom} sur 4épices.`;
+    return `Recettes à base de ${nom} sur ${SITE_NAME}.`;
   }
   return `${count} ${count === 1 ? 'recette' : 'recettes'} à base de ${nom} : des idées simples et savoureuses pour cuisiner ce produit au quotidien.`;
 }

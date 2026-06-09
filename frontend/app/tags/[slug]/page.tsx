@@ -7,7 +7,7 @@ import {
   getRecetteCountByTag,
   Recette,
 } from '@/lib/strapi';
-import { buildItemListJsonLd, getSiteUrl } from '@/lib/seo';
+import { buildItemListJsonLd, getSiteUrl, SITE_NAME } from '@/lib/seo';
 import OptimizedImage from '@/components/OptimizedImage';
 
 const MIN_RECIPES_FOR_INDEX = 3;
@@ -43,7 +43,7 @@ export async function generateMetadata({
   const description =
     tag.attributes.metaDescription ||
     tag.attributes.description ||
-    `Découvrez toutes nos recettes ${nom} : idées faciles et gourmandes sur 4épices.`;
+    `Découvrez toutes nos recettes ${nom} : idées faciles et gourmandes sur ${SITE_NAME}.`;
   const canonicalPath = `/tags/${params.slug}`;
   const thin = recetteCount < MIN_RECIPES_FOR_INDEX;
 
@@ -60,7 +60,7 @@ export async function generateMetadata({
       url: canonicalPath,
       type: 'website',
       locale: 'fr_FR',
-      siteName: '4épices',
+      siteName: SITE_NAME,
     },
     twitter: {
       card: 'summary',

@@ -2,23 +2,24 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { getIngredientMixerData, MIN_RECIPES_FOR_INDEX } from '@/lib/ingredients';
+import { SITE_NAME } from '@/lib/seo';
 import IngredientMixer from '@/components/IngredientMixer';
 
 export const metadata: Metadata = {
   title: 'Recettes par ingrédient',
   description:
-    'Parcourez nos recettes par ingrédient ou combinez plusieurs ingrédients avec le fouet magique sur 4épices.',
+    `Parcourez nos recettes par ingrédient ou combinez plusieurs ingrédients avec le fouet magique sur ${SITE_NAME}.`,
   alternates: {
     canonical: '/ingredients',
   },
   openGraph: {
-    title: 'Recettes par ingrédient | 4épices',
+    title: `Recettes par ingrédient | ${SITE_NAME}`,
     description:
       'Parcourez nos recettes par ingrédient ou combinez plusieurs ingrédients avec le fouet magique.',
     url: '/ingredients',
     type: 'website',
     locale: 'fr_FR',
-    siteName: '4épices',
+    siteName: SITE_NAME,
   },
 };
 

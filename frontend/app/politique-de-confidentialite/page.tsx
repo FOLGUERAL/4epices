@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import { SITE_NAME } from '@/lib/seo';
 
 export const metadata: Metadata = {
-  title: 'Politique de Confidentialité - 4épices',
-  description: 'Politique de confidentialité du site 4épices.fr',
+  title: `Politique de confidentialité | ${SITE_NAME}`,
+  description: `Politique de confidentialité du site ${SITE_NAME}`,
 };
 
 export default function PolitiqueConfidentialite() {
@@ -20,7 +21,7 @@ export default function PolitiqueConfidentialite() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Introduction</h2>
             <p className="text-gray-700 mb-4">
-              La présente politique de confidentialité décrit la manière dont 4épices (« nous », « notre » ou « le site ») 
+              La présente politique de confidentialité décrit la manière dont {SITE_NAME} (« nous », « notre » ou « le site ») 
               collecte, utilise et protège vos informations personnelles lorsque vous utilisez notre site web accessible à 
               l'adresse <strong>https://4epices.fr</strong>.
             </p>

@@ -1,7 +1,40 @@
+/** Nom de marque affiché dans Google (site name, titles, JSON-LD). */
+export const SITE_NAME = '4 épices';
+
 /** URL canonique du site (sans slash final). */
 export function getSiteUrl(): string {
   const url = process.env.NEXT_PUBLIC_SITE_URL || 'https://4epices.fr';
   return url.replace(/\/$/, '');
+}
+
+/** JSON-LD Organization — signal de marque pour Google. */
+export function buildOrganizationJsonLd(): Record<string, unknown> {
+  const siteUrl = getSiteUrl();
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: SITE_NAME,
+    alternateName: ['4épices', '4epices'],
+    url: siteUrl,
+    logo: `${siteUrl}/logo.png`,
+  };
+}
+
+/** JSON-LD WebSite — nom de site dans les résultats Google. */
+export function buildWebSiteJsonLd(): Record<string, unknown> {
+  const siteUrl = getSiteUrl();
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    alternateName: ['4épices', '4epices'],
+    url: siteUrl,
+    publisher: {
+      '@type': 'Organization',
+      name: SITE_NAME,
+      url: siteUrl,
+    },
+  };
 }
 
 export function isAdSenseEnabled(): boolean {
@@ -78,7 +111,7 @@ export function buildRecipeJsonLd(options: {
     description: options.description,
     image: options.image,
     url: options.url,
-    author: { '@type': 'Organization', name: '4épices' },
+    author: { '@type': 'Organization', name: SITE_NAME },
     recipeYield: String(options.yield ?? 4),
     recipeIngredient: options.ingredients,
   };

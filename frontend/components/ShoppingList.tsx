@@ -10,6 +10,7 @@ import {
 } from '@/lib/shoppingList';
 import ConfirmDialog from './ConfirmDialog';
 import { toast } from './Toast';
+import { SITE_NAME } from '@/lib/seo';
 
 export default function ShoppingList() {
   const [items, setItems] = useState<ShoppingListItem[]>([]);
@@ -69,7 +70,7 @@ export default function ShoppingList() {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Liste de courses - 4épices</title>
+          <title>Liste de courses | ${SITE_NAME}</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 20px; }
             h1 { color: #ea580c; }
@@ -79,7 +80,7 @@ export default function ShoppingList() {
           </style>
         </head>
         <body>
-          <h1>Liste de courses - 4épices</h1>
+          <h1>Liste de courses — ${SITE_NAME}</h1>
           <h2>À acheter</h2>
           <ul>
             ${uncheckedItems.map(item => `

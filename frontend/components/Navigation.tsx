@@ -4,6 +4,7 @@ import { getCategories, Categorie } from '@/lib/strapi';
 import SearchBar from './SearchBar';
 import WhiskIcon from './WhiskIcon';
 import CategoriesDropdown from './CategoriesDropdown';
+import { SITE_NAME } from '@/lib/seo';
 
 export default async function Navigation() {
   let categories: Categorie[] = [];
@@ -21,7 +22,7 @@ export default async function Navigation() {
           <Link href="/" className="flex items-center h-16 hover:opacity-80 transition-opacity flex-shrink-0 group">
             <Image
               src="/logo.png"
-              alt="4épices"
+              alt={SITE_NAME}
               width={120}
               height={40}
               className="h-8 sm:h-10 w-auto object-contain group-hover:scale-105 transition-transform duration-200"

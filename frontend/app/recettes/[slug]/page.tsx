@@ -11,7 +11,7 @@ import {
   Recette,
 } from '@/lib/strapi';
 import { resolveIngredientSlugAndNom } from '@/lib/ingredientDictionary';
-import { buildRecipeJsonLd, buildFaqJsonLd, getSiteUrl, parseSeoEnrichi } from '@/lib/seo';
+import { buildRecipeJsonLd, buildFaqJsonLd, getSiteUrl, parseSeoEnrichi, SITE_NAME } from '@/lib/seo';
 import RecipeEnrichedSections from '@/components/RecipeEnrichedSections';
 import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
@@ -86,10 +86,10 @@ export async function generateMetadata({
       url: canonicalPath,
       type: 'article',
       locale: 'fr_FR',
-      siteName: '4épices',
+      siteName: SITE_NAME,
       ...(attrs.publishedAt ? { publishedTime: attrs.publishedAt } : {}),
       ...(attrs.updatedAt ? { modifiedTime: attrs.updatedAt } : {}),
-      authors: ['4épices'],
+      authors: [SITE_NAME],
       ...(imageUrl ? { images: [{ url: imageUrl, alt: attrs.titre }] } : {}),
     },
     twitter: {

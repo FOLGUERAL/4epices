@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getRecettes, Recette } from '@/lib/strapi';
 import RecipesFiltersClient from '@/components/RecipesFiltersClient';
+import { SITE_NAME } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
     canonical: '/recettes',
   },
   openGraph: {
-    title: 'Toutes les recettes | 4épices',
+    title: `Toutes les recettes | ${SITE_NAME}`,
     description:
       'Parcourez toutes nos recettes faciles et gourmandes.',
     url: '/recettes',

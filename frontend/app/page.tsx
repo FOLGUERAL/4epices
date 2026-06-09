@@ -5,6 +5,7 @@ import { getRecettes, getCategories, getRecettesByCategory, Recette, Categorie }
 import HeroRecipe from '@/components/HeroRecipe';
 import HorizontalCarousel from '@/components/HorizontalCarousel';
 import GoogleAdSense from '@/components/GoogleAdSense';
+import { SITE_NAME } from '@/lib/seo';
 
 export default async function Home() {
   let recetteVedette: Recette | null = null;
@@ -110,10 +111,10 @@ export default async function Home() {
           );
         })}
 
-        {/* Section Pourquoi 4épices ? */}
+        {/* Section Pourquoi 4 épices ? */}
         <section className="bg-gradient-to-br from-gray-50 to-orange-50 rounded-3xl shadow-lg p-6 sm:p-8 md:p-12 lg:p-16 mb-16 sm:mb-20 lg:mb-24 border border-gray-100 mt-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-10 sm:mb-12 text-center">
-            Pourquoi 4épices ?
+            Pourquoi {SITE_NAME} ?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
             <div className="text-center group">
