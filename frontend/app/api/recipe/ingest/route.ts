@@ -426,6 +426,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const text = formData.get('text') as string | null;
     const image = formData.get('image') as File | null;
+    const parsedRecipeInput = formData.get('parsedRecipe') as string | null;
 
     console.log('[Ingest] Données reçues:', {
       hasText: !!text?.trim(),
@@ -445,9 +446,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parser le texte avec l'IA
+    // Utiliser la recette déjà structurée si elle a été générée côté interface.
     let parsedRecipe;
-    if (text?.trim()) {
+    if (parsedRecipeInput) {
+      try {
+        parsedRecipe = JSON.parse(parsedRecipeInput);
+        console.log('[Ingest] Recette structurée fournie par l’interface, sans nouvel appel IA');
+      } catch (error) {
+        console.error('[Ingest] Impossible de parser parsedRecipe fourni:', error);
+        throw new Error('Le JSON IA fourni est invalide');
+      }
+    } else if (text?.trim()) {
       try {
         // Appeler directement la fonction POST de l'API parse-ai (évite les problèmes SSL/fetch)
         const { POST: parseAIPost } = await import('@/app/api/recipe/parse-ai/route');

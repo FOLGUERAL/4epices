@@ -672,6 +672,9 @@ function CreerRecettePageContent() {
     try {
       const formData = new FormData();
       formData.append('text', transcript.trim());
+      if (parsedRecipe) {
+        formData.append('parsedRecipe', JSON.stringify(parsedRecipe));
+      }
       if (selectedImage) {
         formData.append('image', selectedImage);
       }
