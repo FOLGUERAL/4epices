@@ -1,12 +1,17 @@
 // Fonction pour obtenir l'URL Strapi selon le contexte
 function getStrapiUrl(): string {
-  // Côté serveur (SSR), utiliser le service Docker si disponible
+  // Côté serveur (SSR), utiliser l'URL locale du backend
   if (typeof window === 'undefined') {
-    // On est côté serveur
-    return process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+    return process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
   }
-  // Côté client, utiliser l'URL publique
-  return process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+
+  // Côté client, passer par un proxy Next.js pour éviter les problèmes de reachability
+  // et les soucis de CORS/localhost entre conteneur et navigateur.
+  if (process.env.NEXT_PUBLIC_STRAPI_URL) {
+    return process.env.NEXT_PUBLIC_STRAPI_URL;
+  }
+
+  return '/api/strapi';
 }
 
 export interface StrapiResponse<T> {
@@ -96,7 +101,10 @@ async function fetchAPI<T>(
   options: RequestInit = {}
 ): Promise<StrapiResponse<T>> {
   const strapiUrl = getStrapiUrl();
-  const url = `${strapiUrl}/api${endpoint}`;
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = strapiUrl.startsWith('http')
+    ? `${strapiUrl}/api${normalizedEndpoint}`
+    : `${strapiUrl}${normalizedEndpoint}`;
   const isServer = typeof window === 'undefined';
   const isMutation = Boolean(options.method && options.method !== 'GET');
 
@@ -398,8 +406,8 @@ export function getStrapiMediaUrl(url: string): string {
   if (url.startsWith('http')) {
     return url;
   }
-  // Pour les images, toujours utiliser l'URL publique (client-side)
-  const publicUrl = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+
+  const publicUrl = process.env.NEXT_PUBLIC_STRAPI_URL || '/api/strapi';
   return `${publicUrl}${url}`;
 }
 
