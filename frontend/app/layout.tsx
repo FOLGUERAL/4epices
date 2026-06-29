@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: SITE_NAME,
   title: {
-    default: `${SITE_NAME} — Recettes faciles, rapides et gourmandes`,
+    default: `${SITE_NAME} | Recettes faciles, rapides et gourmandes`,
     template: `%s | ${SITE_NAME}`,
   },
   description:
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     apple: "/logo_carre_favicon.png",
   },
   openGraph: {
-    title: SITE_NAME,
+    title: `${SITE_NAME} | Recettes faciles, rapides et gourmandes`,
     description:
       "Recettes faciles, rapides et gourmandes pour tous les jours.",
     url: siteUrl,
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: SITE_NAME,
+    title: `${SITE_NAME} | Recettes faciles, rapides et gourmandes`,
     description:
       "Recettes faciles, rapides et gourmandes pour tous les jours.",
   },

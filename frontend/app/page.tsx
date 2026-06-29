@@ -58,8 +58,11 @@ export default async function Home() {
           </div>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-32 relative z-10">
             <div className="text-center">
+              <p className="text-sm sm:text-base uppercase tracking-[0.3em] font-semibold text-orange-100 mb-4 animate-slide-up">
+                Recettes faciles, rapides et gourmandes
+              </p>
               <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold mb-6 text-white animate-slide-up">
-                Des recettes simples, rapides et savoureuses
+                4 épices
               </h1>
               <p className="text-lg sm:text-xl lg:text-2xl mb-8 text-orange-100 max-w-3xl mx-auto animate-slide-up">
                 Découvrez une collection de recettes culinaires faciles à réaliser, 
