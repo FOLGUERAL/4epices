@@ -442,14 +442,8 @@ export interface CreateAvisData {
 }
 
 export async function createAvis(data: CreateAvisData): Promise<StrapiResponse<Avis>> {
-  const strapiUrl = getStrapiUrl();
-  const url = `${strapiUrl}/api/avis-recettes`;
-  
-  const response = await fetch(url, {
+  return fetchAPI<Avis>('/avis-recettes', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({
       data: {
         recette: data.recette,
@@ -459,16 +453,7 @@ export async function createAvis(data: CreateAvisData): Promise<StrapiResponse<A
         approuve: data.approuve ?? false,
       },
     }),
-    cache: 'no-store',
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`API error (${response.status}):`, errorText);
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
 }
 
 export async function getAvis(params?: {

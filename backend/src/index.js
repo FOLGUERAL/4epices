@@ -96,6 +96,9 @@ module.exports = {
           'api::categorie.categorie.findOne',
           'api::tag.tag.find',
           'api::tag.tag.findOne',
+          'api::avis.avis.find',
+          'api::avis.avis.findOne',
+          'api::avis.avis.create',
         ];
 
         for (const actionId of actionIds) {

@@ -14,25 +14,165 @@ interface VoiceState {
   isSupported: boolean;
   lastCommand: string;
   isSpeaking: boolean;
+  speakingText: string;
+  speakingCharIndex: number;
 }
+
+const normalizeSpeechText = (text: string): string =>
+  text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const prepareSpeechText = (text: string): string =>
+  text
+    .replace(/\s+/g, ' ')
+    .replace(/([.!?])\s+/g, '$1  ')
+    .replace(/:\s+/g, ':  ')
+    .replace(/,\s+/g, ', ')
+    .trim();
+
+const isLikelySpeechEcho = (recognizedText: string, spokenText: string): boolean => {
+  if (!recognizedText || !spokenText) return false;
+
+  const spokenStart = spokenText.slice(0, 48);
+
+  return (
+    (recognizedText.length > 12 && spokenText.includes(recognizedText)) ||
+    (spokenStart.length > 24 && recognizedText.includes(spokenStart))
+  );
+};
+
+const isKokoroVoice = (voice: SpeechSynthesisVoice): boolean => {
+  const name = `${voice.name} ${voice.voiceURI}`.toLowerCase();
+  return name.includes('kokoro');
+};
+
+const selectBestFrenchVoice = (
+  voices: SpeechSynthesisVoice[],
+  excludedVoiceNames = new Set<string>()
+): SpeechSynthesisVoice | undefined => {
+  const candidateVoices = voices.filter((voice) => {
+    const name = `${voice.name} ${voice.voiceURI}`.toLowerCase();
+    return (
+      !excludedVoiceNames.has(voice.name) &&
+      (voice.lang.toLowerCase().startsWith('fr') ||
+        name.includes('kokoro') ||
+        name.includes('francais') ||
+        name.includes('français'))
+    );
+  });
+
+  if (candidateVoices.length === 0) return undefined;
+
+  const kokoroVoiceHints = [
+    'kokoro',
+    'neural kokoro',
+    'kokoro fr',
+    'kokoro français',
+    'kokoro francais',
+  ];
+
+  const masculineVoiceHints = [
+    'thomas',
+    'paul',
+    'henri',
+    'antoine',
+    'guillaume',
+    'louis',
+    'luc',
+    'mathieu',
+    'remy',
+    'daniel',
+    'google français',
+    'google francais',
+  ];
+
+  const feminineVoiceHints = [
+    'denise',
+    'hortense',
+    'audrey',
+    'amelie',
+    'amélie',
+    'celine',
+    'céline',
+    'julie',
+    'marie',
+    'lea',
+    'léa',
+  ];
+
+  const qualityVoiceHints = [
+    'natural',
+    'neural',
+    'online',
+    'microsoft',
+    'google',
+  ];
+
+  return candidateVoices
+    .map((voice) => {
+      const name = `${voice.name} ${voice.voiceURI}`.toLowerCase();
+      const kokoroScore = kokoroVoiceHints.reduce(
+        (score, hint, index) => score + (name.includes(hint) ? 160 - index : 0),
+        0
+      );
+      const exactFrenchScore = voice.lang.toLowerCase() === 'fr-fr' ? 20 : 0;
+      const frenchScore = voice.lang.toLowerCase().startsWith('fr') ? 16 : 0;
+      const masculineScore = masculineVoiceHints.reduce(
+        (score, hint, index) => score + (name.includes(hint) ? 60 - index : 0),
+        0
+      );
+      const qualityScore = qualityVoiceHints.reduce(
+        (score, hint, index) => score + (name.includes(hint) ? 20 - index : 0),
+        0
+      );
+      const femininePenalty = feminineVoiceHints.some((hint) => name.includes(hint)) ? 45 : 0;
+      const localPenalty = voice.localService ? 0 : 4;
+
+      return {
+        voice,
+        score:
+          kokoroScore +
+          exactFrenchScore +
+          frenchScore +
+          masculineScore +
+          qualityScore +
+          localPenalty -
+          femininePenalty,
+      };
+    })
+    .sort((a, b) => b.score - a.score)[0]?.voice;
+};
 
 export function useVoiceCooking(
   steps: StepData[],
   currentStep: number,
   onNext: () => void,
   onPrevious: () => void,
-  onGoTo: (index: number) => void
+  onGoTo: (index: number) => void,
+  getCoachLine?: () => string,
+  getRecipeTimeLine?: () => string
 ) {
   const [voiceState, setVoiceState] = useState<VoiceState>({
     isListening: false,
     isSupported: false,
     lastCommand: '',
     isSpeaking: false,
+    speakingText: '',
+    speakingCharIndex: 0,
   });
 
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
+  const preferredVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const failedVoiceNamesRef = useRef<Set<string>>(new Set());
   const isListeningRef = useRef(false);
+  const ignoreRecognitionUntilRef = useRef(0);
+  const lastSpokenTextRef = useRef('');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -44,28 +184,84 @@ export function useVoiceCooking(
     setVoiceState((previous) => ({ ...previous, isSupported: supported }));
     if (supported) {
       synthRef.current = window.speechSynthesis;
+      const refreshVoices = () => {
+        preferredVoiceRef.current =
+          selectBestFrenchVoice(window.speechSynthesis.getVoices(), failedVoiceNamesRef.current) || null;
+      };
+
+      refreshVoices();
+      window.speechSynthesis.onvoiceschanged = refreshVoices;
     }
   }, []);
 
-  const speak = useCallback((text: string, interrupt = false) => {
+  const speak = useCallback((text: string, interrupt = false, allowVoiceFallback = true) => {
     if (!synthRef.current) return;
 
     if (interrupt) {
       synthRef.current.cancel();
     }
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    const spokenText = prepareSpeechText(text);
+
+    lastSpokenTextRef.current = normalizeSpeechText(spokenText);
+    ignoreRecognitionUntilRef.current = Date.now() + 250;
+
+    const utterance = new SpeechSynthesisUtterance(spokenText);
     utterance.lang = 'fr-FR';
-    utterance.rate = 0.92;
-    utterance.pitch = 1;
+    utterance.rate = 0.88;
+    utterance.pitch = 0.88;
+    utterance.volume = 1;
 
-    utterance.onstart = () => setVoiceState((previous) => ({ ...previous, isSpeaking: true }));
-    utterance.onend = () => setVoiceState((previous) => ({ ...previous, isSpeaking: false }));
+    utterance.onstart = () => {
+      ignoreRecognitionUntilRef.current = Date.now() + 300;
+      setVoiceState((previous) => ({
+        ...previous,
+        isSpeaking: true,
+        speakingText: spokenText,
+        speakingCharIndex: 0,
+      }));
+    };
+    utterance.onboundary = (event) => {
+      if (typeof event.charIndex !== 'number') return;
 
-    const voices = synthRef.current.getVoices();
-    const frVoice = voices.find((voice) => voice.lang === 'fr-FR') || voices.find((voice) => voice.lang.startsWith('fr'));
+      setVoiceState((previous) => ({
+        ...previous,
+        speakingText: spokenText,
+        speakingCharIndex: Math.min(event.charIndex, spokenText.length),
+      }));
+    };
+    utterance.onend = () => {
+      ignoreRecognitionUntilRef.current = Date.now() + 250;
+      setVoiceState((previous) => ({
+        ...previous,
+        isSpeaking: false,
+        speakingText: spokenText,
+        speakingCharIndex: spokenText.length,
+      }));
+    };
+    utterance.onerror = () => {
+      ignoreRecognitionUntilRef.current = Date.now() + 250;
+      setVoiceState((previous) => ({
+        ...previous,
+        isSpeaking: false,
+        speakingText: spokenText,
+        speakingCharIndex: spokenText.length,
+      }));
+
+      if (allowVoiceFallback && utterance.voice && isKokoroVoice(utterance.voice)) {
+        failedVoiceNamesRef.current.add(utterance.voice.name);
+        preferredVoiceRef.current =
+          selectBestFrenchVoice(synthRef.current?.getVoices() || [], failedVoiceNamesRef.current) || null;
+        window.setTimeout(() => speak(spokenText, true, false), 150);
+      }
+    };
+
+    const frVoice =
+      preferredVoiceRef.current ||
+      selectBestFrenchVoice(synthRef.current.getVoices(), failedVoiceNamesRef.current);
     if (frVoice) {
       utterance.voice = frVoice;
+      preferredVoiceRef.current = frVoice;
     }
 
     synthRef.current.speak(utterance);
@@ -73,10 +269,15 @@ export function useVoiceCooking(
 
   const processCommand = useCallback(
     (text: string) => {
-      const normalized = text
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+      const normalized = normalizeSpeechText(text);
+      const lastSpokenText = lastSpokenTextRef.current;
+
+      if (
+        Date.now() < ignoreRecognitionUntilRef.current ||
+        isLikelySpeechEcho(normalized, lastSpokenText)
+      ) {
+        return false;
+      }
 
       setVoiceState((previous) => ({ ...previous, lastCommand: text }));
 
@@ -110,23 +311,12 @@ export function useVoiceCooking(
         return true;
       }
 
-      if (/temperature|degre|four|chaud/.test(normalized)) {
-        const step = steps[currentStep];
-        speak(
-          step?.temperature
-            ? `Le four doit être à ${step.temperature} degrés`
-            : 'Pas de température spécifiée pour cette étape',
-          true
-        );
-        return true;
-      }
-
       if (/duree|temps|minute|combien/.test(normalized)) {
         const step = steps[currentStep];
         speak(
           step?.duration
             ? `Cette étape dure ${step.duration} minute${step.duration > 1 ? 's' : ''}`
-            : 'Pas de durée spécifiée pour cette étape',
+            : getRecipeTimeLine?.() || 'Je n ai pas de temps total precise pour cette recette.',
           true
         );
         return true;
@@ -137,9 +327,9 @@ export function useVoiceCooking(
         return true;
       }
 
-      if (/aide|help|commande|que dire/.test(normalized)) {
+      if (/aide|help|commande|que dire|coach|conseil|astuce|guide/.test(normalized)) {
         speak(
-          'Commandes disponibles : suivant, précédent, répète, aller à l\'étape 3, température, durée, quelle étape',
+          'Commandes disponibles : suivant, précédent, répète, aller à l\'étape 3, temps total, quelle étape',
           true
         );
         return true;
@@ -147,7 +337,7 @@ export function useVoiceCooking(
 
       return false;
     },
-    [currentStep, onGoTo, onNext, onPrevious, speak, steps]
+    [currentStep, getRecipeTimeLine, onGoTo, onNext, onPrevious, speak, steps]
   );
 
   const startListening = useCallback(() => {

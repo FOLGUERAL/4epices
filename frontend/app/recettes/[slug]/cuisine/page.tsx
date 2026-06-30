@@ -2,11 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { CircleHelp, X } from 'lucide-react';
 import { getRecetteBySlug, Recette } from '@/lib/strapi';
 import OptimizedImage from '@/components/OptimizedImage';
 import CookingTimer from '@/components/CookingTimer';
 import RecettesGridSkeleton from '@/components/RecettesGridSkeleton';
+import AnimatedCookingGuide from '@/components/AnimatedCookingGuide';
+import RatingForm from '@/components/RatingForm';
+import { getKitchenRecipeStorageKey } from '@/components/KitchenModeLink';
+import { toast } from '@/components/Toast';
 import { useVoiceCooking } from '@/hooks/useVoiceCooking';
+import { getCookingGuide } from '@/lib/cookingGuide';
 
 type StepData = {
   id: number;
@@ -65,6 +71,17 @@ const formatAmount = (value: number): string => {
   }
 
   return rounded.toFixed(1).replace(/\.0$/, '');
+};
+
+const formatDuration = (minutes: number): string => {
+  if (minutes <= 0) return '';
+  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (remainingMinutes === 0) return `${hours} heure${hours > 1 ? 's' : ''}`;
+
+  return `${hours} heure${hours > 1 ? 's' : ''} ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}`;
 };
 
 const cleanIngredientText = (value: string): string =>
@@ -159,6 +176,28 @@ const extractSteps = (html: string): StepData[] => {
     .map((line, index) => ({ id: index + 1, text: line.trim() }));
 };
 
+const isRecette = (value: unknown, slug: string): value is Recette => {
+  if (!value || typeof value !== 'object') return false;
+
+  const candidate = value as Partial<Recette>;
+  return candidate.attributes?.slug === slug && typeof candidate.attributes?.titre === 'string';
+};
+
+const voiceCommandGroups = [
+  {
+    title: 'Navigation',
+    commands: ['suivant', 'precedent', 'repete', 'etape 3'],
+  },
+  {
+    title: 'Infos',
+    commands: ['temps total ?', 'ou j en suis ?'],
+  },
+  {
+    title: 'Aide',
+    commands: ['aide'],
+  },
+];
+
 export default function CuisineModePage() {
   const params = useParams();
   const router = useRouter();
@@ -172,6 +211,8 @@ export default function CuisineModePage() {
   const [selectedPortions, setSelectedPortions] = useState(4);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [steps, setSteps] = useState<StepData[]>([]);
+  const [isVoiceHelpOpen, setIsVoiceHelpOpen] = useState(false);
+  const [hasShownVoiceHint, setHasShownVoiceHint] = useState(false);
 
   const getSavedPortions = useCallback((recipeSlug: string, basePortions: number): number => {
     if (typeof window === 'undefined') return basePortions;
@@ -195,25 +236,42 @@ export default function CuisineModePage() {
 
     const controller = new AbortController();
 
+    const applyRecette = (data: Recette) => {
+      setRecette(data);
+
+      const rawIngredients = Array.isArray(data.attributes.ingredients) ? data.attributes.ingredients : [];
+      const basePortions = data.attributes.nombrePersonnes || 4;
+      const savedPortions = getSavedPortions(slug, basePortions);
+
+      setSelectedPortions(savedPortions);
+      setIngredients(adjustIngredients(rawIngredients, basePortions, savedPortions));
+      setSteps(
+        extractSteps(typeof data.attributes.etapes === 'string' ? data.attributes.etapes : '')
+      );
+    };
+
     const loadRecette = async () => {
       try {
         setError(null);
+
+        try {
+          const cachedRecipe = window.sessionStorage.getItem(getKitchenRecipeStorageKey(slug));
+          if (cachedRecipe) {
+            const parsedRecipe = JSON.parse(cachedRecipe);
+            if (isRecette(parsedRecipe, slug)) {
+              applyRecette(parsedRecipe);
+              return;
+            }
+          }
+        } catch {
+          window.sessionStorage.removeItem(getKitchenRecipeStorageKey(slug));
+        }
+
         const response = await getRecetteBySlug(slug);
         if (controller.signal.aborted) return;
 
         if (response?.data) {
-          const data = response.data;
-          setRecette(data);
-
-          const rawIngredients = Array.isArray(data.attributes.ingredients) ? data.attributes.ingredients : [];
-          const basePortions = data.attributes.nombrePersonnes || 4;
-          const savedPortions = getSavedPortions(slug, basePortions);
-
-          setSelectedPortions(savedPortions);
-          setIngredients(adjustIngredients(rawIngredients, basePortions, savedPortions));
-          setSteps(
-            extractSteps(typeof data.attributes.etapes === 'string' ? data.attributes.etapes : '')
-          );
+          applyRecette(response.data);
         }
       } catch (error) {
         console.error('Erreur lors du chargement de la recette:', error);
@@ -281,16 +339,74 @@ export default function CuisineModePage() {
     setCurrentStep(index);
   }, []);
 
-  const { voiceState, startListening, stopListening } = useVoiceCooking(
+  const currentStepData = useMemo(() => steps[currentStep], [currentStep, steps]);
+  const cookingGuide = useMemo(
+    () =>
+      getCookingGuide(
+        recette?.attributes.titre || 'la recette',
+        ingredients,
+        currentStepData?.text || '',
+        currentStep,
+        steps.length
+      ),
+    [currentStep, currentStepData?.text, ingredients, recette?.attributes.titre, steps.length]
+  );
+  const getCoachLine = useCallback(
+    () => currentStepData?.text || cookingGuide.line,
+    [cookingGuide.line, currentStepData?.text]
+  );
+  const getRecipeTimeLine = useCallback(() => {
+    const prep = recette?.attributes.tempsPreparation || 0;
+    const cooking = recette?.attributes.tempsCuisson || 0;
+    const total = prep + cooking;
+
+    if (total <= 0) {
+      return 'Je n ai pas de temps total precise pour cette recette.';
+    }
+
+    const details = [
+      prep > 0 ? `preparation ${formatDuration(prep)}` : '',
+      cooking > 0 ? `cuisson ${formatDuration(cooking)}` : '',
+    ].filter(Boolean);
+
+    return details.length > 0
+      ? `Le temps total est de ${formatDuration(total)} : ${details.join(', ')}.`
+      : `Le temps total est de ${formatDuration(total)}.`;
+  }, [recette?.attributes.tempsCuisson, recette?.attributes.tempsPreparation]);
+
+  const { voiceState, speak, startListening, stopListening } = useVoiceCooking(
     steps,
     currentStep,
     handleNextStep,
     handlePreviousStep,
-    handleGoToStep
+    handleGoToStep,
+    getCoachLine,
+    getRecipeTimeLine
   );
 
-  const currentStepData = useMemo(() => steps[currentStep], [currentStep, steps]);
+  const handleSpeakGuide = useCallback(() => {
+    if (currentStepData?.text) {
+      speak(currentStepData.text, true);
+    }
+  }, [currentStepData?.text, speak]);
+
+  const handleToggleVoice = useCallback(() => {
+    if (voiceState.isListening) {
+      stopListening();
+      return;
+    }
+
+    startListening();
+    setIsVoiceHelpOpen(false);
+
+    if (!hasShownVoiceHint) {
+      toast.info('Commandes vocales : dites "suivant", "repete" ou "aide".');
+      setHasShownVoiceHint(true);
+    }
+  }, [hasShownVoiceHint, startListening, stopListening, voiceState.isListening]);
+
   const progress = steps.length > 0 ? ((currentStep + 1) / steps.length) * 100 : 0;
+  const isLastStep = currentStep === steps.length - 1;
 
   if (loading) {
     return (
@@ -536,17 +652,63 @@ export default function CuisineModePage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={voiceState.isListening ? stopListening : startListening}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                  voiceState.isListening
-                    ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                }`}
-                disabled={!voiceState.isSupported}
-              >
-                {voiceState.isListening ? '🛑 Arrêter' : '🎤 Voix'}
-              </button>
+              <div className="relative flex gap-2">
+                <button
+                  onClick={handleToggleVoice}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                    voiceState.isListening
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  }`}
+                  disabled={!voiceState.isSupported}
+                >
+                  {voiceState.isListening ? 'Arrêter' : 'Voix'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsVoiceHelpOpen((isOpen) => !isOpen)}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200 focus-ring"
+                  aria-label="Afficher les commandes vocales"
+                  title="Commandes vocales"
+                >
+                  <CircleHelp className="h-5 w-5" aria-hidden="true" />
+                </button>
+
+                {isVoiceHelpOpen && (
+                  <div className="absolute right-0 top-12 z-40 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-gray-200 bg-white p-4 text-left shadow-xl">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h3 className="text-sm font-bold text-gray-900">Commandes vocales</h3>
+                      <button
+                        type="button"
+                        onClick={() => setIsVoiceHelpOpen(false)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
+                        aria-label="Fermer l'aide vocale"
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {voiceCommandGroups.map((group) => (
+                        <div key={group.title}>
+                          <p className="mb-1 text-xs font-semibold uppercase text-gray-500">
+                            {group.title}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {group.commands.map((command) => (
+                              <span
+                                key={command}
+                                className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700"
+                              >
+                                "{command}"
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={handlePreviousStep}
                 disabled={currentStep === 0}
@@ -564,9 +726,14 @@ export default function CuisineModePage() {
             </div>
           </div>
 
-          <div className="prose max-w-none">
-            <div className="text-lg leading-relaxed text-gray-700">{currentStepData?.text}</div>
-          </div>
+          <AnimatedCookingGuide
+            guide={cookingGuide}
+            stepText={currentStepData?.text || ''}
+            isSpeaking={voiceState.isSpeaking}
+            speakingText={voiceState.speakingText}
+            speakingCharIndex={voiceState.speakingCharIndex}
+            onSpeak={handleSpeakGuide}
+          />
 
           <div className="mt-6 flex gap-1">
             {steps.map((step, index) => (
@@ -585,6 +752,21 @@ export default function CuisineModePage() {
               />
             ))}
           </div>
+
+          {isLastStep && (
+            <div className="mt-6 border-t border-gray-100 pt-6">
+              <div className="mb-4">
+                <h3 className="text-xl font-bold text-gray-900">Vous avez termine ?</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  Partagez votre note ou un commentaire pour aider les prochains cuisiniers.
+                </p>
+              </div>
+              <RatingForm
+                recetteId={recette.id}
+                recetteTitle={recette.attributes.titre}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -615,4 +797,3 @@ export default function CuisineModePage() {
     </div>
   );
 }
-

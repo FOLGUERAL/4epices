@@ -78,6 +78,200 @@ h1, h2, h3, h4, h5, h6 {
     animation: ingredient-results-in 0.45s ease-out both;
   }
 
+  .cooking-guide-stage {
+    position: relative;
+    display: grid;
+    flex: 0 0 auto;
+    width: 6.5rem;
+    height: 6.5rem;
+    place-items: center;
+    border-radius: 9999px;
+    background:
+      radial-gradient(circle at 50% 58%, rgba(255, 255, 255, 0.92) 0 38%, transparent 39%),
+      linear-gradient(135deg, #fed7aa, #bbf7d0);
+    box-shadow: inset 0 0 0 1px rgba(251, 146, 60, 0.18), 0 12px 24px rgba(15, 23, 42, 0.1);
+  }
+
+  .cooking-guide-stage::before,
+  .cooking-guide-stage::after {
+    content: "";
+    position: absolute;
+    border-radius: 9999px;
+    background: rgba(251, 146, 60, 0.28);
+    animation: cooking-guide-float 2.4s ease-in-out infinite;
+  }
+
+  .cooking-guide-stage::before {
+    top: 1rem;
+    right: 0.8rem;
+    width: 0.65rem;
+    height: 0.65rem;
+  }
+
+  .cooking-guide-stage::after {
+    bottom: 1.1rem;
+    left: 0.9rem;
+    width: 0.45rem;
+    height: 0.45rem;
+    animation-delay: 0.35s;
+  }
+
+  .cooking-guide-stage-speaking .cooking-guide-character {
+    animation-duration: 0.7s;
+  }
+
+  .cooking-guide-stage-speaking .cooking-guide-mouth {
+    animation: cooking-guide-talk 0.22s ease-in-out infinite alternate;
+  }
+
+  .cooking-guide-character {
+    position: relative;
+    width: 4rem;
+    height: 4rem;
+    animation: cooking-guide-breathe 1.8s ease-in-out infinite;
+    box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
+  }
+
+  .cooking-guide-character-ingredient {
+    border-radius: 48% 52% 46% 54%;
+    background: linear-gradient(145deg, #fb923c, #f97316);
+  }
+
+  .cooking-guide-character-whisk {
+    border-radius: 48% 48% 58% 58%;
+    background: linear-gradient(145deg, #f8fafc, #cbd5e1);
+  }
+
+  .cooking-guide-character-whisk::before {
+    content: "";
+    position: absolute;
+    top: -1.15rem;
+    left: 50%;
+    width: 0.35rem;
+    height: 1.65rem;
+    border-radius: 9999px;
+    background: #64748b;
+    transform: translateX(-50%) rotate(-12deg);
+  }
+
+  .cooking-guide-character-pan {
+    width: 4.35rem;
+    height: 3.25rem;
+    border-radius: 0.85rem 0.85rem 1.5rem 1.5rem;
+    background: linear-gradient(145deg, #334155, #0f172a);
+  }
+
+  .cooking-guide-character-pan::before {
+    content: "";
+    position: absolute;
+    top: 1.1rem;
+    right: -1.55rem;
+    width: 2rem;
+    height: 0.42rem;
+    border-radius: 9999px;
+    background: #475569;
+  }
+
+  .cooking-guide-character-pan::after {
+    content: "";
+    position: absolute;
+    top: -0.8rem;
+    left: 1.3rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.75);
+    box-shadow: 1.1rem -0.35rem 0 rgba(255, 255, 255, 0.55);
+    animation: cooking-guide-steam 1.2s ease-in-out infinite;
+  }
+
+  .cooking-guide-character-oven {
+    border-radius: 0.9rem;
+    background: linear-gradient(145deg, #ef4444, #b91c1c);
+  }
+
+  .cooking-guide-character-oven::before {
+    content: "";
+    position: absolute;
+    inset: 0.6rem 0.55rem 1.45rem;
+    border-radius: 0.45rem;
+    background: linear-gradient(180deg, #fed7aa, #fb923c);
+    box-shadow: inset 0 0 0 2px rgba(127, 29, 29, 0.18);
+  }
+
+  .cooking-guide-eye {
+    position: absolute;
+    top: 42%;
+    width: 0.38rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: #111827;
+    z-index: 2;
+  }
+
+  .cooking-guide-eye-left {
+    left: 35%;
+  }
+
+  .cooking-guide-eye-right {
+    right: 35%;
+  }
+
+  .cooking-guide-mouth {
+    position: absolute;
+    left: 50%;
+    top: 59%;
+    width: 0.9rem;
+    height: 0.35rem;
+    border-radius: 0 0 9999px 9999px;
+    background: #111827;
+    transform: translateX(-50%);
+    z-index: 2;
+  }
+
+  .cooking-guide-shine {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.85rem;
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.38);
+  }
+
+  .cooking-guide-stage {
+    width: 8.5rem;
+    height: 8.5rem;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    background: linear-gradient(135deg, #fff7ed, #ecfdf5);
+  }
+
+  .cooking-guide-stage::before {
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.5);
+  }
+
+  .cooking-guide-stage::after {
+    z-index: 2;
+    background: rgba(251, 146, 60, 0.32);
+  }
+
+  .cooking-guide-avatar {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.04);
+    user-select: none;
+  }
+
+  .cooking-guide-stage-speaking .cooking-guide-avatar {
+    animation: none;
+    filter: saturate(1.04);
+  }
+
   @keyframes ingredient-whisk-mix {
     0% { transform: rotate(-18deg) translateX(-2px); }
     50% { transform: rotate(28deg) translateX(3px); }
@@ -99,11 +293,37 @@ h1, h2, h3, h4, h5, h6 {
     to { opacity: 1; transform: translateY(0); }
   }
 
+  @keyframes cooking-guide-breathe {
+    0%, 100% { transform: translateY(0) rotate(-1deg); }
+    50% { transform: translateY(-4px) rotate(1deg); }
+  }
+
+  @keyframes cooking-guide-float {
+    0%, 100% { transform: translateY(0); opacity: 0.55; }
+    50% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  @keyframes cooking-guide-talk {
+    from { height: 0.28rem; border-radius: 0 0 9999px 9999px; }
+    to { height: 0.7rem; border-radius: 9999px; }
+  }
+
+  @keyframes cooking-guide-steam {
+    0%, 100% { transform: translateY(0); opacity: 0.35; }
+    50% { transform: translateY(-0.4rem); opacity: 0.85; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .ingredient-mixer-whisk,
     .ingredient-mixer-bowl,
     .ingredient-mixer-chip-active,
-    .ingredient-mixer-results {
+    .ingredient-mixer-results,
+    .cooking-guide-stage::before,
+    .cooking-guide-stage::after,
+    .cooking-guide-character,
+    .cooking-guide-mouth,
+    .cooking-guide-character-pan::after,
+    .cooking-guide-avatar {
       animation: none !important;
     }
   }
