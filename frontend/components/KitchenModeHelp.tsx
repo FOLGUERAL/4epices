@@ -7,6 +7,7 @@ import KitchenModePreview from '@/components/KitchenModePreview';
 type KitchenModeHelpProps = {
   autoOpen?: boolean;
   storageKey?: string;
+  triggerLabel?: string;
   triggerClassName?: string;
 };
 
@@ -21,6 +22,7 @@ const helpSteps = [
 export default function KitchenModeHelp({
   autoOpen = false,
   storageKey = defaultStorageKey,
+  triggerLabel = 'Comment ca marche ?',
   triggerClassName = '',
 }: KitchenModeHelpProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -60,7 +62,7 @@ export default function KitchenModeHelp({
           className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/30 px-5 py-3 font-bold text-white transition-colors hover:bg-white/10 focus-ring ${triggerClassName}`}
         >
           <HelpCircle className="h-5 w-5" aria-hidden="true" />
-          Comment ça marche ?
+          {triggerLabel}
         </button>
       )}
 

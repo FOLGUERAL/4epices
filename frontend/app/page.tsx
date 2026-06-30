@@ -4,28 +4,14 @@ import Link from 'next/link';
 import { getRecettes, getCategories, getRecettesByCategory, Recette, Categorie } from '@/lib/strapi';
 import HorizontalCarousel from '@/components/HorizontalCarousel';
 import KitchenModeHelp from '@/components/KitchenModeHelp';
-import KitchenModeLink from '@/components/KitchenModeLink';
 import { SITE_NAME } from '@/lib/seo';
 
-function formatTime(minutes: number): string {
-  if (minutes <= 0) return '';
-  if (minutes < 60) return `${minutes} min`;
-
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins === 0 ? `${hours}h` : `${hours}h ${mins}min`;
-}
-
 export default async function Home() {
-  let recetteVedette: Recette | null = null;
   let recettesRecent: Recette[] = [];
   let categories: Categorie[] = [];
   let recettesParCategorie: { [key: string]: Recette[] } = {};
 
   try {
-    const vedetteResponse = await getRecettes({ pageSize: 1 });
-    recetteVedette = vedetteResponse.data?.[0] || null;
-
     const recentResponse = await getRecettes({ pageSize: 10 });
     recettesRecent = recentResponse.data || [];
 
@@ -46,50 +32,39 @@ export default async function Home() {
     console.error('Erreur lors de la recuperation des donnees:', error);
   }
 
-  const heroPrep = recetteVedette?.attributes.tempsPreparation || 0;
-  const heroCooking = recetteVedette?.attributes.tempsCuisson || 0;
-
   return (
     <div className="min-h-screen bg-white">
-      <section className="relative mb-8 overflow-hidden bg-gray-950 text-white">
+      <section className="relative mb-8 overflow-hidden bg-[#111827] text-white">
         <div className="pointer-events-none absolute inset-0">
-          <img
-            src="/images/chef-guide-intro.webp"
-            alt=""
-            className="h-full w-full object-cover opacity-40"
-            aria-hidden="true"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-950 via-gray-950/80 to-gray-950/30" />
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent" />
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,#111827_0%,#18181b_58%,#292524_100%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-orange-500/45" />
+          <div className="absolute bottom-0 left-0 h-24 w-full bg-[linear-gradient(0deg,rgba(234,88,12,0.12),transparent)]" />
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8 lg:py-16">
           <div className="flex max-w-3xl flex-col justify-center">
             <p className="mb-3 text-sm font-bold uppercase tracking-wide text-orange-200">
-              Mode Cuisine
+              MODE CUISINE
             </p>
             <h1 className="max-w-3xl text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
-              Cuisinez pas a pas.
+              Ne lisez plus vos recettes. Vivez-les.
             </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-orange-50 sm:text-xl">
-              Choisissez une recette, 4epices vous guide avec les etapes et la voix.
-            </p>
+            <div className="mt-5 max-w-3xl space-y-3 text-lg leading-relaxed text-orange-50 sm:text-xl">
+              <p>
+                4epices transforme chaque recette en un véritable assistant de cuisine :
+                étapes guidées, commandes vocales et minuteurs intégrés.
+              </p>
+              <p>Vous cuisinez, 4epices s'occupe du reste.</p>
+            </div>
 
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
-                href="/mode-cuisine"
+                href="/recettes"
                 className="inline-flex min-h-12 items-center justify-center rounded-lg bg-orange-600 px-5 py-3 font-bold text-white shadow-sm transition-colors hover:bg-orange-700 focus-ring"
               >
-                Choisir une recette a cuisiner
+                Trouver une recette
               </Link>
-              {recetteVedette && (
-                <KitchenModeLink
-                  recette={recetteVedette}
-                  label="Cuisiner la derniere recette"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 font-bold text-gray-950 shadow-sm transition-colors hover:bg-orange-50 focus-ring"
-                />
-              )}
-              <KitchenModeHelp />
+              <KitchenModeHelp triggerLabel="Découvrir le Mode Cuisine" />
             </div>
           </div>
         </div>
