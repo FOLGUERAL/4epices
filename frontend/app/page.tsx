@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { getRecettes, getCategories, getRecettesByCategory, Recette, Categorie } from '@/lib/strapi';
 import HorizontalCarousel from '@/components/HorizontalCarousel';
-import InstallPWAButton from '@/components/InstallPWAButton';
 import KitchenModeLink from '@/components/KitchenModeLink';
 import OptimizedImage from '@/components/OptimizedImage';
 import { SITE_NAME } from '@/lib/seo';
@@ -78,17 +77,16 @@ export default async function Home() {
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent" />
         </div>
 
-        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[minmax(0,0.95fr)_minmax(25rem,0.8fr)] lg:px-8 lg:py-16">
+        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(22rem,0.65fr)] lg:px-8 lg:py-16">
           <div className="flex flex-col justify-center">
             <p className="mb-3 text-sm font-bold uppercase tracking-wide text-orange-200">
-              Votre assistant de cuisine intelligent
+              Mode Cuisine
             </p>
             <h1 className="max-w-3xl text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
-              Choisissez une recette, cuisinez accompagne.
+              Cuisinez pas a pas.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-orange-50 sm:text-xl">
-              Le Mode Cuisine transforme une recette classique en experience guidee :
-              etapes lisibles, voix, commandes mains libres et portions ajustables.
+              Choisissez une recette, 4epices vous guide avec les etapes et la voix.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -106,34 +104,14 @@ export default async function Home() {
                 />
               )}
             </div>
-
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              <InstallPWAButton className="min-h-11 rounded-lg bg-gray-950/85 px-4 py-2 text-sm hover:bg-gray-900" />
-              <span className="text-sm font-medium text-orange-100">
-                Installez 4epices pour cuisiner en plein ecran.
-              </span>
-            </div>
-
-            <div className="mt-8 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
-              {[
-                ['Lisible', 'Des etapes concues pour etre vues de loin.'],
-                ['Mains libres', 'Voix et commandes pendant la preparation.'],
-                ['Ajustable', 'Portions et ingredients adaptes en cuisine.'],
-              ].map(([title, text]) => (
-                <div key={title} className="border-l border-orange-300/60 pl-3">
-                  <p className="font-bold text-white">{title}</p>
-                  <p className="mt-1 text-sm leading-snug text-orange-100">{text}</p>
-                </div>
-              ))}
-            </div>
           </div>
 
           <div className="flex items-center lg:justify-end">
-            <div className="w-full max-w-[29rem] overflow-hidden rounded-lg border border-white/15 bg-white text-gray-950 shadow-2xl">
+            <div className="w-full max-w-[24rem] overflow-hidden rounded-lg border border-white/15 bg-white text-gray-950 shadow-2xl">
               <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wide text-orange-700">
-                    Apercu Mode Cuisine
+                    En cuisine
                   </p>
                   <p className="text-sm font-semibold text-gray-500">Etape 2 sur 6</p>
                 </div>
@@ -142,12 +120,12 @@ export default async function Home() {
                 </span>
               </div>
 
-              <div className="grid gap-0 sm:grid-cols-[10rem_minmax(0,1fr)]">
+              <div className="grid gap-0 sm:grid-cols-[8rem_minmax(0,1fr)]">
                 <div className="bg-orange-50 p-3">
                   <img
                     src="/images/chef-guide-cut.webp"
                     alt="Chef en train de guider la decoupe"
-                    className="h-full min-h-[13rem] w-full rounded-lg object-contain"
+                    className="h-full min-h-[11rem] w-full rounded-lg object-contain"
                   />
                 </div>
                 <div className="flex flex-col justify-between gap-4 p-4">
@@ -158,7 +136,7 @@ export default async function Home() {
                     <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
                       En direct
                     </p>
-                    <p className="mt-2 text-xl font-bold leading-snug text-gray-950">
+                    <p className="mt-2 text-lg font-bold leading-snug text-gray-950">
                       Coupez les legumes en morceaux reguliers, puis gardez-les a portee de main.
                     </p>
                   </div>
@@ -213,6 +191,36 @@ export default async function Home() {
       </section>
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" id="recettes">
+        <section className="mb-10 border-b border-gray-100 pb-10">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-950">Comment ça marche ?</h2>
+              <p className="mt-1 text-gray-600">
+                Trois gestes simples pour passer d'une recette a une cuisine guidee.
+              </p>
+            </div>
+            <Link href="/mode-cuisine" className="font-bold text-orange-700 hover:text-orange-800">
+              Ouvrir le Mode Cuisine
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {[
+              ['1', 'Choisissez une recette', 'Parcourez les recettes ou reprenez la derniere en un clic.'],
+              ['2', 'Lancez le Mode Cuisine', 'Les ingredients, portions et etapes sont prepares pour cuisiner.'],
+              ['3', 'Suivez le chef', 'Lecture vocale, progression et commandes mains libres vous accompagnent.'],
+            ].map(([number, title, text]) => (
+              <div key={title} className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700">
+                  {number}
+                </div>
+                <h3 className="text-lg font-bold text-gray-950">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-gray-600">{text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {recettesRecent.length > 0 && (
           <HorizontalCarousel
             title="Recettes recentes"
