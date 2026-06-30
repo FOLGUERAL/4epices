@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Navigation from "@/components/Navigation";
 import AdSenseScript from "@/components/AdSenseScript";
+import PWARegister from "@/components/PWARegister";
 import ShoppingList from "@/components/ShoppingList";
 import ToastContainer from "@/components/Toast";
 import {
@@ -18,6 +19,15 @@ const siteUrl = getSiteUrl();
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   applicationName: SITE_NAME,
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "4epices",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   title: {
     default: `${SITE_NAME} | Recettes faciles, rapides et gourmandes`,
     template: `%s | ${SITE_NAME}`,
@@ -53,6 +63,10 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#ea580c",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -74,6 +88,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
         {adsEnabled && <AdSenseScript />}
+        <PWARegister />
         <Navigation />
         {children}
         <ShoppingList />

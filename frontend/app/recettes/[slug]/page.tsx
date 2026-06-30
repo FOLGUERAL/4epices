@@ -23,7 +23,7 @@ import RatingList from '@/components/RatingList';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import ShareToPinterestButton from '@/components/ShareToPinterestButton';
 import GoogleAdSense from '@/components/GoogleAdSense';
-import KitchenModeLink from '@/components/KitchenModeLink';
+import RecipeKitchenModeActions from '@/components/RecipeKitchenModeActions';
 
 function formatTime(minutes: number): string {
   if (minutes <= 0) {
@@ -251,7 +251,6 @@ export default async function RecettePage({ params }: { params: { slug: string }
                 {recette.attributes.titre}
               </h1>
               <div className="flex items-center gap-3 flex-wrap">
-                <KitchenModeLink recette={recette} />
                 <FavoriteButton
                   recette={{
                     id: recette.id,
@@ -279,6 +278,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
             <p className="text-xl text-gray-600 mb-6">
               {recette.attributes.description}
             </p>
+
+            <RecipeKitchenModeActions recette={recette} />
 
             <div className="flex flex-wrap gap-4 mb-8 pb-8 border-b">
               {tempsPrep > 0 && (
