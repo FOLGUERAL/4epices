@@ -1105,61 +1105,19 @@ async function insertRecipeRow(app, recipe) {
   return inserted;
 }
 
-function relationCandidates(model, attrName, inverseModel, inverseAttrName, fallbackTable) {
-  const ownJoin = model.attributes[attrName]?.joinTable;
-  if (ownJoin) {
-    return [{
-      table: ownJoin.name,
-      ownerColumn: ownJoin.joinColumn?.name,
-      inverseColumn: ownJoin.inverseJoinColumn?.name,
-    }];
-  }
-
-  const inverseJoin = inverseModel.attributes[inverseAttrName]?.joinTable;
-  if (inverseJoin) {
-    return [{
-      table: inverseJoin.name,
-      ownerColumn: inverseJoin.inverseJoinColumn?.name,
-      inverseColumn: inverseJoin.joinColumn?.name,
-    }];
-  }
-
-  return [{
-    table: fallbackTable,
-    ownerColumn: 'recette_id',
-    inverseColumn: attrName === 'categories' ? 'categorie_id' : 'tag_id',
-  }];
+async function applyRecipeRelations(app, recipeId, categoryId, tagIds) {
+  await app.entityService.update(RECETTE_UID, recipeId, {
+    data: {
+      categories: categoryId ? [categoryId] : [],
+      tags: tagIds,
+    },
+  });
 }
 
-async function linkRelation(app, recipeId, targetId, attrName, inverseAttrName, fallbackTable) {
-  const knex = app.db.connection;
-  const recipeModel = app.getModel(RECETTE_UID);
-  const targetModel = app.getModel(attrName === 'categories' ? CATEGORIE_UID : TAG_UID);
-  const candidates = relationCandidates(recipeModel, attrName, targetModel, inverseAttrName, fallbackTable);
-
-  for (const candidate of candidates) {
-    if (!candidate.table || !candidate.ownerColumn || !candidate.inverseColumn) continue;
-    const exists = await knex.schema.hasTable(candidate.table);
-    if (!exists) continue;
-    const colInfo = await knex(candidate.table).columnInfo();
-    if (!colInfo[candidate.ownerColumn] || !colInfo[candidate.inverseColumn]) continue;
-
-    const where = {
-      [candidate.ownerColumn]: recipeId,
-      [candidate.inverseColumn]: targetId,
-    };
-    const alreadyLinked = await knex(candidate.table).where(where).first();
-    if (alreadyLinked) return;
-
-    const row = { ...where };
-    if (colInfo.recette_order) row.recette_order = 1;
-    if (colInfo.categorie_order) row.categorie_order = 1;
-    if (colInfo.tag_order) row.tag_order = 1;
-    await knex(candidate.table).insert(row);
-    return;
-  }
-
-  throw new Error(`Impossible de trouver la table de relation pour ${attrName}`);
+function recipeTagIds(recipe, tagsByName) {
+  return recipe.tags
+    .map((tagName) => tagsByName.get(tagName)?.id)
+    .filter((id) => id != null);
 }
 
 async function main() {
@@ -1178,13 +1136,21 @@ async function main() {
     const tagsByName = await ensureTags(app, dryRun);
 
     let created = 0;
+    let repaired = 0;
     let skipped = 0;
 
     for (const recipe of RECIPES) {
       const existing = await findBySlug(app, RECETTE_UID, recipe.slug);
       if (existing) {
-        console.log(`- skip ${recipe.titre} (${recipe.slug}) : existe deja`);
-        skipped++;
+        if (dryRun) {
+          console.log(`- skip ${recipe.titre} (${recipe.slug}) : existe deja`);
+          skipped++;
+          continue;
+        }
+
+        await applyRecipeRelations(app, existing.id, category.id, recipeTagIds(recipe, tagsByName));
+        console.log(`↻ relations verifiees ${recipe.titre} (#${existing.id})`);
+        repaired++;
         continue;
       }
 
@@ -1199,21 +1165,14 @@ async function main() {
       }
 
       const recipeId = await insertRecipeRow(app, recipe);
-      await linkRelation(app, recipeId, category.id, 'categories', 'recettes', 'recettes_categories_links');
-
-      for (const tagName of recipe.tags) {
-        const tag = tagsByName.get(tagName);
-        if (tag?.id) {
-          await linkRelation(app, recipeId, tag.id, 'tags', 'recettes', 'recettes_tags_links');
-        }
-      }
+      await applyRecipeRelations(app, recipeId, category.id, recipeTagIds(recipe, tagsByName));
 
       console.log(`✓ cree ${recipe.titre} (#${recipeId})`);
       created++;
     }
 
     console.log(
-      `\nTermine. ${dryRun ? 'Simulation' : 'Creees'} : ${created}, ignorees : ${skipped}.`
+      `\nTermine. ${dryRun ? 'Simulation' : 'Creees'} : ${created}, relations verifiees : ${repaired}, ignorees : ${skipped}.`
     );
     if (!dryRun) {
       console.log('Les recettes sont en brouillon et sans image principale : ajoute les photos avant publication.');
