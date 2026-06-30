@@ -12,7 +12,10 @@ export default async function Home() {
   let recettesParCategorie: { [key: string]: Recette[] } = {};
 
   try {
-    const recentResponse = await getRecettes({ pageSize: 10 });
+    const recentResponse = await getRecettes({
+      pageSize: 10,
+      excludeCategorySlug: 'bases-de-cuisine',
+    });
     recettesRecent = recentResponse.data || [];
 
     const categoriesResponse = await getCategories();

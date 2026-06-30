@@ -143,11 +143,15 @@ export async function getRecettes(params?: {
   pageSize?: number;
   populate?: string;
   sort?: string;
+  excludeCategorySlug?: string;
 }): Promise<StrapiResponse<Recette[]>> {
   const queryParams = new URLSearchParams();
   
   if (params?.page) queryParams.append('pagination[page]', params.page.toString());
   if (params?.pageSize) queryParams.append('pagination[pageSize]', params.pageSize.toString());
+  if (params?.excludeCategorySlug) {
+    queryParams.append('filters[categories][slug][$ne]', params.excludeCategorySlug);
+  }
   
   const populate = params?.populate || 'imagePrincipale,categories,tags';
   queryParams.append('populate', populate);
