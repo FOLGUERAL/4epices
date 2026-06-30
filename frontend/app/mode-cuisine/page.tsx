@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import InstallPWAButton from '@/components/InstallPWAButton';
+import KitchenModeHelp from '@/components/KitchenModeHelp';
 import KitchenModeLink from '@/components/KitchenModeLink';
 import OptimizedImage from '@/components/OptimizedImage';
 import { getRecettes, Recette } from '@/lib/strapi';
@@ -26,6 +27,8 @@ export default async function ModeCuisinePage() {
 
   return (
     <main className="min-h-screen bg-white">
+      <KitchenModeHelp autoOpen />
+
       <section className="border-b border-orange-100 bg-orange-50">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:px-8 lg:py-14">
           <div className="flex flex-col justify-center">
