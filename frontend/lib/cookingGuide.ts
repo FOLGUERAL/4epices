@@ -95,8 +95,8 @@ export const getCookingGuide = (
     return buildGuide(
       'cut',
       'Decoupe',
-      `${position} au couteau`,
-      'Decoupe',
+      position,
+      'Decouper',
       '/images/chef-guide-cut.webp',
       'Chef en train de couper des legumes'
     );
@@ -106,8 +106,8 @@ export const getCookingGuide = (
     return buildGuide(
       'taste',
       'Gouter / verifier',
-      `${position} a verifier`,
-      'Gouter / verifier',
+      position,
+      'Verifier',
       '/images/chef-guide-taste.webp',
       'Chef qui goute et verifie la preparation'
     );
@@ -117,8 +117,8 @@ export const getCookingGuide = (
     return buildGuide(
       'seasoning',
       'Assaisonnement',
-      `${position} a l assaisonnement`,
-      'Assaisonnement',
+      position,
+      'Assaisonner',
       '/images/chef-guide-seasoning.webp',
       'Chef qui assaisonne une preparation'
     );
@@ -128,7 +128,7 @@ export const getCookingGuide = (
     return buildGuide(
       'oven',
       'Cuisson au four',
-      `${position} au four`,
+      position,
       'Cuisson au four',
       '/images/chef-guide-oven.webp',
       'Chef avec un plat sorti du four'
@@ -139,8 +139,8 @@ export const getCookingGuide = (
     return buildGuide(
       'simmer',
       'Mijotage',
-      `${position} en mijotage`,
-      'Mijotage',
+      position,
+      'Mijoter',
       '/images/chef-guide-simmer.webp',
       'Chef qui fait mijoter une preparation'
     );
@@ -150,8 +150,8 @@ export const getCookingGuide = (
     return buildGuide(
       'pan',
       'Cuisson',
-      `${position} a la cuisson`,
-      'Cuisson',
+      position,
+      'Cuire',
       '/images/chef-guide-cook.webp',
       'Chef en train de cuisiner dans une casserole'
     );
@@ -161,8 +161,8 @@ export const getCookingGuide = (
     return buildGuide(
       'whisk',
       'Preparation',
-      `${position} en preparation`,
-      'Preparation',
+      position,
+      'Melanger',
       '/images/chef-guide-preparation.webp',
       'Chef en train de melanger dans un saladier'
     );
@@ -171,9 +171,9 @@ export const getCookingGuide = (
   if (/repos|laisser|attendre|reserve|refroid|marin|leve|gonfl|minute|heure/.test(normalizedStep)) {
     return buildGuide(
       'rest',
-      'Temps de cuisson',
-      `${position} en attente`,
-      'Temps de cuisson',
+      'Pause',
+      position,
+      'Patienter',
       '/images/chef-guide-timer.webp',
       'Chef avec un minuteur'
     );
@@ -183,8 +183,8 @@ export const getCookingGuide = (
     return buildGuide(
       'serve',
       'Dressage',
-      `${position} au dressage`,
-      'Dressage',
+      position,
+      'Dresser',
       '/images/chef-guide-plating.webp',
       'Chef en train de dresser une assiette'
     );
@@ -193,8 +193,8 @@ export const getCookingGuide = (
   return buildGuide(
     'ingredient',
     mainIngredient,
-    `${position} avec ${mainIngredient}`,
-    'Ingredients',
+    position,
+    'Preparer',
     '/images/chef-guide-ingredients.webp',
     'Chef avec un sac de legumes'
   );

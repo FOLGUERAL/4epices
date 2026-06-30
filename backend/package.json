@@ -15,7 +15,9 @@
     "backfill:seo-enrichi": "node scripts/backfill-seo-enrichi-strapi.js",
     "backfill:seo-enrichi:dry-run": "node scripts/backfill-seo-enrichi-strapi.js --dry-run",
     "backfill:tags-seo": "node scripts/backfill-tags-seo-strapi.js",
-    "backfill:tags-seo:dry-run": "node scripts/backfill-tags-seo-strapi.js --dry-run"
+    "backfill:tags-seo:dry-run": "node scripts/backfill-tags-seo-strapi.js --dry-run",
+    "seed:bases-recettes": "node scripts/seed-bases-recettes-strapi.js",
+    "seed:bases-recettes:dry-run": "node scripts/seed-bases-recettes-strapi.js --dry-run"
   },
   "dependencies": {
     "@strapi/strapi": "^4.19.1",

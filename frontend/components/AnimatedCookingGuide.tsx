@@ -1,7 +1,7 @@
 'use client';
 
 import { Mic, MicOff, Play, Volume2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CookingGuide } from '@/lib/cookingGuide';
 
 type AnimatedCookingGuideProps = {
@@ -21,6 +21,8 @@ const normalizeForSync = (text: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const ESTIMATED_CHARS_PER_SECOND = 13;
+
 export default function AnimatedCookingGuide({
   guide,
   stepText,
@@ -31,6 +33,8 @@ export default function AnimatedCookingGuide({
 }: AnimatedCookingGuideProps) {
   const [visibleLength, setVisibleLength] = useState(stepText.length);
   const [imageSrc, setImageSrc] = useState(guide.imageSrc);
+  const fallbackStartedAtRef = useRef<number | null>(null);
+  const lastBoundaryAtRef = useRef(0);
 
   const statusLabel = isSpeaking ? 'Lecture en cours' : 'Pret pour l etape';
   const syncsWithCurrentStep = useMemo(
@@ -48,11 +52,52 @@ export default function AnimatedCookingGuide({
 
   useEffect(() => {
     if (!isSpeaking || !syncsWithCurrentStep) return;
-    setVisibleLength(Math.min(speakingCharIndex + 1, stepText.length));
+
+    if (speakingCharIndex > 0) {
+      lastBoundaryAtRef.current = Date.now();
+    }
+
+    const spokenLength = speakingText.length || stepText.length;
+    const syncedLength =
+      spokenLength > 0
+        ? Math.round((speakingCharIndex / spokenLength) * stepText.length)
+        : speakingCharIndex;
+
+    setVisibleLength(Math.min(Math.max(1, syncedLength + 1), stepText.length));
+  }, [isSpeaking, speakingCharIndex, speakingText.length, stepText.length, syncsWithCurrentStep]);
+
+  useEffect(() => {
+    if (!isSpeaking || !syncsWithCurrentStep) return;
+
+    fallbackStartedAtRef.current = Date.now();
+    lastBoundaryAtRef.current = speakingCharIndex > 0 ? Date.now() : 0;
+
+    const estimatedDurationMs = Math.max(
+      2200,
+      (stepText.length / ESTIMATED_CHARS_PER_SECOND) * 1000
+    );
+
+    const intervalId = window.setInterval(() => {
+      if (lastBoundaryAtRef.current && Date.now() - lastBoundaryAtRef.current < 900) {
+        return;
+      }
+
+      const startedAt = fallbackStartedAtRef.current || Date.now();
+      const progress = Math.min((Date.now() - startedAt) / estimatedDurationMs, 0.96);
+      setVisibleLength((previous) =>
+        Math.max(previous, Math.ceil(progress * stepText.length), 1)
+      );
+    }, 120);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [isSpeaking, speakingCharIndex, stepText.length, syncsWithCurrentStep]);
 
   useEffect(() => {
     if (!isSpeaking) {
+      fallbackStartedAtRef.current = null;
+      lastBoundaryAtRef.current = 0;
       setVisibleLength(stepText.length);
     }
   }, [isSpeaking, stepText]);

@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CircleHelp, X } from 'lucide-react';
 import { getRecetteBySlug, Recette } from '@/lib/strapi';
-import OptimizedImage from '@/components/OptimizedImage';
-import CookingTimer from '@/components/CookingTimer';
 import RecettesGridSkeleton from '@/components/RecettesGridSkeleton';
 import AnimatedCookingGuide from '@/components/AnimatedCookingGuide';
 import RatingForm from '@/components/RatingForm';
@@ -17,7 +15,6 @@ import { getCookingGuide } from '@/lib/cookingGuide';
 type StepData = {
   id: number;
   text: string;
-  duration?: number;
   temperature?: number;
 };
 
@@ -148,20 +145,11 @@ const extractSteps = (html: string): StepData[] => {
 
     const cleanedText = text.replace(/^Étape\s+\d+\s*:\s*/i, '').trim();
     const tempMatch = cleanedText.match(/(\d{2,3})\s*°/);
-    const durationMatch = cleanedText.match(/(\d+)\s*(min(?:ute)?s?|heure?s?|h\b)/i);
-
-    let duration: number | undefined;
-    if (durationMatch) {
-      const value = parseInt(durationMatch[1], 10);
-      const unit = durationMatch[2].toLowerCase();
-      duration = unit.startsWith('h') ? value * 60 : value;
-    }
 
     parsedSteps.push({
       id: index + 1,
       text: cleanedText,
       temperature: tempMatch ? parseInt(tempMatch[1], 10) : undefined,
-      duration,
     });
   });
 
@@ -212,6 +200,7 @@ export default function CuisineModePage() {
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [steps, setSteps] = useState<StepData[]>([]);
   const [isVoiceHelpOpen, setIsVoiceHelpOpen] = useState(false);
+  const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [hasShownVoiceHint, setHasShownVoiceHint] = useState(false);
 
   const getSavedPortions = useCallback((recipeSlug: string, basePortions: number): number => {
@@ -492,9 +481,9 @@ export default function CuisineModePage() {
     );
   }
 
-  const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url || null;
   const tempsPrep = recette.attributes.tempsPreparation || 0;
   const tempsCuisson = recette.attributes.tempsCuisson || 0;
+  const tempsTotal = tempsPrep + tempsCuisson;
 
   return (
     <div className="min-h-screen bg-gray-50 print:bg-white">
@@ -543,55 +532,63 @@ export default function CuisineModePage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6">
-          {imageUrl && (
-            <div className="relative overflow-hidden" style={{ aspectRatio: '16/9' }}>
-              <OptimizedImage
-                src={imageUrl}
-                alt={recette.attributes.titre}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 896px"
-                aspectRatio="16/9"
-              />
-            </div>
-          )}
-
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">{recette.attributes.titre}</h1>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              {tempsPrep > 0 && <CookingTimer duration={tempsPrep} label="Préparation" />}
-              {tempsCuisson > 0 && <CookingTimer duration={tempsCuisson} label="Cuisson" />}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 mb-6 rounded-xl bg-orange-50 p-4">
-              <span className="text-sm font-medium text-gray-700">👥 Portions :</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => changePortions(Math.max(1, selectedPortions - 1))}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-lg font-bold text-gray-700 shadow-sm hover:bg-gray-50"
-                >
-                  −
-                </button>
-                <span className="w-8 text-center text-lg font-bold text-orange-600">
-                  {selectedPortions}
+        <div className="mb-6 rounded-2xl bg-white p-5 shadow-lg">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-bold text-gray-900">
+                {recette.attributes.titre}
+              </h1>
+              <div className="mt-2 flex flex-wrap gap-2 text-sm text-gray-600">
+                {tempsTotal > 0 && (
+                  <span className="rounded-full bg-gray-100 px-3 py-1 font-medium">
+                    Temps total : {formatDuration(tempsTotal)}
+                  </span>
+                )}
+                <span className="rounded-full bg-orange-50 px-3 py-1 font-medium text-orange-700">
+                  {selectedPortions} {selectedPortions === 1 ? 'personne' : 'personnes'}
                 </span>
-                <button
-                  onClick={() => changePortions(Math.min(20, selectedPortions + 1))}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-lg font-bold text-gray-700 shadow-sm hover:bg-gray-50"
-                >
-                  +
-                </button>
               </div>
-              <span className="text-sm text-gray-500">
-                {selectedPortions === 1 ? 'personne' : 'personnes'}
-              </span>
             </div>
 
-            <div className="mb-2">
-              <h2 className="mb-3 text-xl font-bold text-gray-900">Ingrédients</h2>
-              <ul className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setIsIngredientsOpen((isOpen) => !isOpen)}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-orange-700 focus-ring"
+            >
+              {isIngredientsOpen ? 'Masquer les ingredients' : 'Ingredients'}
+            </button>
+          </div>
+
+          {isIngredientsOpen && (
+            <div className="mt-5 border-t border-gray-100 pt-5">
+              <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl bg-orange-50 p-4">
+                <span className="text-sm font-medium text-gray-700">Portions :</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => changePortions(Math.max(1, selectedPortions - 1))}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-lg font-bold text-gray-700 shadow-sm hover:bg-gray-50"
+                    aria-label="Reduire les portions"
+                  >
+                    -
+                  </button>
+                  <span className="w-8 text-center text-lg font-bold text-orange-600">
+                    {selectedPortions}
+                  </span>
+                  <button
+                    onClick={() => changePortions(Math.min(20, selectedPortions + 1))}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-lg font-bold text-gray-700 shadow-sm hover:bg-gray-50"
+                    aria-label="Augmenter les portions"
+                  >
+                    +
+                  </button>
+                </div>
+                <span className="text-sm text-gray-500">
+                  {selectedPortions === 1 ? 'personne' : 'personnes'}
+                </span>
+              </div>
+
+              <h2 className="mb-3 text-xl font-bold text-gray-900">Ingredients</h2>
+              <ul className="grid gap-2 md:grid-cols-2">
                 {ingredients.map((ingredient, index) => {
                   const isChecked = checkedIngredients.has(index);
                   return (
@@ -606,11 +603,7 @@ export default function CuisineModePage() {
                         onChange={() => toggleIngredient(index)}
                         className="mt-1 h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                       />
-                      <label
-                        htmlFor={`ingredient-${index}`}
-                        className="flex-1 cursor-pointer"
-                        onClick={() => toggleIngredient(index)}
-                      >
+                      <label htmlFor={`ingredient-${index}`} className="flex-1 cursor-pointer">
                         <span
                           className={`text-gray-700 ${
                             isChecked ? 'text-gray-400 line-through' : ''
@@ -624,9 +617,8 @@ export default function CuisineModePage() {
                 })}
               </ul>
             </div>
-          </div>
+          )}
         </div>
-
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -637,11 +629,6 @@ export default function CuisineModePage() {
                 {voiceState.isSupported && (
                   <span className={`rounded-full px-3 py-1 ${voiceState.isListening ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
                     {voiceState.isListening ? '🎙️ Écoute active' : '🎙️ Commande vocale disponible'}
-                  </span>
-                )}
-                {currentStepData?.duration && (
-                  <span className="rounded-full bg-orange-50 px-3 py-1 text-orange-700">
-                    ⏱️ {currentStepData.duration} min
                   </span>
                 )}
                 {currentStepData?.temperature && (

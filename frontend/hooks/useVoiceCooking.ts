@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 interface StepData {
   id: number;
   text: string;
-  duration?: number;
   temperature?: number;
 }
 
@@ -312,13 +311,7 @@ export function useVoiceCooking(
       }
 
       if (/duree|temps|minute|combien/.test(normalized)) {
-        const step = steps[currentStep];
-        speak(
-          step?.duration
-            ? `Cette étape dure ${step.duration} minute${step.duration > 1 ? 's' : ''}`
-            : getRecipeTimeLine?.() || 'Je n ai pas de temps total precise pour cette recette.',
-          true
-        );
+        speak(getRecipeTimeLine?.() || 'Je n ai pas de temps total precise pour cette recette.', true);
         return true;
       }
 
