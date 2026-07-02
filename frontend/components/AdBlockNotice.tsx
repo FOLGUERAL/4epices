@@ -9,30 +9,55 @@ export default function AdBlockNotice() {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
     const detectAdBlock = () => {
-      const win = window as Window & { canRunAds?: boolean };
+      const win = window as Window & {
+        canRunAds?: boolean;
+        adsbygoogle?: unknown[];
+      };
 
       if (win.canRunAds === false) {
         setIsAdBlockDetected(true);
         return;
       }
 
-      const testElement = document.createElement('div');
-      testElement.className = 'adsbox';
-      testElement.innerHTML = '&nbsp;';
-      document.body.appendChild(testElement);
+      const container = document.body || document.documentElement;
+      const bait = document.createElement('div');
+      bait.className = 'pub_300x250 pub_300x250m adsbygoogle adsbox';
+      bait.id = 'adblock-bait';
+      bait.setAttribute('aria-hidden', 'true');
+      bait.style.position = 'absolute';
+      bait.style.left = '-9999px';
+      bait.style.top = '-9999px';
+      bait.style.width = '1px';
+      bait.style.height = '1px';
+      bait.style.opacity = '0';
+      bait.style.pointerEvents = 'none';
+      container.appendChild(bait);
 
-      const isHidden = getComputedStyle(testElement).display === 'none' || testElement.offsetHeight === 0;
-      testElement.remove();
+      const style = window.getComputedStyle(bait);
+      const isHidden =
+        style.display === 'none' ||
+        style.visibility === 'hidden' ||
+        style.opacity === '0' ||
+        bait.offsetHeight === 0 ||
+        bait.offsetWidth === 0 ||
+        bait.getClientRects().length === 0;
+
+      bait.remove();
 
       setIsAdBlockDetected(isHidden);
     };
 
-    const timeoutId = window.setTimeout(detectAdBlock, 1500);
-    window.addEventListener('load', detectAdBlock);
+    const runDetection = () => {
+      window.setTimeout(() => {
+        requestAnimationFrame(() => detectAdBlock());
+      }, 1200);
+    };
+
+    runDetection();
+    window.addEventListener('load', runDetection);
 
     return () => {
-      window.clearTimeout(timeoutId);
-      window.removeEventListener('load', detectAdBlock);
+      window.removeEventListener('load', runDetection);
     };
   }, []);
 
