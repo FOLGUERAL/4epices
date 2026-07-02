@@ -98,6 +98,13 @@ module.exports = {
         auth: false, // Accessible à tous (peut être restreint plus tard)
       },
     },
+    {
+      method: 'POST',
+      path: '/pinterest/strategy/stock',
+      handler: 'pinterest.planStockStrategy',
+      config: {
+        auth: false, // UI admin protegee cote frontend
+      },
+    },
   ],
 };
-

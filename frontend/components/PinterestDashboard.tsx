@@ -7,11 +7,15 @@ import { toast } from './Toast';
 interface QueueTask {
   id: string;
   recetteId: number;
+  recetteTitle?: string | null;
+  recetteSlug?: string | null;
   pinIndex: number;
   scheduledTime: string;
   isReady: boolean;
   minutesUntilReady: number;
   boardId: string;
+  source?: string | null;
+  strategyScore?: number | null;
 }
 
 interface QueueStatus {
@@ -39,6 +43,10 @@ export default function PinterestDashboard() {
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [stats, setStats] = useState<PinterestStats | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [planningStock, setPlanningStock] = useState(false);
+  const [stockDays, setStockDays] = useState(30);
+  const [stockPinsPerDay, setStockPinsPerDay] = useState(3);
+  const [includeAlreadyPinned, setIncludeAlreadyPinned] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
   const [boardsMap, setBoardsMap] = useState<Record<string, string>>({});
 
@@ -113,6 +121,37 @@ export default function PinterestDashboard() {
     }
   };
 
+  const handlePlanStockStrategy = async () => {
+    setPlanningStock(true);
+    try {
+      const response = await axios.post('/api/pinterest/strategy/stock', {
+        days: stockDays,
+        pinsPerDay: stockPinsPerDay,
+        includeAlreadyPinned,
+        minDaysBetweenPins: 14,
+      });
+
+      const plannedCount = response.data?.plannedCount || 0;
+      const skipped = response.data?.skipped || {};
+      const skippedCount = Object.values(skipped).reduce(
+        (total: number, value: any) => total + Number(value || 0),
+        0
+      );
+
+      toast.success(`${plannedCount} publication(s) ajoutée(s), ${skippedCount} ignorée(s)`);
+      await fetchDashboard();
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.error?.error ||
+          error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          'Erreur lors de la planification du stock Pinterest'
+      );
+    } finally {
+      setPlanningStock(false);
+    }
+  };
+
   useEffect(() => {
     fetchDashboard();
     // Rafraîchir toutes les 30 secondes
@@ -183,6 +222,57 @@ export default function PinterestDashboard() {
         </div>
       )}
 
+      <div className="mb-6 rounded-lg border border-orange-100 bg-orange-50 p-4">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Stratégie stock existant</h3>
+            <p className="mt-1 text-sm text-gray-600">
+              Remplit la queue avec les recettes publiées les mieux scorées, en évitant les doublons récents.
+            </p>
+          </div>
+          <button
+            onClick={handlePlanStockStrategy}
+            disabled={planningStock}
+            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+          >
+            {planningStock ? 'Planification...' : 'Alimenter la queue'}
+          </button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="text-sm font-medium text-gray-700">
+            Jours
+            <input
+              type="number"
+              min={1}
+              max={90}
+              value={stockDays}
+              onChange={(event) => setStockDays(Number(event.target.value))}
+              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="text-sm font-medium text-gray-700">
+            Pins / jour
+            <input
+              type="number"
+              min={1}
+              max={5}
+              value={stockPinsPerDay}
+              onChange={(event) => setStockPinsPerDay(Number(event.target.value))}
+              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex items-center gap-2 rounded-lg border border-orange-100 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+            <input
+              type="checkbox"
+              checked={includeAlreadyPinned}
+              onChange={(event) => setIncludeAlreadyPinned(event.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-orange-600"
+            />
+            Inclure les recettes déjà épinglées
+          </label>
+        </div>
+      </div>
+
       {/* Queue des pins planifiés */}
       {queueStatus && queueStatus.tasks.length > 0 ? (
         <div>
@@ -203,7 +293,7 @@ export default function PinterestDashboard() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="font-semibold text-gray-900">
-                        Pin #{task.pinIndex} - Recette #{task.recetteId}
+                        Pin #{task.pinIndex} - {task.recetteTitle || `Recette #${task.recetteId}`}
                       </span>
                       {task.isReady ? (
                         <span className="px-2 py-1 text-xs font-medium bg-green-500 text-white rounded-full">
@@ -228,6 +318,14 @@ export default function PinterestDashboard() {
                           ⏱️ Dans {task.minutesUntilReady > 0 
                             ? `${Math.abs(task.minutesUntilReady)} min`
                             : `${Math.abs(Math.round(task.minutesUntilReady / 60))} h`}
+                        </div>
+                      )}
+                      {task.source === 'stock-strategy' && (
+                        <div>
+                          Strategie stock
+                          {typeof task.strategyScore === 'number' && (
+                            <span className="ml-1 text-xs text-gray-400">score {task.strategyScore}</span>
+                          )}
                         </div>
                       )}
                     </div>

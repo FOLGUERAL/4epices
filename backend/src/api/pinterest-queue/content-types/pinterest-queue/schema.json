@@ -1,0 +1,66 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pinterest_queue_tasks",
+  "info": {
+    "singularName": "pinterest-queue",
+    "pluralName": "pinterest-queues",
+    "displayName": "Pinterest Queue Task",
+    "description": "Taches Pinterest planifiees et persistantes"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "taskUid": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "recetteId": {
+      "type": "integer",
+      "required": true
+    },
+    "recetteTitle": {
+      "type": "string"
+    },
+    "recetteSlug": {
+      "type": "string"
+    },
+    "imageUrl": {
+      "type": "text",
+      "required": true
+    },
+    "pinIndex": {
+      "type": "integer",
+      "required": true,
+      "default": 0
+    },
+    "boardId": {
+      "type": "string"
+    },
+    "scheduledTime": {
+      "type": "datetime",
+      "required": true
+    },
+    "attempts": {
+      "type": "integer",
+      "required": true,
+      "default": 0
+    },
+    "maxAttempts": {
+      "type": "integer",
+      "required": true,
+      "default": 3
+    },
+    "source": {
+      "type": "string"
+    },
+    "strategyScore": {
+      "type": "integer"
+    },
+    "lastError": {
+      "type": "text"
+    }
+  }
+}

@@ -18,6 +18,8 @@ interface VoiceState {
 }
 
 const SPEECH_ENABLED_STORAGE_KEY = 'kitchenVoiceSpeechEnabled';
+const NEXT_COMMAND_PATTERN = /\b(suiv\w*|prochain\w*|apres|apre|continu\w*|suite)\b/;
+const PREVIOUS_COMMAND_PATTERN = /\b(preced\w*|president|retour|avant|revenir|revien\w*)\b/;
 
 const normalizeSpeechText = (text: string): string =>
   text
@@ -295,22 +297,25 @@ export function useVoiceCooking(
     (text: string) => {
       const normalized = normalizeSpeechText(text);
       const lastSpokenText = lastSpokenTextRef.current;
+      const isNavigationCommand =
+        NEXT_COMMAND_PATTERN.test(normalized) || PREVIOUS_COMMAND_PATTERN.test(normalized);
 
       if (
-        Date.now() < ignoreRecognitionUntilRef.current ||
-        isLikelySpeechEcho(normalized, lastSpokenText)
+        !isNavigationCommand &&
+        (Date.now() < ignoreRecognitionUntilRef.current ||
+          isLikelySpeechEcho(normalized, lastSpokenText))
       ) {
         return false;
       }
 
       setVoiceState((previous) => ({ ...previous, lastCommand: text }));
 
-      if (/suivant|prochain|apres|continuer|suite/.test(normalized)) {
+      if (NEXT_COMMAND_PATTERN.test(normalized)) {
         onNext();
         return true;
       }
 
-      if (/precedent|retour|avant|revenir/.test(normalized)) {
+      if (PREVIOUS_COMMAND_PATTERN.test(normalized)) {
         onPrevious();
         return true;
       }
@@ -371,7 +376,7 @@ export function useVoiceCooking(
     recognition.lang = 'fr-FR';
     recognition.continuous = true;
     recognition.interimResults = false;
-    recognition.maxAlternatives = 3;
+    recognition.maxAlternatives = 5;
 
     recognition.onresult = (event: any) => {
       const results = Array.from(event.results) as any[];

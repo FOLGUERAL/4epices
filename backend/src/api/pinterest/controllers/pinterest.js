@@ -662,6 +662,8 @@ module.exports = {
         return {
           id: task.id,
           recetteId: task.recetteId,
+          recetteTitle: task.recetteTitle || null,
+          recetteSlug: task.recetteSlug || null,
           pinIndex: task.pinIndex,
           scheduledTime: task.scheduledTime,
           isReady: scheduledTime <= now,
@@ -669,6 +671,8 @@ module.exports = {
           attempts: task.attempts,
           maxAttempts: task.maxAttempts,
           boardId: task.boardId || null, // Inclure le boardId
+          source: task.source || null,
+          strategyScore: task.strategyScore || null,
         };
       });
       
@@ -765,6 +769,29 @@ module.exports = {
   },
 
   /**
+   * POST /api/pinterest/strategy/stock
+   * Alimente la queue Pinterest avec les recettes existantes selon une strategie hybride.
+   */
+  async planStockStrategy(ctx) {
+    try {
+      const strategyService = strapi.service('api::recette.pinterest-strategy');
+      const result = await strategyService.planStockCampaign(ctx.request.body || {});
+
+      return ctx.send({
+        ...result,
+        message: result.dryRun
+          ? `${result.plannedCount} publication(s) proposee(s)`
+          : `${result.plannedCount} publication(s) ajoutee(s) a la queue Pinterest`,
+      });
+    } catch (error) {
+      strapi.log.error('[Pinterest Strategy] Erreur:', error);
+      return ctx.internalServerError('Erreur lors de la planification de la strategie Pinterest', {
+        error: error.message,
+      });
+    }
+  },
+
+  /**
    * POST /api/pinterest/process-queue
    * Force le traitement immédiat de toutes les tâches prêtes (pour debug/manuel ou cron Docker)
    */
@@ -833,4 +860,3 @@ module.exports = {
     }
   },
 };
-
