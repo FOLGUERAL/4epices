@@ -17,6 +17,11 @@ function getPinterestApiUrl() {
     : 'https://api.pinterest.com';
 }
 
+function buildRecipeUrl(frontendUrl, slug) {
+  const normalizedFrontendUrl = String(frontendUrl || '').replace(/\/$/, '');
+  return `${normalizedFrontendUrl}/recettes/${encodeURIComponent(String(slug || '').trim())}`;
+}
+
 /**
  * Génère un ID de session unique pour les utilisateurs anonymes
  */
@@ -512,7 +517,7 @@ module.exports = {
         const pinTitle = title || recette.metaTitle || recette.titre;
         const pinDescription = description || recette.metaDescription || recette.description;
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const recipeUrl = `${frontendUrl}/recettes/${recette.slug}`;
+        const recipeUrl = buildRecipeUrl(frontendUrl, recette.slug);
 
         // Créer le pin avec le token de l'utilisateur
         const response = await axios.post(

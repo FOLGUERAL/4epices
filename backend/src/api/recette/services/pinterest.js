@@ -10,6 +10,11 @@ const { getBoardIdForRecette } = require('../../../utils/pinterestBoardMapper');
 const pinterestBoardHelper = require('../../../utils/pinterestBoardHelper');
 const { getThreeBoardsForRecette, getBoardForPinIndex } = require('../../../utils/pinterestBoardsManager');
 
+const buildRecipeUrl = (frontendUrl, slug) => {
+  const normalizedFrontendUrl = String(frontendUrl || '').replace(/\/$/, '');
+  return `${normalizedFrontendUrl}/recettes/${encodeURIComponent(String(slug || '').trim())}`;
+};
+
 module.exports = ({ strapi }) => ({
   /**
    * Génère des variations de titre et description pour différents pins
@@ -152,7 +157,7 @@ module.exports = ({ strapi }) => ({
 
     // URL de la recette sur le frontend
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const recipeUrl = `${frontendUrl}/recettes/${recetteData.slug}`;
+    const recipeUrl = buildRecipeUrl(frontendUrl, recetteData.slug);
 
     try {
       // Vérifier que l'URL de l'image est accessible publiquement
@@ -645,4 +650,3 @@ module.exports = ({ strapi }) => ({
     return pinterestBoardHelper.parsePinterestBoardUrl(url);
   },
 });
-
