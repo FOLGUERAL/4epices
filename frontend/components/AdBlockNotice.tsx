@@ -78,13 +78,48 @@ export default function AdBlockNotice() {
   }
 
   return (
-    <div className="border-b border-amber-200 bg-amber-50/90">
-      <div className="mx-auto flex max-w-7xl flex-col items-center justify-center gap-1 px-4 py-3 text-center text-sm text-amber-900 sm:flex-row sm:text-left">
-        <span className="font-semibold">Un bloqueur de publicités semble être actif.</span>
-        <span>
-          Les publicités permettent à 4epices de continuer à exister. Merci de nous soutenir en
-          autorisant les annonces sur ce site.
-        </span>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-3xl border border-amber-200 bg-white p-6 shadow-2xl sm:p-8">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+          <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0 3.75h.01M10.5 3.75 2.25 18a1.5 1.5 0 0 0 1.3 2.25h16.9a1.5 1.5 0 0 0 1.3-2.25L13.5 3.75a1.5 1.5 0 0 0-2.6 0Z" />
+          </svg>
+        </div>
+
+        <h2 className="mt-5 text-center text-2xl font-bold text-gray-950">
+          Les publicités sont nécessaires pour maintenir 4epices
+        </h2>
+
+        <p className="mt-3 text-center text-sm leading-6 text-gray-700">
+          Un bloqueur de publicités semble être actif. Merci de l&apos;autoriser sur ce site pour
+          nous aider à continuer à proposer du contenu gratuit.
+        </p>
+
+        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-semibold">Que faire ?</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Désactivez temporairement votre bloqueur pour ce site.</li>
+            <li>Actualisez la page après modification.</li>
+            <li>Si vous préférez, vous pouvez aussi revenir plus tard.</li>
+          </ul>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center justify-center rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-orange-700"
+          >
+            Recharger la page
+          </button>
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="inline-flex items-center justify-center rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            Revenir en arrière
+          </button>
+        </div>
       </div>
     </div>
   );
