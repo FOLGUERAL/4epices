@@ -121,10 +121,10 @@ export default function ShoppingList() {
   }
 
   return (
-    <div className="fixed bottom-6 right-20 z-50">
+    <div className="fixed bottom-6 left-4 z-50 sm:left-6">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative flex h-12 w-12 items-center justify-center rounded-full bg-orange-600 text-white shadow-lg shadow-orange-900/20 transition-all duration-300 hover:scale-110 hover:bg-orange-700 hover:shadow-2xl group"
+        className="group relative flex h-12 min-h-12 w-12 min-w-[3rem] items-center justify-center rounded-full bg-orange-600 text-white shadow-lg shadow-orange-900/20 transition-all duration-300 hover:scale-110 hover:bg-orange-700 hover:shadow-2xl"
         aria-label="Liste de courses"
       >
         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
