@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Navigation from "@/components/Navigation";
 import AdSenseScript from "@/components/AdSenseScript";
+import AdBlockNotice from "@/components/AdBlockNotice";
 import PWARegister from "@/components/PWARegister";
 import ShoppingList from "@/components/ShoppingList";
 import ToastContainer from "@/components/Toast";
@@ -88,6 +89,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
         {adsEnabled && <AdSenseScript />}
+        <AdBlockNotice />
         <PWARegister />
         <Navigation />
         {children}
