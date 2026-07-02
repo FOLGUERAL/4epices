@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, CircleHelp, Mic, Play, Pointer, Radio, Volume2, VolumeX, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleHelp, Mic, Play, Pointer, Volume2, VolumeX, X } from 'lucide-react';
 import { getRecetteBySlug, Recette } from '@/lib/strapi';
 import RecettesGridSkeleton from '@/components/RecettesGridSkeleton';
 import AnimatedCookingGuide from '@/components/AnimatedCookingGuide';
@@ -185,6 +185,72 @@ const voiceCommandGroups = [
     commands: ['aide'],
   },
 ];
+
+const playCookingStartSound = (): number => {
+  if (typeof window === 'undefined') return 0;
+
+  const AudioContextClass =
+    window.AudioContext ||
+    (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext;
+
+  if (!AudioContextClass) return 0;
+
+  try {
+    const audioContext = new AudioContextClass();
+    const now = audioContext.currentTime + 0.02;
+    const masterGain = audioContext.createGain();
+
+    masterGain.gain.setValueAtTime(0.0001, now);
+    masterGain.gain.exponentialRampToValueAtTime(0.72, now + 0.04);
+    masterGain.gain.setValueAtTime(0.62, now + 4.45);
+    masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 4.95);
+    masterGain.connect(audioContext.destination);
+
+    const playTone = (
+      frequency: number,
+      start: number,
+      duration: number,
+      type: OscillatorType,
+      peakGain: number
+    ) => {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const startTime = now + start;
+      const endTime = startTime + duration;
+
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(peakGain, startTime + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
+
+      oscillator.connect(gain);
+      gain.connect(masterGain);
+      oscillator.start(startTime);
+      oscillator.stop(endTime + 0.03);
+    };
+
+    playTone(146.83, 0, 0.22, 'sine', 0.24);
+    playTone(196, 0.2, 0.28, 'sine', 0.2);
+    playTone(110, 0.45, 2.5, 'sine', 0.11);
+    playTone(220, 0.85, 2.2, 'triangle', 0.035);
+    playTone(293.66, 1.45, 1.7, 'sine', 0.055);
+    playTone(392, 2.25, 1.35, 'triangle', 0.045);
+    playTone(659.25, 3.35, 0.36, 'triangle', 0.065);
+    playTone(783.99, 3.72, 0.34, 'triangle', 0.055);
+    playTone(987.77, 4.12, 0.42, 'triangle', 0.055);
+    playTone(1318.51, 4.48, 0.22, 'sine', 0.035);
+
+    window.setTimeout(() => {
+      void audioContext.close();
+    }, 5200);
+
+    return 5000;
+  } catch {
+    return 0;
+  }
+};
 
 export default function CuisineModePage() {
   const params = useParams();
@@ -428,7 +494,11 @@ export default function CuisineModePage() {
     setIsVoiceHelpOpen(false);
 
     if (isSpeechEnabled && steps[firstStepIndex]?.text) {
-      speak(steps[firstStepIndex].text, true);
+      const startSoundDelay = playCookingStartSound();
+
+      window.setTimeout(() => {
+        speak(steps[firstStepIndex].text, true);
+      }, startSoundDelay);
     }
   }, [isSpeechEnabled, speak, steps]);
 
@@ -449,7 +519,7 @@ export default function CuisineModePage() {
 
     const timeoutId = window.setTimeout(() => {
       setIsSwipeCoachVisible(false);
-    }, 3400);
+    }, 5000);
 
     return () => window.clearTimeout(timeoutId);
   }, [isSwipeCoachVisible]);
@@ -621,11 +691,9 @@ export default function CuisineModePage() {
           <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm transition-transform ${
             voiceState.isListening ? 'translate-x-5' : 'translate-x-1'
           }`}>
-            {voiceState.isListening ? (
-              <Radio className="h-3.5 w-3.5 text-emerald-700" />
-            ) : (
-              <Mic className="h-3.5 w-3.5 text-red-700" />
-            )}
+            <Mic className={`h-3.5 w-3.5 ${
+              voiceState.isListening ? 'text-emerald-700' : 'text-red-700'
+            }`} />
           </span>
         </span>
         {showLabels && (
@@ -908,25 +976,48 @@ export default function CuisineModePage() {
             />
             {isSwipeCoachVisible && (
               <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-gray-900/30 px-6 backdrop-blur-[2px] sm:hidden">
-                <div className="flex flex-col items-center gap-3 rounded-2xl bg-white px-5 py-4 text-gray-800 shadow-xl">
-                  <Pointer className="h-12 w-12 motion-safe:animate-[swipe-hand_1.7s_ease-in-out_2]" aria-hidden="true" />
-                  <p className="flex items-center gap-2 text-center text-sm font-semibold text-gray-800">
-                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                    Glissez pour changer d'étape
-                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                  </p>
+                <div className="flex max-w-[18rem] flex-col items-center gap-3 rounded-2xl bg-white px-5 py-4 text-gray-800 shadow-xl">
+                  {voiceState.isListening ? (
+                    <div className="flex flex-col items-center gap-3 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <Pointer className="h-12 w-12 motion-safe:animate-[swipe-hand_2.5s_ease-in-out_2]" aria-hidden="true" />
+                        <p className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                          Glissez
+                          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">
+                        OU
+                      </span>
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                          <Mic className="h-6 w-6" aria-hidden="true" />
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">
+                            Dites "suivant"
+                          </p>
+                          <p className="mt-1 text-xs font-medium text-gray-500">
+                            ou "précédent"
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Pointer className="h-12 w-12 motion-safe:animate-[swipe-hand_2.5s_ease-in-out_2]" aria-hidden="true" />
+                      <p className="flex items-center gap-2 text-center text-sm font-semibold text-gray-800">
+                        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                        Glissez pour changer d'étape
+                        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             )}
           </div>
-
-          {!hasUsedStepSwipe && (
-            <p className="mt-3 flex items-center justify-center gap-2 text-xs font-medium text-gray-500 sm:hidden">
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              Glissez pour changer d'étape
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </p>
-          )}
 
           <div className="mt-5 flex gap-1">
             {steps.map((step, index) => (
