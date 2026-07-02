@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { CircleHelp, Mic, Play, Radio, Volume2, VolumeX, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleHelp, Mic, Play, Radio, Volume2, VolumeX, X } from 'lucide-react';
 import { getRecetteBySlug, Recette } from '@/lib/strapi';
 import RecettesGridSkeleton from '@/components/RecettesGridSkeleton';
 import AnimatedCookingGuide from '@/components/AnimatedCookingGuide';
@@ -203,6 +203,7 @@ export default function CuisineModePage() {
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(true);
   const [hasShownVoiceHint, setHasShownVoiceHint] = useState(false);
   const [hasStartedCooking, setHasStartedCooking] = useState(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const getSavedPortions = useCallback((recipeSlug: string, basePortions: number): number => {
     if (typeof window === 'undefined') return basePortions;
@@ -324,6 +325,29 @@ export default function CuisineModePage() {
   const handlePreviousStep = useCallback(() => {
     setCurrentStep((previous) => Math.max(previous - 1, 0));
   }, []);
+
+  const handleStepTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }, []);
+
+  const handleStepTouchEnd = useCallback((event: TouchEvent<HTMLDivElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+
+    if (Math.abs(deltaX) < 55 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
+
+    if (deltaX < 0) {
+      handleNextStep();
+    } else {
+      handlePreviousStep();
+    }
+  }, [handleNextStep, handlePreviousStep]);
 
   const handleGoToStep = useCallback((index: number) => {
     const boundedIndex = Math.max(0, Math.min(index, steps.length - 1));
@@ -819,34 +843,43 @@ export default function CuisineModePage() {
             <div className="flex flex-wrap gap-2">{renderVoiceControls(false)}</div>
           </div>
 
-          <AnimatedCookingGuide
-            guide={cookingGuide}
-            stepText={currentStepData?.text || ''}
-            isSpeaking={voiceState.isSpeaking}
-            speakingText={voiceState.speakingText}
-            speakingCharIndex={voiceState.speakingCharIndex}
-            isSpeechEnabled={isSpeechEnabled}
-            onSpeak={handleSpeakGuide}
-          />
-
-          <div className="mt-6 flex items-center justify-center gap-3">
+          <div
+            className="relative"
+            onTouchStart={handleStepTouchStart}
+            onTouchEnd={handleStepTouchEnd}
+          >
             <button
+              type="button"
               onClick={handlePreviousStep}
               disabled={currentStep === 0}
-              className="rounded-lg bg-gray-200 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="absolute left-1 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white/85 text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-30 sm:-left-3 sm:h-11 sm:w-11"
+              aria-label="Étape précédente"
+              title="Étape précédente"
             >
-              Précédent
+              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
             </button>
             <button
+              type="button"
               onClick={handleNextStep}
               disabled={currentStep === steps.length - 1}
-              className="rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="absolute right-1 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white/85 text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-30 sm:-right-3 sm:h-11 sm:w-11"
+              aria-label="Étape suivante"
+              title="Étape suivante"
             >
-              Suivant
+              <ChevronRight className="h-5 w-5" aria-hidden="true" />
             </button>
+            <AnimatedCookingGuide
+              guide={cookingGuide}
+              stepText={currentStepData?.text || ''}
+              isSpeaking={voiceState.isSpeaking}
+              speakingText={voiceState.speakingText}
+              speakingCharIndex={voiceState.speakingCharIndex}
+              isSpeechEnabled={isSpeechEnabled}
+              onSpeak={handleSpeakGuide}
+            />
           </div>
 
-          <div className="mt-4 flex gap-1">
+          <div className="mt-5 flex gap-1">
             {steps.map((step, index) => (
               <button
                 key={step.id}
