@@ -115,14 +115,19 @@ module.exports = ({ strapi }) => ({
       }
 
       const pinterestService = strapi.service('api::recette.pinterest');
+      const freshImages = await pinterestService.getImagesForPins(recette);
+      const imageUrl = freshImages[publicTask.pinIndex % freshImages.length] || publicTask.imageUrl;
       const pinData = await pinterestService.createPinFromImage(
         recette,
-        publicTask.imageUrl,
+        imageUrl,
         publicTask.pinIndex,
         publicTask.boardId
       );
 
-      await this.updateRecettePins(publicTask.recetteId, pinData.id, publicTask);
+      await this.updateRecettePins(publicTask.recetteId, pinData.id, {
+        ...publicTask,
+        imageUrl,
+      });
       await this.removeTask(publicTask.id);
 
       strapi.log.info(

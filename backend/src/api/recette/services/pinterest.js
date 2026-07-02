@@ -15,6 +15,27 @@ const buildRecipeUrl = (frontendUrl, slug) => {
   return `${normalizedFrontendUrl}/recettes/${encodeURIComponent(String(slug || '').trim())}`;
 };
 
+const encodeUrlPath = (url) => {
+  if (!url || typeof url !== 'string') return url;
+
+  try {
+    const parsedUrl = new URL(url);
+    parsedUrl.pathname = parsedUrl.pathname
+      .split('/')
+      .map((segment) => {
+        try {
+          return encodeURIComponent(decodeURIComponent(segment));
+        } catch {
+          return encodeURIComponent(segment);
+        }
+      })
+      .join('/');
+    return parsedUrl.toString();
+  } catch {
+    return encodeURI(url);
+  }
+};
+
 module.exports = ({ strapi }) => ({
   /**
    * Génère des variations de titre et description pour différents pins
@@ -99,6 +120,8 @@ module.exports = ({ strapi }) => ({
    * Créer un pin Pinterest à partir d'une image spécifique
    */
   async createPinFromImage(recette, imageUrl, pinIndex = 0, boardId = null) {
+    imageUrl = encodeUrlPath(imageUrl);
+
     // Priorité admin : PINTEREST_ACCESS_TOKEN (.env) puis OAuth en mémoire (perdu au redémarrage)
     const envToken = (process.env.PINTEREST_ACCESS_TOKEN || '').trim() || null;
     const oauthAccessToken = getPinterestAuth()?.accessToken;
@@ -431,7 +454,7 @@ module.exports = ({ strapi }) => ({
           strapi.log.warn(`   Nom actuel: ${fileNameFromName}`);
           strapi.log.info(`🔵 Reconstruction de l'URL avec le nom actuel du fichier`);
           // Utiliser le nom actuel pour construire l'URL
-          imageUrl = `/uploads/${imageName}`;
+          // Garder image.url : image.name est le nom original, pas toujours le chemin public.
         }
       }
       
@@ -576,6 +599,8 @@ module.exports = ({ strapi }) => ({
       }
       
       // Vérifier que l'URL n'est pas localhost (non accessible depuis Pinterest)
+      fullUrl = encodeUrlPath(fullUrl);
+
       if (fullUrl.includes('localhost') || fullUrl.includes('127.0.0.1')) {
         strapi.log.warn(`⚠️ URL image pointe vers localhost (non accessible depuis Pinterest): ${fullUrl}`);
         strapi.log.warn(`⚠️ Pinterest ne peut pas récupérer les images depuis localhost. Configurez PUBLIC_STRAPI_URL avec une URL publique (HTTPS) dans votre .env`);
@@ -598,7 +623,7 @@ module.exports = ({ strapi }) => ({
             // Construire le nom de fichier avec le hash actuel
             const cleanFileName = imageName.replace(/\.[^.]+$/, ''); // Enlever l'extension
             const fileName = `${cleanFileName}${imageExt}`;
-            const reconstructedUrl = `${baseUrl}/uploads/${fileName}`;
+            const reconstructedUrl = encodeUrlPath(`${baseUrl}/uploads/${fileName}`);
             
             strapi.log.info(`🔵 URL reconstruite: ${reconstructedUrl}`);
             
