@@ -92,7 +92,9 @@ export default function AdBlockNotice() {
 
         <p className="mt-3 text-center text-sm leading-6 text-gray-700">
           Un bloqueur de publicités semble être actif. Merci de l&apos;autoriser sur ce site pour
-          nous aider à continuer à proposer du contenu gratuit.
+          nous aider à continuer à proposer du contenu gratuit. Nous ne diffusons pas de publicités
+          de façon intrusive ni dans tout le sens : contrairement à beaucoup de sites de cuisine,
+          nous privilégions une expérience de lecture plus propre et plus sereine.
         </p>
 
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
