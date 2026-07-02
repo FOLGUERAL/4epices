@@ -121,7 +121,7 @@ export default function ShoppingList() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-6 right-20 z-50">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative flex h-12 w-12 items-center justify-center rounded-full bg-orange-600 text-white shadow-lg shadow-orange-900/20 transition-all duration-300 hover:scale-110 hover:bg-orange-700 hover:shadow-2xl group"

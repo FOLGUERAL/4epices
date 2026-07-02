@@ -56,7 +56,7 @@ export default function RecipeKitchenModeActions({ recette }: RecipeKitchenModeA
         </div>
       </section>
 
-      <div className="fixed bottom-4 right-20 z-30 print:hidden sm:bottom-6 sm:right-24">
+      <div className="fixed bottom-4 right-4 z-30 print:hidden sm:bottom-6 sm:right-6">
         <KitchenModeLink
           recette={recette}
           label="Mode Cuisine"
