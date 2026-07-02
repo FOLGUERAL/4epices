@@ -121,7 +121,7 @@ export default function ShoppingList() {
   }
 
   return (
-    <div className="fixed bottom-6 left-4 z-50 sm:left-6">
+    <div className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="group relative flex h-12 min-h-12 w-12 min-w-[3rem] items-center justify-center rounded-full bg-orange-600 text-white shadow-lg shadow-orange-900/20 transition-all duration-300 hover:scale-110 hover:bg-orange-700 hover:shadow-2xl"
@@ -135,9 +135,6 @@ export default function ShoppingList() {
             {uncheckedCount}
           </span>
         )}
-        <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-white bg-gray-900 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-          Liste de courses
-        </div>
       </button>
 
       {isOpen && (
