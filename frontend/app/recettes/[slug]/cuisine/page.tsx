@@ -205,6 +205,7 @@ export default function CuisineModePage() {
   const [hasStartedCooking, setHasStartedCooking] = useState(false);
   const [hasUsedStepSwipe, setHasUsedStepSwipe] = useState(false);
   const [isSwipeCoachVisible, setIsSwipeCoachVisible] = useState(false);
+  const stepBlockRef = useRef<HTMLDivElement | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const getSavedPortions = useCallback((recipeSlug: string, basePortions: number): number => {
@@ -430,6 +431,18 @@ export default function CuisineModePage() {
       speak(steps[firstStepIndex].text, true);
     }
   }, [isSpeechEnabled, speak, steps]);
+
+  useEffect(() => {
+    if (!hasStartedCooking || typeof window === 'undefined') return;
+    if (!window.matchMedia('(max-width: 639px)').matches) return;
+
+    window.setTimeout(() => {
+      stepBlockRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 80);
+  }, [hasStartedCooking]);
 
   useEffect(() => {
     if (!isSwipeCoachVisible) return;
@@ -800,7 +813,7 @@ export default function CuisineModePage() {
             </div>
           )}
         </div>
-        <div className="bg-white rounded-2xl shadow-lg p-6">
+        <div ref={stepBlockRef} className="bg-white rounded-2xl shadow-lg p-6 scroll-mt-20">
           {!hasStartedCooking ? (
             <div className="flex flex-col items-center gap-6 text-center">
               <div className="max-w-2xl">
