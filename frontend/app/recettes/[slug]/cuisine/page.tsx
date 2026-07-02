@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { CircleHelp, X } from 'lucide-react';
+import { CircleHelp, Mic, Radio, Volume2, VolumeX, X } from 'lucide-react';
 import { getRecetteBySlug, Recette } from '@/lib/strapi';
 import RecettesGridSkeleton from '@/components/RecettesGridSkeleton';
 import AnimatedCookingGuide from '@/components/AnimatedCookingGuide';
@@ -174,11 +174,11 @@ const isRecette = (value: unknown, slug: string): value is Recette => {
 const voiceCommandGroups = [
   {
     title: 'Navigation',
-    commands: ['suivant', 'precedent', 'repete', 'etape 3'],
+    commands: ['suivant', 'précédent', 'répète', 'lecture', 'étape 3'],
   },
   {
     title: 'Infos',
-    commands: ['temps total ?', 'ou j en suis ?'],
+    commands: ['temps total ?', 'ou j\'en suis ?'],
   },
   {
     title: 'Aide',
@@ -325,8 +325,9 @@ export default function CuisineModePage() {
   }, []);
 
   const handleGoToStep = useCallback((index: number) => {
-    setCurrentStep(index);
-  }, []);
+    const boundedIndex = Math.max(0, Math.min(index, steps.length - 1));
+    setCurrentStep(boundedIndex);
+  }, [steps.length]);
 
   const currentStepData = useMemo(() => steps[currentStep], [currentStep, steps]);
   const cookingGuide = useMemo(
@@ -363,7 +364,7 @@ export default function CuisineModePage() {
       : `Le temps total est de ${formatDuration(total)}.`;
   }, [recette?.attributes.tempsCuisson, recette?.attributes.tempsPreparation]);
 
-  const { voiceState, speak, startListening, stopListening } = useVoiceCooking(
+  const { voiceState, speak, startListening, stopListening, isSpeechEnabled, setSpeechEnabled } = useVoiceCooking(
     steps,
     currentStep,
     handleNextStep,
@@ -372,6 +373,17 @@ export default function CuisineModePage() {
     getCoachLine,
     getRecipeTimeLine
   );
+  const lastAutoReadStepRef = useRef(currentStep);
+
+  useEffect(() => {
+    if (lastAutoReadStepRef.current === currentStep) return;
+
+    lastAutoReadStepRef.current = currentStep;
+
+    if (isSpeechEnabled && currentStepData?.text) {
+      speak(currentStepData.text, true);
+    }
+  }, [currentStep, currentStepData?.text, isSpeechEnabled, speak]);
 
   const handleSpeakGuide = useCallback(() => {
     if (currentStepData?.text) {
@@ -626,11 +638,6 @@ export default function CuisineModePage() {
                 Étape {currentStep + 1} sur {steps.length}
               </h2>
               <div className="mt-2 flex flex-wrap gap-2 text-sm text-gray-500">
-                {voiceState.isSupported && (
-                  <span className={`rounded-full px-3 py-1 ${voiceState.isListening ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
-                    {voiceState.isListening ? '🎙️ Écoute active' : '🎙️ Commande vocale disponible'}
-                  </span>
-                )}
                 {currentStepData?.temperature && (
                   <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">
                     🔥 {currentStepData.temperature}°C
@@ -641,14 +648,36 @@ export default function CuisineModePage() {
             <div className="flex flex-wrap gap-2">
               <div className="relative flex gap-2">
                 <button
+                  type="button"
+                  onClick={() => setSpeechEnabled(!isSpeechEnabled)}
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
+                    isSpeechEnabled
+                      ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  aria-label={isSpeechEnabled ? 'Désactiver la lecture orale' : 'Activer la lecture orale'}
+                  title={isSpeechEnabled ? 'Désactiver la lecture orale' : 'Activer la lecture orale'}
+                >
+                  {isSpeechEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+                </button>
+                <button
                   onClick={handleToggleVoice}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                     voiceState.isListening
                       ? 'bg-red-600 text-white hover:bg-red-700'
                       : 'bg-emerald-600 text-white hover:bg-emerald-700'
                   }`}
                   disabled={!voiceState.isSupported}
                 >
+                  {voiceState.isListening ? (
+                    <span className="relative flex h-4 w-4 items-center justify-center">
+                      <span className="absolute h-4 w-4 animate-ping rounded-full bg-white/80" />
+                      <span className="absolute h-3 w-3 rounded-full bg-red-200" />
+                      <Radio className="relative h-4 w-4" />
+                    </span>
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
                   {voiceState.isListening ? 'Arrêter la commande vocale' : 'Activer la commande vocale'}
                 </button>
                 <button
@@ -696,20 +725,6 @@ export default function CuisineModePage() {
                   </div>
                 )}
               </div>
-              <button
-                onClick={handlePreviousStep}
-                disabled={currentStep === 0}
-                className="rounded-lg bg-gray-200 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Précédent
-              </button>
-              <button
-                onClick={handleNextStep}
-                disabled={currentStep === steps.length - 1}
-                className="rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Suivant
-              </button>
             </div>
           </div>
 
@@ -719,15 +734,33 @@ export default function CuisineModePage() {
             isSpeaking={voiceState.isSpeaking}
             speakingText={voiceState.speakingText}
             speakingCharIndex={voiceState.speakingCharIndex}
+            isSpeechEnabled={isSpeechEnabled}
             onSpeak={handleSpeakGuide}
           />
 
-          <div className="mt-6 flex gap-1">
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <button
+              onClick={handlePreviousStep}
+              disabled={currentStep === 0}
+              className="rounded-lg bg-gray-200 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Précédent
+            </button>
+            <button
+              onClick={handleNextStep}
+              disabled={currentStep === steps.length - 1}
+              className="rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Suivant
+            </button>
+          </div>
+
+          <div className="mt-4 flex gap-1">
             {steps.map((step, index) => (
               <button
                 key={step.id}
                 type="button"
-                onClick={() => setCurrentStep(index)}
+                onClick={() => handleGoToStep(index)}
                 title={`Aller à l'étape ${index + 1}`}
                 className={`h-2 flex-1 rounded transition-all hover:scale-y-150 ${
                   index < currentStep

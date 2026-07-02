@@ -17,6 +17,8 @@ interface VoiceState {
   speakingCharIndex: number;
 }
 
+const SPEECH_ENABLED_STORAGE_KEY = 'kitchenVoiceSpeechEnabled';
+
 const normalizeSpeechText = (text: string): string =>
   text
     .toLowerCase()
@@ -164,6 +166,7 @@ export function useVoiceCooking(
     speakingText: '',
     speakingCharIndex: 0,
   });
+  const [isSpeechEnabled, setIsSpeechEnabled] = useState(true);
 
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
@@ -172,6 +175,7 @@ export function useVoiceCooking(
   const isListeningRef = useRef(false);
   const ignoreRecognitionUntilRef = useRef(0);
   const lastSpokenTextRef = useRef('');
+  const processCommandRef = useRef<(text: string) => boolean>(() => false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -179,6 +183,11 @@ export function useVoiceCooking(
     const supported = Boolean(
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     ) && 'speechSynthesis' in window;
+
+    const storedPreference = window.localStorage.getItem(SPEECH_ENABLED_STORAGE_KEY);
+    if (storedPreference !== null) {
+      setIsSpeechEnabled(storedPreference === 'true');
+    }
 
     setVoiceState((previous) => ({ ...previous, isSupported: supported }));
     if (supported) {
@@ -193,8 +202,24 @@ export function useVoiceCooking(
     }
   }, []);
 
+  const setSpeechEnabled = useCallback((enabled: boolean) => {
+    setIsSpeechEnabled(enabled);
+    if (!enabled) {
+      synthRef.current?.cancel();
+      setVoiceState((previous) => ({
+        ...previous,
+        isSpeaking: false,
+        speakingText: '',
+        speakingCharIndex: 0,
+      }));
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(SPEECH_ENABLED_STORAGE_KEY, String(enabled));
+    }
+  }, []);
+
   const speak = useCallback((text: string, interrupt = false, allowVoiceFallback = true) => {
-    if (!synthRef.current) return;
+    if (!isSpeechEnabled || !synthRef.current) return;
 
     if (interrupt) {
       synthRef.current.cancel();
@@ -264,7 +289,7 @@ export function useVoiceCooking(
     }
 
     synthRef.current.speak(utterance);
-  }, []);
+  }, [isSpeechEnabled]);
 
   const processCommand = useCallback(
     (text: string) => {
@@ -290,7 +315,7 @@ export function useVoiceCooking(
         return true;
       }
 
-      if (/repete|redis|encore|recommence/.test(normalized)) {
+      if (/repete|redis|encore|recommence|lecture|lire|lis/.test(normalized)) {
         const step = steps[currentStep];
         if (step) {
           speak(step.text, true);
@@ -303,7 +328,6 @@ export function useVoiceCooking(
         const requestedStep = parseInt(gotoMatch[1], 10) - 1;
         if (requestedStep >= 0 && requestedStep < steps.length) {
           onGoTo(requestedStep);
-          speak(`Étape ${requestedStep + 1}. ${steps[requestedStep].text}`, true);
         } else {
           speak(`Il n'y a pas d'étape ${parseInt(gotoMatch[1], 10)}`);
         }
@@ -333,6 +357,10 @@ export function useVoiceCooking(
     [currentStep, getRecipeTimeLine, onGoTo, onNext, onPrevious, speak, steps]
   );
 
+  useEffect(() => {
+    processCommandRef.current = processCommand;
+  }, [processCommand]);
+
   const startListening = useCallback(() => {
     if (!voiceState.isSupported || typeof window === 'undefined') return;
 
@@ -350,7 +378,7 @@ export function useVoiceCooking(
       const last = results[results.length - 1];
       if (last?.isFinal) {
         for (let index = 0; index < last.length; index += 1) {
-          if (processCommand(last[index].transcript)) {
+          if (processCommandRef.current(last[index].transcript)) {
             break;
           }
         }
@@ -378,8 +406,7 @@ export function useVoiceCooking(
     recognitionRef.current = recognition;
     isListeningRef.current = true;
     setVoiceState((previous) => ({ ...previous, isListening: true }));
-    speak('Mode mains libres activé. Je vous écoute.', true);
-  }, [processCommand, speak, voiceState.isSupported]);
+  }, [voiceState.isSupported]);
 
   const stopListening = useCallback(() => {
     isListeningRef.current = false;
@@ -394,12 +421,6 @@ export function useVoiceCooking(
   }, []);
 
   useEffect(() => {
-    if (voiceState.isListening && steps[currentStep]) {
-      speak(steps[currentStep].text, true);
-    }
-  }, [currentStep, speak, steps, voiceState.isListening]);
-
-  useEffect(() => {
     return () => {
       isListeningRef.current = false;
       recognitionRef.current?.stop();
@@ -407,5 +428,5 @@ export function useVoiceCooking(
     };
   }, []);
 
-  return { voiceState, speak, startListening, stopListening };
+  return { voiceState, speak, startListening, stopListening, isSpeechEnabled, setSpeechEnabled };
 }

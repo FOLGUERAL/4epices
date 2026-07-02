@@ -1,6 +1,6 @@
 'use client';
 
-import { Mic, MicOff, Play, Volume2 } from 'lucide-react';
+import { RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CookingGuide } from '@/lib/cookingGuide';
 
@@ -10,6 +10,7 @@ type AnimatedCookingGuideProps = {
   isSpeaking: boolean;
   speakingText: string;
   speakingCharIndex: number;
+  isSpeechEnabled: boolean;
   onSpeak: () => void;
 };
 
@@ -29,14 +30,15 @@ export default function AnimatedCookingGuide({
   isSpeaking,
   speakingText,
   speakingCharIndex,
+  isSpeechEnabled,
   onSpeak,
 }: AnimatedCookingGuideProps) {
   const [visibleLength, setVisibleLength] = useState(stepText.length);
   const [imageSrc, setImageSrc] = useState(guide.imageSrc);
+  const [showSpeechHint, setShowSpeechHint] = useState(false);
   const fallbackStartedAtRef = useRef<number | null>(null);
   const lastBoundaryAtRef = useRef(0);
 
-  const statusLabel = isSpeaking ? 'Lecture en cours' : 'Pret pour l etape';
   const syncsWithCurrentStep = useMemo(
     () => normalizeForSync(speakingText).startsWith(normalizeForSync(stepText).slice(0, 24)),
     [speakingText, stepText]
@@ -102,8 +104,22 @@ export default function AnimatedCookingGuide({
     }
   }, [isSpeaking, stepText]);
 
+  useEffect(() => {
+    if (isSpeechEnabled) {
+      setShowSpeechHint(false);
+    }
+  }, [isSpeechEnabled]);
+
   const handleSpeak = () => {
-    onSpeak();
+    if (!isSpeechEnabled) {
+      setShowSpeechHint(true);
+      return;
+    }
+
+    if (!isSpeaking) {
+      onSpeak();
+      setShowSpeechHint(false);
+    }
   };
 
   return (
@@ -129,10 +145,6 @@ export default function AnimatedCookingGuide({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="mb-1 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold uppercase text-red-700">
-                  <span className="h-2 w-2 rounded-full bg-red-600" aria-hidden="true" />
-                  En direct
-                </span>
                 <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">
                   {guide.action}
                 </span>
@@ -140,19 +152,27 @@ export default function AnimatedCookingGuide({
               <h3 className="truncate text-lg font-bold text-gray-900">{guide.title}</h3>
             </div>
 
-            <button
-              type="button"
-              onClick={handleSpeak}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-600 text-white shadow-sm transition-colors hover:bg-orange-700 focus-ring"
-              aria-label="Lire l'etape"
-              title="Lire l'etape"
-            >
-              {isSpeaking ? (
-                <Volume2 className="h-5 w-5" aria-hidden="true" />
-              ) : (
-                <Play className="h-5 w-5" aria-hidden="true" />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSpeak}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-600 text-white shadow-sm transition-colors hover:bg-orange-700 focus-ring"
+                aria-label="Repete l'etape"
+                title="Répète l'étape"
+              >
+                {isSpeaking ? (
+                  <Volume2 className="h-5 w-5" aria-hidden="true" />
+                ) : (
+                  <RotateCcw className="h-5 w-5" aria-hidden="true" />
+                )}
+              </button>
+              {showSpeechHint && (
+                <span className="flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                  <VolumeX className="h-3.5 w-3.5" />
+                  Active le son pour lire
+                </span>
               )}
-            </button>
+            </div>
           </div>
 
           <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
@@ -167,19 +187,6 @@ export default function AnimatedCookingGuide({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 text-gray-600">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100">
-              {isSpeaking ? (
-                <Mic className="h-4 w-4 text-emerald-700" aria-hidden="true" />
-              ) : (
-                <MicOff className="h-4 w-4" aria-hidden="true" />
-              )}
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-gray-800">{statusLabel}</p>
-              <p className="truncate text-xs text-gray-500">Le texte suit la lecture de l'etape</p>
-            </div>
-          </div>
         </div>
       </div>
     </section>
