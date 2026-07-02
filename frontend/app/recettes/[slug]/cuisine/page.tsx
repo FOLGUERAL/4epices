@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { CircleHelp, Mic, Radio, Volume2, VolumeX, X } from 'lucide-react';
+import { CircleHelp, Mic, Play, Radio, Volume2, VolumeX, X } from 'lucide-react';
 import { getRecetteBySlug, Recette } from '@/lib/strapi';
 import RecettesGridSkeleton from '@/components/RecettesGridSkeleton';
 import AnimatedCookingGuide from '@/components/AnimatedCookingGuide';
@@ -200,8 +200,9 @@ export default function CuisineModePage() {
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [steps, setSteps] = useState<StepData[]>([]);
   const [isVoiceHelpOpen, setIsVoiceHelpOpen] = useState(false);
-  const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
+  const [isIngredientsOpen, setIsIngredientsOpen] = useState(true);
   const [hasShownVoiceHint, setHasShownVoiceHint] = useState(false);
+  const [hasStartedCooking, setHasStartedCooking] = useState(false);
 
   const getSavedPortions = useCallback((recipeSlug: string, basePortions: number): number => {
     if (typeof window === 'undefined') return basePortions;
@@ -376,6 +377,7 @@ export default function CuisineModePage() {
   const lastAutoReadStepRef = useRef(currentStep);
 
   useEffect(() => {
+    if (!hasStartedCooking) return;
     if (lastAutoReadStepRef.current === currentStep) return;
 
     lastAutoReadStepRef.current = currentStep;
@@ -383,7 +385,21 @@ export default function CuisineModePage() {
     if (isSpeechEnabled && currentStepData?.text) {
       speak(currentStepData.text, true);
     }
-  }, [currentStep, currentStepData?.text, isSpeechEnabled, speak]);
+  }, [currentStep, currentStepData?.text, hasStartedCooking, isSpeechEnabled, speak]);
+
+  const handleStartCooking = useCallback(() => {
+    const firstStepIndex = 0;
+
+    lastAutoReadStepRef.current = firstStepIndex;
+    setCurrentStep(firstStepIndex);
+    setIsIngredientsOpen(false);
+    setHasStartedCooking(true);
+    setIsVoiceHelpOpen(false);
+
+    if (isSpeechEnabled && steps[firstStepIndex]?.text) {
+      speak(steps[firstStepIndex].text, true);
+    }
+  }, [isSpeechEnabled, speak, steps]);
 
   const handleSpeakGuide = useCallback(() => {
     if (currentStepData?.text) {
@@ -406,8 +422,8 @@ export default function CuisineModePage() {
     }
   }, [hasShownVoiceHint, startListening, stopListening, voiceState.isListening]);
 
-  const progress = steps.length > 0 ? ((currentStep + 1) / steps.length) * 100 : 0;
-  const isLastStep = currentStep === steps.length - 1;
+  const progress = hasStartedCooking && steps.length > 0 ? ((currentStep + 1) / steps.length) * 100 : 0;
+  const isLastStep = hasStartedCooking && currentStep === steps.length - 1;
 
   if (loading) {
     return (
@@ -496,6 +512,119 @@ export default function CuisineModePage() {
   const tempsPrep = recette.attributes.tempsPreparation || 0;
   const tempsCuisson = recette.attributes.tempsCuisson || 0;
   const tempsTotal = tempsPrep + tempsCuisson;
+  const renderVoiceControls = (showLabels: boolean) => (
+    <div className="relative flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={() => setSpeechEnabled(!isSpeechEnabled)}
+        role="switch"
+        aria-checked={isSpeechEnabled}
+        className={`inline-flex h-10 items-center justify-center rounded-lg border transition-colors ${
+          showLabels ? 'gap-3 px-3 text-sm font-medium' : 'w-14 px-1'
+        } ${
+          isSpeechEnabled
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+            : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+        }`}
+        aria-label={isSpeechEnabled ? 'Désactiver le guide oral' : 'Activer le guide oral'}
+        title={isSpeechEnabled ? 'Désactiver le guide oral' : 'Activer le guide oral'}
+      >
+        <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          isSpeechEnabled ? 'bg-emerald-600' : 'bg-red-500'
+        }`}>
+          <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm transition-transform ${
+            isSpeechEnabled ? 'translate-x-5' : 'translate-x-1'
+          }`}>
+            {isSpeechEnabled ? (
+              <Volume2 className="h-3.5 w-3.5 text-emerald-700" />
+            ) : (
+              <VolumeX className="h-3.5 w-3.5 text-red-700" />
+            )}
+          </span>
+        </span>
+        {showLabels && (
+          <span>{isSpeechEnabled ? 'Désactiver le guide oral' : 'Activer le guide oral'}</span>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={handleToggleVoice}
+        role="switch"
+        aria-checked={voiceState.isListening}
+        className={`inline-flex h-10 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
+          showLabels ? 'gap-3 px-3' : 'w-14 px-1'
+        } ${
+          voiceState.isListening
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+            : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+        }`}
+        disabled={!voiceState.isSupported}
+        aria-label={voiceState.isListening ? 'Arrêter la commande vocale' : 'Activer la commande vocale'}
+        title={voiceState.isListening ? 'Arrêter la commande vocale' : 'Activer la commande vocale'}
+      >
+        <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          voiceState.isListening ? 'bg-emerald-600' : 'bg-red-500'
+        }`}>
+          <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm transition-transform ${
+            voiceState.isListening ? 'translate-x-5' : 'translate-x-1'
+          }`}>
+            {voiceState.isListening ? (
+              <Radio className="h-3.5 w-3.5 text-emerald-700" />
+            ) : (
+              <Mic className="h-3.5 w-3.5 text-red-700" />
+            )}
+          </span>
+        </span>
+        {showLabels && (
+          <span>{voiceState.isListening ? 'Arrêter la commande vocale' : 'Activer la commande vocale'}</span>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={() => setIsVoiceHelpOpen((isOpen) => !isOpen)}
+        className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200 focus-ring"
+        aria-label="Afficher les commandes vocales"
+        title="Commandes vocales"
+      >
+        <CircleHelp className="h-5 w-5" aria-hidden="true" />
+      </button>
+
+      {isVoiceHelpOpen && (
+        <div className="absolute right-0 top-12 z-40 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-gray-200 bg-white p-4 text-left shadow-xl">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-bold text-gray-900">Commandes vocales</h3>
+            <button
+              type="button"
+              onClick={() => setIsVoiceHelpOpen(false)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
+              aria-label="Fermer l'aide vocale"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="space-y-3">
+            {voiceCommandGroups.map((group) => (
+              <div key={group.title}>
+                <p className="mb-1 text-xs font-semibold uppercase text-gray-500">
+                  {group.title}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {group.commands.map((command) => (
+                    <span
+                      key={command}
+                      className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700"
+                    >
+                      "{command}"
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 print:bg-white">
@@ -632,6 +761,48 @@ export default function CuisineModePage() {
           )}
         </div>
         <div className="bg-white rounded-2xl shadow-lg p-6">
+          {!hasStartedCooking ? (
+            <div className="flex flex-col items-center gap-6 text-center">
+              <div className="max-w-2xl">
+                <span className="inline-flex rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold uppercase text-orange-700">
+                  Prêt à cuisiner
+                </span>
+                <h2 className="mt-3 text-2xl font-bold text-gray-900">
+                  Configurez le guidage avant de lancer la recette
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                  Vérifiez vos ingrédients, choisissez le son et activez la commande vocale si vous voulez garder les mains libres.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4 sm:flex-row sm:justify-center">
+                {renderVoiceControls(true)}
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-2 text-xs font-medium">
+                <span className={`rounded-full px-3 py-1 ${
+                  isSpeechEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                }`}>
+                  {isSpeechEnabled ? 'Lecture orale active' : 'Lecture orale inactive'}
+                </span>
+                <span className={`rounded-full px-3 py-1 ${
+                  voiceState.isListening ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                }`}>
+                  {voiceState.isListening ? 'Commande vocale active' : 'Commande vocale inactive'}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleStartCooking}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 text-base font-bold text-white shadow-sm transition-colors hover:bg-orange-700 focus-ring"
+              >
+                <Play className="h-5 w-5" aria-hidden="true" />
+                Démarrer le guidage
+              </button>
+            </div>
+          ) : (
+            <>
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-bold text-gray-900">
@@ -645,87 +816,7 @@ export default function CuisineModePage() {
                 )}
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <div className="relative flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSpeechEnabled(!isSpeechEnabled)}
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
-                    isSpeechEnabled
-                      ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  aria-label={isSpeechEnabled ? 'Désactiver la lecture orale' : 'Activer la lecture orale'}
-                  title={isSpeechEnabled ? 'Désactiver la lecture orale' : 'Activer la lecture orale'}
-                >
-                  {isSpeechEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
-                </button>
-                <button
-                  onClick={handleToggleVoice}
-                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                    voiceState.isListening
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                  }`}
-                  disabled={!voiceState.isSupported}
-                >
-                  {voiceState.isListening ? (
-                    <span className="relative flex h-4 w-4 items-center justify-center">
-                      <span className="absolute h-4 w-4 animate-ping rounded-full bg-white/80" />
-                      <span className="absolute h-3 w-3 rounded-full bg-red-200" />
-                      <Radio className="relative h-4 w-4" />
-                    </span>
-                  ) : (
-                    <Mic className="h-4 w-4" />
-                  )}
-                  {voiceState.isListening ? 'Arrêter la commande vocale' : 'Activer la commande vocale'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsVoiceHelpOpen((isOpen) => !isOpen)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200 focus-ring"
-                  aria-label="Afficher les commandes vocales"
-                  title="Commandes vocales"
-                >
-                  <CircleHelp className="h-5 w-5" aria-hidden="true" />
-                </button>
-
-                {isVoiceHelpOpen && (
-                  <div className="absolute right-0 top-12 z-40 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-gray-200 bg-white p-4 text-left shadow-xl">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <h3 className="text-sm font-bold text-gray-900">Commandes vocales</h3>
-                      <button
-                        type="button"
-                        onClick={() => setIsVoiceHelpOpen(false)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
-                        aria-label="Fermer l'aide vocale"
-                      >
-                        <X className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {voiceCommandGroups.map((group) => (
-                        <div key={group.title}>
-                          <p className="mb-1 text-xs font-semibold uppercase text-gray-500">
-                            {group.title}
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {group.commands.map((command) => (
-                              <span
-                                key={command}
-                                className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700"
-                              >
-                                "{command}"
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            <div className="flex flex-wrap gap-2">{renderVoiceControls(false)}</div>
           </div>
 
           <AnimatedCookingGuide
@@ -786,6 +877,8 @@ export default function CuisineModePage() {
                 recetteTitle={recette.attributes.titre}
               />
             </div>
+          )}
+            </>
           )}
         </div>
       </div>
