@@ -47,7 +47,7 @@ export default function PinterestDashboard() {
   const [bulkCancelling, setBulkCancelling] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [stockDays, setStockDays] = useState(30);
-  const [stockPinsPerDay, setStockPinsPerDay] = useState(3);
+  const [stockPinsPerDay, setStockPinsPerDay] = useState(6);
   const [includeAlreadyPinned, setIncludeAlreadyPinned] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
   const [boardsMap, setBoardsMap] = useState<Record<string, string>>({});
@@ -315,7 +315,7 @@ export default function PinterestDashboard() {
             <input
               type="number"
               min={1}
-              max={5}
+              max={10}
               value={stockPinsPerDay}
               onChange={(event) => setStockPinsPerDay(Number(event.target.value))}
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"

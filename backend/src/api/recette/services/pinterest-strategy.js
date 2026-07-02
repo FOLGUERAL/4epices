@@ -4,11 +4,16 @@ const { getThreeBoardsForRecette, getBoardForPinIndex } = require('../../../util
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_POSTING_HOURS = [
-  { hour: 8, minute: 45 },
-  { hour: 12, minute: 15 },
-  { hour: 17, minute: 45 },
-  { hour: 20, minute: 30 },
-  { hour: 21, minute: 15 },
+  { hour: 7, minute: 45 },
+  { hour: 9, minute: 30 },
+  { hour: 11, minute: 15 },
+  { hour: 12, minute: 45 },
+  { hour: 14, minute: 30 },
+  { hour: 16, minute: 15 },
+  { hour: 18, minute: 0 },
+  { hour: 19, minute: 45 },
+  { hour: 21, minute: 0 },
+  { hour: 22, minute: 15 },
 ];
 
 function asArray(value) {
@@ -145,7 +150,7 @@ function buildSlots({ startDate, days, pinsPerDay }) {
 module.exports = ({ strapi }) => ({
   async planStockCampaign(options = {}) {
     const days = Math.min(Math.max(Number(options.days) || 30, 1), 90);
-    const pinsPerDay = Math.min(Math.max(Number(options.pinsPerDay) || 3, 1), 5);
+    const pinsPerDay = Math.min(Math.max(Number(options.pinsPerDay) || 6, 1), 10);
     const maxRecipes = Math.min(Math.max(Number(options.maxRecipes) || days * pinsPerDay, 1), 300);
     const minDaysBetweenPins = Math.min(Math.max(Number(options.minDaysBetweenPins) || 14, 1), 120);
     const includeAlreadyPinned = options.includeAlreadyPinned === true;
