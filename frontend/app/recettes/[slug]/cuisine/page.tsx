@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, CircleHelp, Mic, Play, Radio, Volume2, VolumeX, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleHelp, Mic, Play, Pointer, Radio, Volume2, VolumeX, X } from 'lucide-react';
 import { getRecetteBySlug, Recette } from '@/lib/strapi';
 import RecettesGridSkeleton from '@/components/RecettesGridSkeleton';
 import AnimatedCookingGuide from '@/components/AnimatedCookingGuide';
@@ -203,6 +203,8 @@ export default function CuisineModePage() {
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(true);
   const [hasShownVoiceHint, setHasShownVoiceHint] = useState(false);
   const [hasStartedCooking, setHasStartedCooking] = useState(false);
+  const [hasUsedStepSwipe, setHasUsedStepSwipe] = useState(false);
+  const [isSwipeCoachVisible, setIsSwipeCoachVisible] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const getSavedPortions = useCallback((recipeSlug: string, basePortions: number): number => {
@@ -347,6 +349,9 @@ export default function CuisineModePage() {
     } else {
       handlePreviousStep();
     }
+
+    setHasUsedStepSwipe(true);
+    setIsSwipeCoachVisible(false);
   }, [handleNextStep, handlePreviousStep]);
 
   const handleGoToStep = useCallback((index: number) => {
@@ -418,12 +423,23 @@ export default function CuisineModePage() {
     setCurrentStep(firstStepIndex);
     setIsIngredientsOpen(false);
     setHasStartedCooking(true);
+    setIsSwipeCoachVisible(true);
     setIsVoiceHelpOpen(false);
 
     if (isSpeechEnabled && steps[firstStepIndex]?.text) {
       speak(steps[firstStepIndex].text, true);
     }
   }, [isSpeechEnabled, speak, steps]);
+
+  useEffect(() => {
+    if (!isSwipeCoachVisible) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setIsSwipeCoachVisible(false);
+    }, 3400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isSwipeCoachVisible]);
 
   const handleSpeakGuide = useCallback(() => {
     if (currentStepData?.text) {
@@ -877,7 +893,27 @@ export default function CuisineModePage() {
               isSpeechEnabled={isSpeechEnabled}
               onSpeak={handleSpeakGuide}
             />
+            {isSwipeCoachVisible && (
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-gray-900/30 px-6 backdrop-blur-[2px] sm:hidden">
+                <div className="flex flex-col items-center gap-3 rounded-2xl bg-white px-5 py-4 text-gray-800 shadow-xl">
+                  <Pointer className="h-12 w-12 motion-safe:animate-[swipe-hand_1.7s_ease-in-out_2]" aria-hidden="true" />
+                  <p className="flex items-center gap-2 text-center text-sm font-semibold text-gray-800">
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                    Glissez pour changer d'étape
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
+
+          {!hasUsedStepSwipe && (
+            <p className="mt-3 flex items-center justify-center gap-2 text-xs font-medium text-gray-500 sm:hidden">
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              Glissez pour changer d'étape
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </p>
+          )}
 
           <div className="mt-5 flex gap-1">
             {steps.map((step, index) => (
