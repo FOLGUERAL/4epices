@@ -1,23 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function AdBlockNotice() {
   const [isAdBlockDetected, setIsAdBlockDetected] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-    const detectAdBlock = () => {
-      const win = window as Window & {
-        canRunAds?: boolean;
-        adsbygoogle?: unknown[];
-      };
+    const win = window as Window & {
+      canRunAds?: boolean;
+      adsbygoogle?: unknown[];
+      __adBlockDetected?: boolean;
+    };
 
-      if (win.canRunAds === false) {
-        setIsAdBlockDetected(true);
-        return;
-      }
+    const detectAdBlock = () => {
+      const indicators = {
+        canRunAdsFalse: win.canRunAds === false,
+        globalFlag: win.__adBlockDetected === true,
+        adsbygoogleMissing: !win.adsbygoogle,
+        baitHidden: false,
+      };
 
       const container = document.body || document.documentElement;
       const bait = document.createElement('div');
@@ -34,7 +38,7 @@ export default function AdBlockNotice() {
       container.appendChild(bait);
 
       const style = window.getComputedStyle(bait);
-      const isHidden =
+      indicators.baitHidden =
         style.display === 'none' ||
         style.visibility === 'hidden' ||
         style.opacity === '0' ||
@@ -44,13 +48,19 @@ export default function AdBlockNotice() {
 
       bait.remove();
 
-      setIsAdBlockDetected(isHidden);
+      const blocked =
+        indicators.canRunAdsFalse ||
+        indicators.globalFlag ||
+        (indicators.adsbygoogleMissing && indicators.baitHidden);
+
+      setIsAdBlockDetected(blocked);
+      setIsChecking(false);
     };
 
     const runDetection = () => {
       window.setTimeout(() => {
         requestAnimationFrame(() => detectAdBlock());
-      }, 1200);
+      }, 1500);
     };
 
     runDetection();
@@ -61,7 +71,9 @@ export default function AdBlockNotice() {
     };
   }, []);
 
-  if (!isAdBlockDetected) {
+  const shouldShowNotice = useMemo(() => isAdBlockDetected, [isAdBlockDetected]);
+
+  if (isChecking || !shouldShowNotice) {
     return null;
   }
 
