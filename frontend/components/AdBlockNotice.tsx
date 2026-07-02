@@ -100,24 +100,17 @@ export default function AdBlockNotice() {
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>Désactivez temporairement votre bloqueur pour ce site.</li>
             <li>Actualisez la page après modification.</li>
-            <li>Si vous préférez, vous pouvez aussi revenir plus tard.</li>
+            <li>Si vous ne souhaitez pas autoriser les annonces, vous pouvez quitter cette page.</li>
           </ul>
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <div className="mt-6 flex justify-center">
           <button
             type="button"
             onClick={() => window.location.reload()}
             className="inline-flex items-center justify-center rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-orange-700"
           >
             Recharger la page
-          </button>
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="inline-flex items-center justify-center rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            Revenir en arrière
           </button>
         </div>
       </div>
