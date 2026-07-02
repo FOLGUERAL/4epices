@@ -56,11 +56,11 @@ export default function RecipeKitchenModeActions({ recette }: RecipeKitchenModeA
         </div>
       </section>
 
-      <div className="fixed bottom-4 right-4 z-30 print:hidden sm:bottom-6 sm:right-6">
+      <div className="fixed bottom-4 right-20 z-30 print:hidden sm:bottom-6 sm:right-24">
         <KitchenModeLink
           recette={recette}
           label="Mode Cuisine"
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-orange-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition-colors hover:bg-orange-700 focus-ring"
+          className="inline-flex h-12 min-h-12 items-center justify-center gap-2 rounded-full bg-orange-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition-colors hover:bg-orange-700 focus-ring"
         />
       </div>
     </>
