@@ -41,7 +41,7 @@ export default function FavoriteButton({ recette, className = '' }: FavoriteButt
   return (
     <button
       onClick={handleToggle}
-      className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all font-medium min-h-[42px] ${
+      className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium transition-all sm:min-w-[112px] ${
         isFav
           ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'

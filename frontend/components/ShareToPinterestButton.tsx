@@ -364,12 +364,13 @@ export default function ShareToPinterestButton({
       <button
         onClick={handleShareClick}
         disabled={isLoading || isSharing}
-        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg px-4 py-2 font-medium transition-colors shadow-sm ${
           isLoading || isSharing
-            ? 'bg-gray-400 text-white cursor-not-allowed'
+            ? 'cursor-not-allowed bg-gray-400 text-white'
             : 'bg-red-600 text-white hover:bg-red-700'
-        } shadow-sm`}
+        }`}
         title="Partager sur Pinterest"
+        aria-label="Partager sur Pinterest"
       >
         {isLoading ? (
           <>
@@ -381,11 +382,10 @@ export default function ShareToPinterestButton({
           </>
         ) : (
           <>
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               {/* Icône épingle Pinterest */}
               <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.619 11.174-.105-.949-.2-2.403.041-3.441.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.402.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.487.535 6.624 0 12-5.373 12-12S18.627 0 12 0z" />
             </svg>
-            <span>{isConnected ? 'Partager sur Pinterest' : 'Connecter Pinterest pour partager'}</span>
           </>
         )}
       </button>

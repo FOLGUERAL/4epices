@@ -76,7 +76,7 @@ export default function ShareRecipe({ title, url, description, imageUrl }: Share
     <div className="relative">
       <button
         onClick={shareNative}
-        className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
+        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2 font-medium text-white transition-colors hover:bg-orange-700 sm:min-w-[112px]"
         aria-label="Partager la recette"
       >
         <svg

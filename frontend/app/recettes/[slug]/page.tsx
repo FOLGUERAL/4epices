@@ -250,7 +250,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
               <h1 className="text-4xl font-bold text-gray-900">
                 {recette.attributes.titre}
               </h1>
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex flex-wrap items-center gap-2">
                 <FavoriteButton
                   recette={{
                     id: recette.id,
