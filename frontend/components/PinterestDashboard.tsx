@@ -44,6 +44,8 @@ export default function PinterestDashboard() {
   const [stats, setStats] = useState<PinterestStats | null>(null);
   const [processing, setProcessing] = useState(false);
   const [planningStock, setPlanningStock] = useState(false);
+  const [bulkCancelling, setBulkCancelling] = useState(false);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [stockDays, setStockDays] = useState(30);
   const [stockPinsPerDay, setStockPinsPerDay] = useState(3);
   const [includeAlreadyPinned, setIncludeAlreadyPinned] = useState(false);
@@ -73,6 +75,8 @@ export default function PinterestDashboard() {
       // Récupérer l'état de la queue
       const queueResponse = await axios.get('/api/pinterest/queue-status');
       setQueueStatus(queueResponse.data);
+      const taskIds = new Set<string>((queueResponse.data.tasks || []).map((task: QueueTask) => task.id));
+      setSelectedTaskIds((previous) => new Set([...previous].filter((taskId) => taskIds.has(taskId))));
 
       // TODO: Récupérer les statistiques depuis un endpoint dédié
       // Pour l'instant, on calcule depuis la queue
@@ -118,6 +122,62 @@ export default function PinterestDashboard() {
       await fetchDashboard();
     } catch (error: any) {
       toast.error(error.response?.data?.error || error.response?.data?.message || 'Erreur lors de l\'annulation');
+    }
+  };
+
+  const handleToggleTaskSelection = (taskId: string) => {
+    setSelectedTaskIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleAllTasks = () => {
+    const tasks = queueStatus?.tasks || [];
+    if (tasks.length === 0) return;
+
+    const allSelected = tasks.every((task) => selectedTaskIds.has(task.id));
+    setSelectedTaskIds(allSelected ? new Set() : new Set(tasks.map((task) => task.id)));
+  };
+
+  const handleCancelSelectedTasks = async () => {
+    const taskIds = [...selectedTaskIds];
+    if (taskIds.length === 0) return;
+
+    if (!confirm(`Annuler ${taskIds.length} publication(s) Pinterest sélectionnée(s) ?`)) {
+      return;
+    }
+
+    setBulkCancelling(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      for (const taskId of taskIds) {
+        try {
+          await axios.delete(`/api/pinterest/queue/${taskId}`);
+          successCount += 1;
+        } catch {
+          errorCount += 1;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} publication(s) annulée(s)`);
+      }
+      if (errorCount > 0) {
+        toast.error(`${errorCount} annulation(s) en erreur`);
+      }
+
+      setSelectedTaskIds(new Set());
+      await fetchDashboard();
+    } finally {
+      setBulkCancelling(false);
     }
   };
 
@@ -276,9 +336,33 @@ export default function PinterestDashboard() {
       {/* Queue des pins planifiés */}
       {queueStatus && queueStatus.tasks.length > 0 ? (
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold text-gray-900">
             📋 Queue des pins planifiés ({queueStatus.total} tâche(s))
           </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium text-gray-600">
+                {selectedTaskIds.size} sélectionnée(s)
+              </span>
+              <button
+                type="button"
+                onClick={handleToggleAllTasks}
+                className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+              >
+                {queueStatus.tasks.every((task) => selectedTaskIds.has(task.id))
+                  ? 'Tout désélectionner'
+                  : 'Tout sélectionner'}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelSelectedTasks}
+                disabled={selectedTaskIds.size === 0 || bulkCancelling}
+                className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {bulkCancelling ? 'Annulation...' : 'Annuler la sélection'}
+              </button>
+            </div>
+          </div>
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {queueStatus.tasks.map((task) => (
               <div
@@ -290,6 +374,15 @@ export default function PinterestDashboard() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
+                  <label className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedTaskIds.has(task.id)}
+                      onChange={() => handleToggleTaskSelection(task.id)}
+                      className="h-4 w-4 rounded border-gray-300 text-red-600"
+                      aria-label={`Sélectionner ${task.recetteTitle || `recette ${task.recetteId}`}`}
+                    />
+                  </label>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="font-semibold text-gray-900">
