@@ -228,7 +228,7 @@ module.exports = ({ strapi }) => ({
 
     for (let index = 0; index < selected.length; index += 1) {
       const { recette, score, existingPinsCount } = selected[index];
-      const pinIndex = existingPinsCount % 6;
+      const pinIndex = (existingPinsCount + index) % 6;
 
       try {
         const images = await pinterestService.getImagesForPins(recette);
@@ -256,6 +256,9 @@ module.exports = ({ strapi }) => ({
 
         const task = dryRun ? { id: `preview_${recette.id}_${pinIndex}`, ...taskData } : await queueService.addPinTask(taskData);
         planned.push(task);
+        strapi.log.info(
+          `[Pinterest Strategy] ${dryRun ? 'Preview' : 'Planification'} pin #${pinIndex} pour "${recette.titre}" sur board ${boardId} (score ${score})`
+        );
       } catch (error) {
         errors.push({ recetteId: recette.id, title: recette.titre, error: error.message });
       }
