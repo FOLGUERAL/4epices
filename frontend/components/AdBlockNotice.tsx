@@ -6,6 +6,21 @@ export default function AdBlockNotice() {
   const [isAdBlockDetected, setIsAdBlockDetected] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
+  const isLocalEnvironment = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return process.env.NODE_ENV === 'development';
+    }
+
+    const hostname = window.location.hostname.toLowerCase();
+    return (
+      process.env.NODE_ENV === 'development' ||
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1' ||
+      hostname.endsWith('.local')
+    );
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
@@ -71,7 +86,7 @@ export default function AdBlockNotice() {
     };
   }, []);
 
-  const shouldShowNotice = useMemo(() => isAdBlockDetected, [isAdBlockDetected]);
+  const shouldShowNotice = useMemo(() => !isLocalEnvironment && isAdBlockDetected, [isAdBlockDetected, isLocalEnvironment]);
 
   if (isChecking || !shouldShowNotice) {
     return null;

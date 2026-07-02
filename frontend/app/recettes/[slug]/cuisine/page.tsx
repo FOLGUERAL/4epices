@@ -649,7 +649,7 @@ export default function CuisineModePage() {
                   }`}
                   disabled={!voiceState.isSupported}
                 >
-                  {voiceState.isListening ? 'Arrêter' : 'Voix'}
+                  {voiceState.isListening ? 'Arrêter la commande vocale' : 'Activer la commande vocale'}
                 </button>
                 <button
                   type="button"
