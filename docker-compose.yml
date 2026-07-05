@@ -60,11 +60,23 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
       # Fallback OpenAI (optionnel)
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # TTS local pour le Mode Cuisine
+      KOKORO_TTS_URL: http://kokoro-tts:8880
     ports:
       - "3000:3000"
     depends_on:
       - backend
       - ollama
+      - kokoro-tts
+    networks:
+      - 4epices_network
+
+  kokoro-tts:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    container_name: 4epices_kokoro_tts
+    restart: unless-stopped
+    expose:
+      - "8880"
     networks:
       - 4epices_network
 
@@ -114,4 +126,3 @@ networks:
 volumes:
   postgres_data:
   ollama_data:
-
