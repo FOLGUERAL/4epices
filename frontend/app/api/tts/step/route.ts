@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       input: text,
       voice,
       response_format: DEFAULT_FORMAT,
-      speed: 0.95,
+      speed: 0.88,
     }),
     cache: 'no-store',
   });

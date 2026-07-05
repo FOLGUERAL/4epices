@@ -179,8 +179,30 @@ export function useVoiceCooking(
   const lastSpokenTextRef = useRef('');
   const processCommandRef = useRef<(text: string) => boolean>(() => false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+  const audioProgressIntervalRef = useRef<number | null>(null);
   const ttsAbortRef = useRef<AbortController | null>(null);
   const speechRunIdRef = useRef(0);
+
+  const clearGeneratedAudio = useCallback((abortRequest = true) => {
+    if (abortRequest) {
+      ttsAbortRef.current?.abort();
+      ttsAbortRef.current = null;
+    }
+
+    if (audioProgressIntervalRef.current !== null) {
+      window.clearInterval(audioProgressIntervalRef.current);
+      audioProgressIntervalRef.current = null;
+    }
+
+    audioRef.current?.pause();
+    audioRef.current = null;
+
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -211,9 +233,7 @@ export function useVoiceCooking(
     setIsSpeechEnabled(enabled);
     if (!enabled) {
       speechRunIdRef.current += 1;
-      ttsAbortRef.current?.abort();
-      audioRef.current?.pause();
-      audioRef.current = null;
+      clearGeneratedAudio();
       synthRef.current?.cancel();
       setVoiceState((previous) => ({
         ...previous,
@@ -247,7 +267,7 @@ export function useVoiceCooking(
 
     const utterance = new SpeechSynthesisUtterance(spokenText);
     utterance.lang = 'fr-FR';
-    utterance.rate = 0.95;
+    utterance.rate = 0.88;
     utterance.pitch = 0.88;
     utterance.volume = 1;
 
@@ -300,11 +320,9 @@ export function useVoiceCooking(
 
     speechRunIdRef.current += 1;
     const currentRunId = speechRunIdRef.current;
-    ttsAbortRef.current?.abort();
+    clearGeneratedAudio();
     const abortController = new AbortController();
     ttsAbortRef.current = abortController;
-    audioRef.current?.pause();
-    audioRef.current = null;
     synthRef.current?.cancel();
 
     const spokenText = prepareSpeechText(text);
@@ -346,12 +364,40 @@ export function useVoiceCooking(
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         audioRef.current = audio;
+        audioUrlRef.current = audioUrl;
+
+        const updateAudioProgress = () => {
+          if (speechRunIdRef.current !== currentRunId) return;
+
+          const fallbackDuration = Math.max(2.2, spokenText.length / 13);
+          const duration =
+            Number.isFinite(audio.duration) && audio.duration > 0
+              ? audio.duration
+              : fallbackDuration;
+          const progress = Math.min(audio.currentTime / duration, 0.98);
+
+          setVoiceState((previous) => ({
+            ...previous,
+            isSpeaking: true,
+            speakingText: spokenText,
+            speakingCharIndex: Math.min(
+              spokenText.length,
+              Math.max(0, Math.floor(progress * spokenText.length))
+            ),
+          }));
+        };
+
+        const startAudioProgress = () => {
+          if (audioProgressIntervalRef.current !== null) return;
+
+          updateAudioProgress();
+          audioProgressIntervalRef.current = window.setInterval(updateAudioProgress, 90);
+        };
 
         audio.onended = () => {
-          URL.revokeObjectURL(audioUrl);
+          clearGeneratedAudio(false);
           if (speechRunIdRef.current !== currentRunId) return;
           ignoreRecognitionUntilRef.current = Date.now() + 250;
-          audioRef.current = null;
           setVoiceState((previous) => ({
             ...previous,
             isSpeaking: false,
@@ -360,9 +406,11 @@ export function useVoiceCooking(
           }));
         };
         audio.onerror = () => {
-          URL.revokeObjectURL(audioUrl);
+          clearGeneratedAudio(false);
           fallbackToNative();
         };
+        audio.onloadedmetadata = startAudioProgress;
+        audio.onplay = startAudioProgress;
 
         await audio.play();
       } catch (error) {
@@ -370,17 +418,15 @@ export function useVoiceCooking(
         fallbackToNative();
       }
     })();
-  }, [isSpeechEnabled, speakWithNativeSpeechSynthesis]);
+  }, [clearGeneratedAudio, isSpeechEnabled, speakWithNativeSpeechSynthesis]);
 
   useEffect(() => {
     return () => {
       speechRunIdRef.current += 1;
-      ttsAbortRef.current?.abort();
-      audioRef.current?.pause();
-      audioRef.current = null;
+      clearGeneratedAudio();
       synthRef.current?.cancel();
     };
-  }, []);
+  }, [clearGeneratedAudio]);
 
   const processCommand = useCallback(
     (text: string) => {
@@ -507,9 +553,7 @@ export function useVoiceCooking(
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     speechRunIdRef.current += 1;
-    ttsAbortRef.current?.abort();
-    audioRef.current?.pause();
-    audioRef.current = null;
+    clearGeneratedAudio();
     synthRef.current?.cancel();
     setVoiceState((previous) => ({
       ...previous,
@@ -519,19 +563,17 @@ export function useVoiceCooking(
       speakingText: '',
       speakingCharIndex: 0,
     }));
-  }, []);
+  }, [clearGeneratedAudio]);
 
   useEffect(() => {
     return () => {
       isListeningRef.current = false;
       recognitionRef.current?.stop();
       speechRunIdRef.current += 1;
-      ttsAbortRef.current?.abort();
-      audioRef.current?.pause();
-      audioRef.current = null;
+      clearGeneratedAudio();
       synthRef.current?.cancel();
     };
-  }, []);
+  }, [clearGeneratedAudio]);
 
   return { voiceState, speak, startListening, stopListening, isSpeechEnabled, setSpeechEnabled };
 }
