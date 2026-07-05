@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Navigation from "@/components/Navigation";
 import AdSenseScript from "@/components/AdSenseScript";
+import EzoicScript from "@/components/EzoicScript";
 import AdBlockNotice from "@/components/AdBlockNotice";
 import PWARegister from "@/components/PWARegister";
 import ShoppingList from "@/components/ShoppingList";
@@ -10,9 +11,9 @@ import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
   getSiteUrl,
-  isAdSenseEnabled,
   SITE_NAME,
 } from "@/lib/seo";
+import { getAdProvider, isAdSenseEnabled } from "@/lib/ads";
 import "./globals.css";
 
 const siteUrl = getSiteUrl();
@@ -73,7 +74,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const adsEnabled = isAdSenseEnabled();
+  const adProvider = getAdProvider();
+  const adsenseFallbackEnabled = isAdSenseEnabled();
   const organizationJsonLd = buildOrganizationJsonLd();
   const webSiteJsonLd = buildWebSiteJsonLd();
 
@@ -88,7 +90,8 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
-        {adsEnabled && <AdSenseScript />}
+        {(adProvider === 'adsense' || (adProvider === 'ezoic' && adsenseFallbackEnabled)) && <AdSenseScript />}
+        {adProvider === 'ezoic' && <EzoicScript />}
         <AdBlockNotice />
         <PWARegister />
         <Navigation />

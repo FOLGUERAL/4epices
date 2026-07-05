@@ -1,3 +1,5 @@
+export { isAdSenseEnabled } from './ads';
+
 /** Nom de marque affiché dans Google (site name, titles, JSON-LD). */
 export const SITE_NAME = '4 épices';
 
@@ -35,10 +37,6 @@ export function buildWebSiteJsonLd(): Record<string, unknown> {
       url: siteUrl,
     },
   };
-}
-
-export function isAdSenseEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_ENABLE_ADSENSE === 'true';
 }
 
 /** Extrait les étapes depuis le HTML richtext Strapi pour JSON-LD / SEO. */

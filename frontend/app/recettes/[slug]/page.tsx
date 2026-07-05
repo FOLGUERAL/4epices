@@ -22,7 +22,7 @@ import RatingForm from '@/components/RatingForm';
 import RatingList from '@/components/RatingList';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import ShareToPinterestButton from '@/components/ShareToPinterestButton';
-import GoogleAdSense from '@/components/GoogleAdSense';
+import AdSlot from '@/components/AdSlot';
 import RecipeKitchenModeActions from '@/components/RecipeKitchenModeActions';
 
 function formatTime(minutes: number): string {
@@ -345,7 +345,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
 
             {/* Annonce Google AdSense entre ingrédients et préparation */}
             <div className="mb-8 flex justify-center">
-              <GoogleAdSense
+              <AdSlot
+                placement="recipe-after-ingredients"
                 adFormat="auto"
                 className="min-h-[250px] w-full max-w-[728px]"
               />
@@ -363,7 +364,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
 
             {/* Annonce Google AdSense après la préparation */}
             <div className="mb-8 flex justify-center">
-              <GoogleAdSense
+              <AdSlot
+                placement="recipe-after-preparation"
                 adFormat="auto"
                 className="min-h-[250px] w-full max-w-[728px]"
               />

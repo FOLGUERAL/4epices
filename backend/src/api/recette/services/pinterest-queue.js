@@ -136,6 +136,26 @@ module.exports = ({ strapi }) => ({
 
       return { success: true, pinData };
     } catch (error) {
+      const isPinterestAuthError =
+        error.message?.includes('Authentification Pinterest') ||
+        error.message?.includes('Token Pinterest') ||
+        error.message?.includes('Pinterest API (401)');
+
+      if (isPinterestAuthError) {
+        await strapi.entityService.update(QUEUE_UID, dbTask.id, {
+          data: {
+            attempts: publicTask.attempts || 0,
+            lastError: error.message,
+          },
+        });
+        strapi.log.error(
+          `[Pinterest Queue] Auth Pinterest en erreur, tache ${publicTask.id} conservee sans consommer de tentative:`,
+          error.message
+        );
+
+        return { success: false, error: error.message, attempts: publicTask.attempts || 0 };
+      }
+
       const nextAttempts = (publicTask.attempts || 0) + 1;
 
       if (nextAttempts >= publicTask.maxAttempts) {

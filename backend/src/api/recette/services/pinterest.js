@@ -122,17 +122,28 @@ module.exports = ({ strapi }) => ({
   async createPinFromImage(recette, imageUrl, pinIndex = 0, boardId = null) {
     imageUrl = encodeUrlPath(imageUrl);
 
-    // Priorité admin : PINTEREST_ACCESS_TOKEN (.env) puis OAuth en mémoire (perdu au redémarrage)
+    // Priorité admin : OAuth en mémoire (token le plus frais), puis PINTEREST_ACCESS_TOKEN (.env)
     const envToken = (process.env.PINTEREST_ACCESS_TOKEN || '').trim() || null;
     const oauthAccessToken = getPinterestAuth()?.accessToken;
-    const accessToken = envToken || oauthAccessToken;
-    const tokenSource = envToken
-      ? 'PINTEREST_ACCESS_TOKEN (.env)'
-      : oauthAccessToken
-        ? 'OAuth (mémoire)'
-        : null;
+    const tokenCandidates = [];
 
-    if (!accessToken) {
+    if (oauthAccessToken) {
+      tokenCandidates.push({
+        accessToken: oauthAccessToken,
+        source: 'OAuth (memoire)',
+      });
+    }
+
+    if (envToken && envToken !== oauthAccessToken) {
+      tokenCandidates.push({
+        accessToken: envToken,
+        source: 'PINTEREST_ACCESS_TOKEN (.env)',
+      });
+    }
+
+    const tokenSource = tokenCandidates[0]?.source || null;
+
+    if (tokenCandidates.length === 0) {
       throw new Error('Token Pinterest manquant. Configurez PINTEREST_ACCESS_TOKEN dans .env ou connectez-vous via OAuth');
     }
 
@@ -195,27 +206,49 @@ module.exports = ({ strapi }) => ({
 
       strapi.log.info(`[Pinterest] Création du pin #${pinIndex} avec l'image: ${imageUrl}`);
       
-      const response = await axios.post(
-        `${apiBaseUrl}/v5/pins`,
-        {
-          board_id: finalBoardId,
-          title: pinTitle.substring(0, 100),
-          description: pinDescription.substring(0, 800),
-          link: recipeUrl,
-          media_source: {
-            source_type: 'image_url',
-            url: imageUrl,
-          },
-          alt_text: pinTitle,
+      const pinPayload = {
+        board_id: finalBoardId,
+        title: pinTitle.substring(0, 100),
+        description: pinDescription.substring(0, 800),
+        link: recipeUrl,
+        media_source: {
+          source_type: 'image_url',
+          url: imageUrl,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 20_000,
+        alt_text: pinTitle,
+      };
+
+      let response;
+      let lastAuthError = null;
+
+      for (const [index, candidate] of tokenCandidates.entries()) {
+        try {
+          response = await axios.post(`${apiBaseUrl}/v5/pins`, pinPayload, {
+            headers: {
+              Authorization: `Bearer ${candidate.accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 20_000,
+          });
+          break;
+        } catch (error) {
+          const status = error?.response?.status;
+          lastAuthError = error;
+
+          if (status === 401 && index < tokenCandidates.length - 1) {
+            strapi.log.warn(
+              `[Pinterest] Token refusé (${candidate.source}), tentative avec ${tokenCandidates[index + 1].source}`
+            );
+            continue;
+          }
+
+          throw error;
         }
-      );
+      }
+
+      if (!response && lastAuthError) {
+        throw lastAuthError;
+      }
 
       strapi.log.info(`[Pinterest] Pin #${pinIndex} créé avec succès (ID: ${response.data?.id})`);
       return response.data;
@@ -235,6 +268,7 @@ module.exports = ({ strapi }) => ({
       } else if (status === 401) {
         errorMessage =
           `Authentification Pinterest échouée (401). Source du token : ${tokenSource}.\n` +
+          `Sources tentées : ${tokenCandidates.map((candidate) => candidate.source).join(', ')}.\n` +
           `API utilisée : ${useSandbox ? 'sandbox (api-sandbox.pinterest.com)' : 'production (api.pinterest.com)'}.\n\n` +
           `Vérifications :\n` +
           `1. En production : PINTEREST_USE_SANDBOX=false (défaut = sandbox)\n` +
@@ -260,6 +294,7 @@ module.exports = ({ strapi }) => ({
         data,
         errorMessage,
         imageUrl,
+        tokenSources: tokenCandidates.map((candidate) => candidate.source),
       });
       
       throw new Error(errorMessage);
