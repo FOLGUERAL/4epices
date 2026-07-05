@@ -178,6 +178,9 @@ export function useVoiceCooking(
   const ignoreRecognitionUntilRef = useRef(0);
   const lastSpokenTextRef = useRef('');
   const processCommandRef = useRef<(text: string) => boolean>(() => false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const ttsAbortRef = useRef<AbortController | null>(null);
+  const speechRunIdRef = useRef(0);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -207,6 +210,10 @@ export function useVoiceCooking(
   const setSpeechEnabled = useCallback((enabled: boolean) => {
     setIsSpeechEnabled(enabled);
     if (!enabled) {
+      speechRunIdRef.current += 1;
+      ttsAbortRef.current?.abort();
+      audioRef.current?.pause();
+      audioRef.current = null;
       synthRef.current?.cancel();
       setVoiceState((previous) => ({
         ...previous,
@@ -220,25 +227,33 @@ export function useVoiceCooking(
     }
   }, []);
 
-  const speak = useCallback((text: string, interrupt = false, allowVoiceFallback = true) => {
-    if (!isSpeechEnabled || !synthRef.current) return;
+  const speakWithNativeSpeechSynthesis = useCallback((spokenText: string, allowVoiceFallback = true) => {
+    if (!synthRef.current) return;
 
-    if (interrupt) {
-      synthRef.current.cancel();
-    }
+    const currentRunId = speechRunIdRef.current;
+    synthRef.current.cancel();
 
-    const spokenText = prepareSpeechText(text);
+    const finishSpeech = () => {
+      if (speechRunIdRef.current !== currentRunId) return;
 
-    lastSpokenTextRef.current = normalizeSpeechText(spokenText);
-    ignoreRecognitionUntilRef.current = Date.now() + 250;
+      ignoreRecognitionUntilRef.current = Date.now() + 250;
+      setVoiceState((previous) => ({
+        ...previous,
+        isSpeaking: false,
+        speakingText: spokenText,
+        speakingCharIndex: spokenText.length,
+      }));
+    };
 
     const utterance = new SpeechSynthesisUtterance(spokenText);
     utterance.lang = 'fr-FR';
-    utterance.rate = 0.88;
+    utterance.rate = 0.95;
     utterance.pitch = 0.88;
     utterance.volume = 1;
 
     utterance.onstart = () => {
+      if (speechRunIdRef.current !== currentRunId) return;
+
       ignoreRecognitionUntilRef.current = Date.now() + 300;
       setVoiceState((previous) => ({
         ...previous,
@@ -248,6 +263,7 @@ export function useVoiceCooking(
       }));
     };
     utterance.onboundary = (event) => {
+      if (speechRunIdRef.current !== currentRunId) return;
       if (typeof event.charIndex !== 'number') return;
 
       setVoiceState((previous) => ({
@@ -256,29 +272,15 @@ export function useVoiceCooking(
         speakingCharIndex: Math.min(event.charIndex, spokenText.length),
       }));
     };
-    utterance.onend = () => {
-      ignoreRecognitionUntilRef.current = Date.now() + 250;
-      setVoiceState((previous) => ({
-        ...previous,
-        isSpeaking: false,
-        speakingText: spokenText,
-        speakingCharIndex: spokenText.length,
-      }));
-    };
+    utterance.onend = finishSpeech;
     utterance.onerror = () => {
-      ignoreRecognitionUntilRef.current = Date.now() + 250;
-      setVoiceState((previous) => ({
-        ...previous,
-        isSpeaking: false,
-        speakingText: spokenText,
-        speakingCharIndex: spokenText.length,
-      }));
+      finishSpeech();
 
       if (allowVoiceFallback && utterance.voice && isKokoroVoice(utterance.voice)) {
         failedVoiceNamesRef.current.add(utterance.voice.name);
         preferredVoiceRef.current =
           selectBestFrenchVoice(synthRef.current?.getVoices() || [], failedVoiceNamesRef.current) || null;
-        window.setTimeout(() => speak(spokenText, true, false), 150);
+        window.setTimeout(() => speakWithNativeSpeechSynthesis(spokenText, false), 150);
       }
     };
 
@@ -291,7 +293,94 @@ export function useVoiceCooking(
     }
 
     synthRef.current.speak(utterance);
-  }, [isSpeechEnabled]);
+  }, []);
+
+  const speak = useCallback((text: string, interrupt = true, allowVoiceFallback = true) => {
+    if (!isSpeechEnabled) return;
+
+    speechRunIdRef.current += 1;
+    const currentRunId = speechRunIdRef.current;
+    ttsAbortRef.current?.abort();
+    const abortController = new AbortController();
+    ttsAbortRef.current = abortController;
+    audioRef.current?.pause();
+    audioRef.current = null;
+    synthRef.current?.cancel();
+
+    const spokenText = prepareSpeechText(text);
+
+    lastSpokenTextRef.current = normalizeSpeechText(spokenText);
+    ignoreRecognitionUntilRef.current = Date.now() + 250;
+
+    setVoiceState((previous) => ({
+      ...previous,
+      isSpeaking: true,
+      speakingText: spokenText,
+      speakingCharIndex: 0,
+    }));
+
+    const fallbackToNative = () => {
+      if (speechRunIdRef.current !== currentRunId) return;
+      speakWithNativeSpeechSynthesis(spokenText, allowVoiceFallback);
+    };
+
+    void (async () => {
+      try {
+        const response = await fetch('/api/tts/step', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ text: spokenText }),
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          fallbackToNative();
+          return;
+        }
+
+        const audioBlob = await response.blob();
+        if (speechRunIdRef.current !== currentRunId) return;
+
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          if (speechRunIdRef.current !== currentRunId) return;
+          ignoreRecognitionUntilRef.current = Date.now() + 250;
+          audioRef.current = null;
+          setVoiceState((previous) => ({
+            ...previous,
+            isSpeaking: false,
+            speakingText: spokenText,
+            speakingCharIndex: spokenText.length,
+          }));
+        };
+        audio.onerror = () => {
+          URL.revokeObjectURL(audioUrl);
+          fallbackToNative();
+        };
+
+        await audio.play();
+      } catch (error) {
+        if (abortController.signal.aborted) return;
+        fallbackToNative();
+      }
+    })();
+  }, [isSpeechEnabled, speakWithNativeSpeechSynthesis]);
+
+  useEffect(() => {
+    return () => {
+      speechRunIdRef.current += 1;
+      ttsAbortRef.current?.abort();
+      audioRef.current?.pause();
+      audioRef.current = null;
+      synthRef.current?.cancel();
+    };
+  }, []);
 
   const processCommand = useCallback(
     (text: string) => {
@@ -417,11 +506,18 @@ export function useVoiceCooking(
     isListeningRef.current = false;
     recognitionRef.current?.stop();
     recognitionRef.current = null;
+    speechRunIdRef.current += 1;
+    ttsAbortRef.current?.abort();
+    audioRef.current?.pause();
+    audioRef.current = null;
     synthRef.current?.cancel();
     setVoiceState((previous) => ({
       ...previous,
       isListening: false,
       lastCommand: '',
+      isSpeaking: false,
+      speakingText: '',
+      speakingCharIndex: 0,
     }));
   }, []);
 
@@ -429,6 +525,10 @@ export function useVoiceCooking(
     return () => {
       isListeningRef.current = false;
       recognitionRef.current?.stop();
+      speechRunIdRef.current += 1;
+      ttsAbortRef.current?.abort();
+      audioRef.current?.pause();
+      audioRef.current = null;
       synthRef.current?.cancel();
     };
   }, []);

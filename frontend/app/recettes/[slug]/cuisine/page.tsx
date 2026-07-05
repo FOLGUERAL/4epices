@@ -190,63 +190,12 @@ const voiceCommandGroups = [
 const playCookingStartSound = (): number => {
   if (typeof window === 'undefined') return 0;
 
-  const AudioContextClass =
-    window.AudioContext ||
-    (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext })
-      .webkitAudioContext;
-
-  if (!AudioContextClass) return 0;
-
   try {
-    const audioContext = new AudioContextClass();
-    const now = audioContext.currentTime + 0.02;
-    const masterGain = audioContext.createGain();
-
-    masterGain.gain.setValueAtTime(0.0001, now);
-    masterGain.gain.exponentialRampToValueAtTime(0.72, now + 0.04);
-    masterGain.gain.setValueAtTime(0.62, now + 4.45);
-    masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 4.95);
-    masterGain.connect(audioContext.destination);
-
-    const playTone = (
-      frequency: number,
-      start: number,
-      duration: number,
-      type: OscillatorType,
-      peakGain: number
-    ) => {
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      const startTime = now + start;
-      const endTime = startTime + duration;
-
-      oscillator.type = type;
-      oscillator.frequency.setValueAtTime(frequency, startTime);
-      gain.gain.setValueAtTime(0.0001, startTime);
-      gain.gain.exponentialRampToValueAtTime(peakGain, startTime + 0.025);
-      gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
-
-      oscillator.connect(gain);
-      gain.connect(masterGain);
-      oscillator.start(startTime);
-      oscillator.stop(endTime + 0.03);
-    };
-
-    playTone(146.83, 0, 0.22, 'sine', 0.24);
-    playTone(196, 0.2, 0.28, 'sine', 0.2);
-    playTone(110, 0.45, 2.5, 'sine', 0.11);
-    playTone(220, 0.85, 2.2, 'triangle', 0.035);
-    playTone(293.66, 1.45, 1.7, 'sine', 0.055);
-    playTone(392, 2.25, 1.35, 'triangle', 0.045);
-    playTone(659.25, 3.35, 0.36, 'triangle', 0.065);
-    playTone(783.99, 3.72, 0.34, 'triangle', 0.055);
-    playTone(987.77, 4.12, 0.42, 'triangle', 0.055);
-    playTone(1318.51, 4.48, 0.22, 'sine', 0.035);
-
-    window.setTimeout(() => {
-      void audioContext.close();
-    }, 5200);
-
+    const audio = new Audio('/launch_music.m4a');
+    audio.volume = 0.85;
+    void audio.play().catch(() => {
+      // Le navigateur peut refuser la lecture audio selon le contexte.
+    });
     return 5000;
   } catch {
     return 0;
@@ -270,6 +219,7 @@ export default function CuisineModePage() {
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [hasShownVoiceHint, setHasShownVoiceHint] = useState(false);
   const [hasStartedCooking, setHasStartedCooking] = useState(false);
+  const [isVoiceCommandEnabled, setIsVoiceCommandEnabled] = useState(false);
   const [hasUsedStepSwipe, setHasUsedStepSwipe] = useState(false);
   const [isSwipeCoachVisible, setIsSwipeCoachVisible] = useState(false);
   const stepBlockRef = useRef<HTMLDivElement | null>(null);
@@ -474,6 +424,12 @@ export default function CuisineModePage() {
   const lastAutoReadStepRef = useRef(currentStep);
 
   useEffect(() => {
+    return () => {
+      stopListening();
+    };
+  }, [slug, stopListening]);
+
+  useEffect(() => {
     if (!hasStartedCooking) return;
     if (lastAutoReadStepRef.current === currentStep) return;
 
@@ -494,6 +450,10 @@ export default function CuisineModePage() {
     setIsSwipeCoachVisible(true);
     setIsVoiceHelpOpen(false);
 
+    if (isVoiceCommandEnabled && voiceState.isSupported && !voiceState.isListening) {
+      startListening();
+    }
+
     if (isSpeechEnabled && steps[firstStepIndex]?.text) {
       const startSoundDelay = playCookingStartSound();
 
@@ -501,7 +461,7 @@ export default function CuisineModePage() {
         speak(steps[firstStepIndex].text, true);
       }, startSoundDelay);
     }
-  }, [isSpeechEnabled, speak, steps]);
+  }, [isSpeechEnabled, isVoiceCommandEnabled, speak, startListening, steps, voiceState.isListening, voiceState.isSupported]);
 
   useEffect(() => {
     if (!hasStartedCooking || typeof window === 'undefined') return;
@@ -532,11 +492,19 @@ export default function CuisineModePage() {
   }, [currentStepData?.text, speak]);
 
   const handleToggleVoice = useCallback(() => {
+    if (!hasStartedCooking) {
+      setIsVoiceCommandEnabled((isEnabled) => !isEnabled);
+      setIsVoiceHelpOpen(false);
+      return;
+    }
+
     if (voiceState.isListening) {
+      setIsVoiceCommandEnabled(false);
       stopListening();
       return;
     }
 
+    setIsVoiceCommandEnabled(true);
     startListening();
     setIsVoiceHelpOpen(false);
 
@@ -544,7 +512,7 @@ export default function CuisineModePage() {
       toast.info('Commandes vocales : dites "suivant", "repete" ou "aide".');
       setHasShownVoiceHint(true);
     }
-  }, [hasShownVoiceHint, startListening, stopListening, voiceState.isListening]);
+  }, [hasShownVoiceHint, hasStartedCooking, startListening, stopListening, voiceState.isListening]);
 
   const progress = hasStartedCooking && steps.length > 0 ? ((currentStep + 1) / steps.length) * 100 : 0;
   const isLastStep = hasStartedCooking && currentStep === steps.length - 1;
@@ -641,7 +609,10 @@ export default function CuisineModePage() {
   const tempsPrep = recette.attributes.tempsPreparation || 0;
   const tempsCuisson = recette.attributes.tempsCuisson || 0;
   const tempsTotal = tempsPrep + tempsCuisson;
-  const renderVoiceControls = (showLabels: boolean) => (
+  const renderVoiceControls = (showLabels: boolean) => {
+    const isVoiceToggleActive = hasStartedCooking ? voiceState.isListening : isVoiceCommandEnabled;
+
+    return (
     <div className="relative flex flex-wrap gap-2">
       <button
         type="button"
@@ -655,8 +626,8 @@ export default function CuisineModePage() {
             ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
             : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
         }`}
-        aria-label={isSpeechEnabled ? 'Désactiver le guide oral' : 'Activer le guide oral'}
-        title={isSpeechEnabled ? 'Désactiver le guide oral' : 'Activer le guide oral'}
+        aria-label={isSpeechEnabled ? 'Désactiver le son' : 'Activer le son'}
+        title={isSpeechEnabled ? 'Désactiver le son' : 'Activer le son'}
       >
         <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
           isSpeechEnabled ? 'bg-emerald-600' : 'bg-red-500'
@@ -672,38 +643,38 @@ export default function CuisineModePage() {
           </span>
         </span>
         {showLabels && (
-          <span>{isSpeechEnabled ? 'Désactiver le guide oral' : 'Activer le guide oral'}</span>
+          <span>{isSpeechEnabled ? 'Désactiver le son' : 'Activer le son'}</span>
         )}
       </button>
       <button
         type="button"
         onClick={handleToggleVoice}
         role="switch"
-        aria-checked={voiceState.isListening}
+        aria-checked={isVoiceToggleActive}
         className={`inline-flex h-10 items-center justify-center rounded-lg border text-sm font-medium transition-colors ${
           showLabels ? 'gap-3 px-3' : 'w-14 px-1'
         } ${
-          voiceState.isListening
+          isVoiceToggleActive
             ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
             : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
         }`}
         disabled={!voiceState.isSupported}
-        aria-label={voiceState.isListening ? 'Arrêter la commande vocale' : 'Activer la commande vocale'}
-        title={voiceState.isListening ? 'Arrêter la commande vocale' : 'Activer la commande vocale'}
+        aria-label={isVoiceToggleActive ? 'Désactiver la commande vocale' : 'Activer la commande vocale'}
+        title={isVoiceToggleActive ? 'Désactiver la commande vocale' : 'Activer la commande vocale'}
       >
         <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-          voiceState.isListening ? 'bg-emerald-600' : 'bg-red-500'
+          isVoiceToggleActive ? 'bg-emerald-600' : 'bg-red-500'
         }`}>
           <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm transition-transform ${
-            voiceState.isListening ? 'translate-x-5' : 'translate-x-1'
+            isVoiceToggleActive ? 'translate-x-5' : 'translate-x-1'
           }`}>
             <Mic className={`h-3.5 w-3.5 ${
-              voiceState.isListening ? 'text-emerald-700' : 'text-red-700'
+              isVoiceToggleActive ? 'text-emerald-700' : 'text-red-700'
             }`} />
           </span>
         </span>
         {showLabels && (
-          <span>{voiceState.isListening ? 'Arrêter la commande vocale' : 'Activer la commande vocale'}</span>
+          <span>{isVoiceToggleActive ? 'Désactiver la commande vocale' : 'Activer la commande vocale'}</span>
         )}
       </button>
       <button
@@ -751,7 +722,8 @@ export default function CuisineModePage() {
         </div>
       )}
     </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 print:bg-white">
@@ -790,12 +762,6 @@ export default function CuisineModePage() {
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
             >
               🖨️ Imprimer
-            </button>
-            <button
-              onClick={() => router.push(`/recettes/${recette.attributes.slug}/classique`)}
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
-            >
-              Voir la recette détaillée
             </button>
           </div>
         </div>
@@ -910,7 +876,7 @@ export default function CuisineModePage() {
                   Configurez le guidage avant de lancer la recette
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-gray-600">
-                  Vérifiez vos ingrédients, choisissez le son et activez la commande vocale si vous voulez garder les mains libres.
+                  Vérifiez vos ingrédients, choisissez le son et activez la commande vocale si vous voulez garder les mains libres en utilisant votre voix pour passer d'une étape à l'autre.
                 </p>
               </div>
 
@@ -925,20 +891,29 @@ export default function CuisineModePage() {
                   {isSpeechEnabled ? 'Lecture orale active' : 'Lecture orale inactive'}
                 </span>
                 <span className={`rounded-full px-3 py-1 ${
-                  voiceState.isListening ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                  isVoiceCommandEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
                 }`}>
-                  {voiceState.isListening ? 'Commande vocale active' : 'Commande vocale inactive'}
+                  {isVoiceCommandEnabled ? 'Commande vocale active au lancement' : 'Commande vocale inactive'}
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={handleStartCooking}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 text-base font-bold text-white shadow-sm transition-colors hover:bg-orange-700 focus-ring"
-              >
-                <Play className="h-5 w-5" aria-hidden="true" />
-                Démarrer le guidage
-              </button>
+              <div className="flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleStartCooking}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 text-base font-bold text-white shadow-sm transition-colors hover:bg-orange-700 focus-ring"
+                >
+                  <Play className="h-5 w-5" aria-hidden="true" />
+                  Lancer la recette en mode cuisine
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/recettes/${recette.attributes.slug}/classique`)}
+                  className="inline-flex min-h-12 items-center justify-center rounded-lg border border-gray-200 bg-white px-5 py-3 text-base font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-ring"
+                >
+                  Voir la recette détaillée
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -993,11 +968,13 @@ export default function CuisineModePage() {
               onSpeak={handleSpeakGuide}
             />
             {isSwipeCoachVisible && (
-              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-gray-900/30 px-6 backdrop-blur-[2px] sm:hidden">
+              <div className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-gray-900/30 px-6 backdrop-blur-[2px] ${
+                isVoiceCommandEnabled ? '' : 'sm:hidden'
+              }`}>
                 <div className="flex max-w-[18rem] flex-col items-center gap-3 rounded-2xl bg-white px-5 py-4 text-gray-800 shadow-xl">
-                  {voiceState.isListening ? (
+                  {isVoiceCommandEnabled ? (
                     <div className="flex flex-col items-center gap-3 text-center">
-                      <div className="flex flex-col items-center gap-2">
+                      <div className="flex flex-col items-center gap-2 sm:hidden">
                         <Pointer className="h-12 w-12 motion-safe:animate-[swipe-hand_2.5s_ease-in-out_2]" aria-hidden="true" />
                         <p className="flex items-center gap-2 text-sm font-semibold text-gray-800">
                           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -1005,7 +982,7 @@ export default function CuisineModePage() {
                           <ChevronRight className="h-4 w-4" aria-hidden="true" />
                         </p>
                       </div>
-                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">
+                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 sm:hidden">
                         OU
                       </span>
                       <div className="flex flex-col items-center gap-2">

@@ -116,10 +116,8 @@ export default function AnimatedCookingGuide({
       return;
     }
 
-    if (!isSpeaking) {
-      onSpeak();
-      setShowSpeechHint(false);
-    }
+    onSpeak();
+    setShowSpeechHint(false);
   };
 
   return (
