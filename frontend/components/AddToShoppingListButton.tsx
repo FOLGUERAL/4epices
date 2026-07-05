@@ -72,7 +72,7 @@ export default function AddToShoppingListButton({ ingredients, recipeId }: AddTo
           ? 'bg-red-100 text-red-600 hover:bg-red-200'
           : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
       } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-      title={isInList ? 'Retirer de la liste de courses' : 'Ajouter à la liste de courses'}
+      title={isInList ? 'Retirer de la liste de courses' : 'Ajouter les ingrédients à la liste de courses'}
     >
       {isInList ? (
         <>
@@ -109,11 +109,10 @@ export default function AddToShoppingListButton({ ingredients, recipeId }: AddTo
             />
           </svg>
           <span className="text-sm font-medium">
-            Liste de courses
+            Ajouter les ingrédients à la liste de courses
           </span>
         </>
       )}
     </button>
   );
 }
-

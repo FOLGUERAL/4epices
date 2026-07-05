@@ -28,7 +28,7 @@ export default function KitchenModeLink({
 
   return (
     <Link
-      href={`/recettes/${slug}/cuisine`}
+      href={`/recettes/${slug}`}
       onClick={handleClick}
       className={
         className ||

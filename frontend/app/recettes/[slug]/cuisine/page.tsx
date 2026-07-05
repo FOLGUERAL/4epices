@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, CircleHelp, Mic, Play, Pointer, Volume2, Vol
 import { getRecetteBySlug, Recette } from '@/lib/strapi';
 import RecettesGridSkeleton from '@/components/RecettesGridSkeleton';
 import AnimatedCookingGuide from '@/components/AnimatedCookingGuide';
+import OptimizedImage from '@/components/OptimizedImage';
 import RatingForm from '@/components/RatingForm';
 import { getKitchenRecipeStorageKey } from '@/components/KitchenModeLink';
 import { toast } from '@/components/Toast';
@@ -266,7 +267,7 @@ export default function CuisineModePage() {
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [steps, setSteps] = useState<StepData[]>([]);
   const [isVoiceHelpOpen, setIsVoiceHelpOpen] = useState(false);
-  const [isIngredientsOpen, setIsIngredientsOpen] = useState(true);
+  const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [hasShownVoiceHint, setHasShownVoiceHint] = useState(false);
   const [hasStartedCooking, setHasStartedCooking] = useState(false);
   const [hasUsedStepSwipe, setHasUsedStepSwipe] = useState(false);
@@ -547,6 +548,11 @@ export default function CuisineModePage() {
 
   const progress = hasStartedCooking && steps.length > 0 ? ((currentStep + 1) / steps.length) * 100 : 0;
   const isLastStep = hasStartedCooking && currentStep === steps.length - 1;
+  const recipeImageUrl = recette?.attributes.imagePrincipale?.data?.attributes?.url || null;
+  const recipeImageAlt =
+    recette?.attributes.imagePrincipale?.data?.attributes?.alternativeText ||
+    recette?.attributes.titre ||
+    'Photo de la recette';
 
   if (loading) {
     return (
@@ -622,10 +628,10 @@ export default function CuisineModePage() {
             Cette recette ne contient pas d’étapes de préparation détaillées.
           </p>
           <button
-            onClick={() => router.push(`/recettes/${recette.attributes.slug}`)}
+            onClick={() => router.push(`/recettes/${recette.attributes.slug}/classique`)}
             className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors font-medium"
           >
-            Voir la recette complète
+            Voir la recette détaillée
           </button>
         </div>
       </div>
@@ -786,10 +792,10 @@ export default function CuisineModePage() {
               🖨️ Imprimer
             </button>
             <button
-              onClick={() => router.push(`/recettes/${recette.attributes.slug}`)}
+              onClick={() => router.push(`/recettes/${recette.attributes.slug}/classique`)}
               className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
             >
-              Vue complète
+              Voir la recette détaillée
             </button>
           </div>
         </div>
@@ -817,7 +823,7 @@ export default function CuisineModePage() {
               onClick={() => setIsIngredientsOpen((isOpen) => !isOpen)}
               className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-orange-700 focus-ring"
             >
-              {isIngredientsOpen ? 'Masquer les ingredients' : 'Ingredients'}
+              {isIngredientsOpen ? 'Masquer les ingrédients' : 'Afficher les ingrédients'}
             </button>
           </div>
 
@@ -849,7 +855,7 @@ export default function CuisineModePage() {
                 </span>
               </div>
 
-              <h2 className="mb-3 text-xl font-bold text-gray-900">Ingredients</h2>
+              <h2 className="mb-3 text-xl font-bold text-gray-900">Ingrédients</h2>
               <ul className="grid gap-2 md:grid-cols-2">
                 {ingredients.map((ingredient, index) => {
                   const isChecked = checkedIngredients.has(index);
@@ -884,6 +890,18 @@ export default function CuisineModePage() {
         <div ref={stepBlockRef} className="bg-white rounded-2xl shadow-lg p-6 scroll-mt-20">
           {!hasStartedCooking ? (
             <div className="flex flex-col items-center gap-6 text-center">
+              <div className="w-full overflow-hidden rounded-xl bg-gray-100 shadow-sm">
+                <OptimizedImage
+                  src={recipeImageUrl}
+                  alt={recipeImageAlt}
+                  fill
+                  priority
+                  aspectRatio="16/9"
+                  sizes="(max-width: 896px) 100vw, 896px"
+                  className="w-full"
+                />
+              </div>
+
               <div className="max-w-2xl">
                 <span className="inline-flex rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold uppercase text-orange-700">
                   Prêt à cuisiner
