@@ -8,7 +8,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MAX_TEXT_LENGTH = 1200;
-const DEFAULT_VOICE = 'ff_siwis';
+const DEFAULT_VOICE = process.env.KOKORO_TTS_VOICE || 'fm_lewis';
+const FALLBACK_VOICES = ['fm_lewis', 'bm_george', 'bm_lewis', 'am_adam', 'ff_siwis'];
 const DEFAULT_FORMAT = 'mp3';
 
 const getCacheDir = () =>
@@ -18,6 +19,11 @@ const getCacheKey = (text: string, voice: string) =>
   createHash('sha256')
     .update(JSON.stringify({ text, voice, format: DEFAULT_FORMAT, engine: 'kokoro-fastapi-v1' }))
     .digest('hex');
+
+const getVoiceCandidates = (voice: string) =>
+  [voice, ...FALLBACK_VOICES].filter(
+    (candidate, index, voices) => candidate && voices.indexOf(candidate) === index
+  );
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +37,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => null);
     const text = typeof body?.text === 'string' ? body.text.trim() : '';
-    const voice = typeof body?.voice === 'string' && body.voice.trim() ? body.voice.trim() : DEFAULT_VOICE;
+    const requestedVoice = typeof body?.voice === 'string' && body.voice.trim() ? body.voice.trim() : DEFAULT_VOICE;
+    const voiceCandidates = getVoiceCandidates(requestedVoice);
 
     if (!text) {
       return NextResponse.json({ error: 'Texte manquant' }, { status: 400 });
@@ -42,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cacheDir = getCacheDir();
-    const cacheKey = getCacheKey(text, voice);
+    const cacheKey = getCacheKey(text, voiceCandidates[0]);
     const audioPath = path.join(cacheDir, `${cacheKey}.${DEFAULT_FORMAT}`);
 
     try {
@@ -59,30 +66,43 @@ export async function POST(request: NextRequest) {
       // Cache miss.
     }
 
-    const response = await fetch(`${kokoroUrl}/v1/audio/speech`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'kokoro',
-        input: text,
-        voice,
-        response_format: DEFAULT_FORMAT,
-        speed: 0.88,
-      }),
-      cache: 'no-store',
-    });
+    let response: Response | null = null;
+    let selectedVoice = voiceCandidates[0];
+    let lastErrorText = '';
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
+    for (const voice of voiceCandidates) {
+      response = await fetch(`${kokoroUrl}/v1/audio/speech`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'kokoro',
+          input: text,
+          voice,
+          response_format: DEFAULT_FORMAT,
+          speed: 0.88,
+        }),
+        cache: 'no-store',
+      });
+
+      if (response.ok) {
+        selectedVoice = voice;
+        break;
+      }
+
+      lastErrorText = await response.text().catch(() => '');
+    }
+
+    if (!response || !response.ok) {
       console.error('[TTS Kokoro] Erreur API', {
-        status: response.status,
-        error: errorText,
+        status: response?.status,
+        error: lastErrorText,
         kokoroUrl,
+        voiceCandidates,
       });
       return NextResponse.json(
-        { error: errorText || `Erreur TTS (${response.status})` },
+        { error: lastErrorText || `Erreur TTS (${response?.status || 'unknown'})` },
         { status: 502 }
       );
     }
@@ -107,6 +127,7 @@ export async function POST(request: NextRequest) {
         'content-type': response.headers.get('content-type') || 'audio/mpeg',
         'cache-control': 'public, max-age=31536000, immutable',
         'x-tts-cache': cacheState,
+        'x-tts-voice': selectedVoice,
       },
     });
   } catch (error) {

@@ -182,6 +182,8 @@ export function useVoiceCooking(
   const audioUrlRef = useRef<string | null>(null);
   const audioProgressIntervalRef = useRef<number | null>(null);
   const ttsAbortRef = useRef<AbortController | null>(null);
+  const ttsPrefetchAbortRef = useRef<AbortController | null>(null);
+  const ttsAudioCacheRef = useRef<Map<string, Blob>>(new Map());
   const speechRunIdRef = useRef(0);
 
   const clearGeneratedAudio = useCallback((abortRequest = true) => {
@@ -332,8 +334,8 @@ export function useVoiceCooking(
 
     setVoiceState((previous) => ({
       ...previous,
-      isSpeaking: true,
-      speakingText: spokenText,
+      isSpeaking: false,
+      speakingText: '',
       speakingCharIndex: 0,
     }));
 
@@ -344,21 +346,27 @@ export function useVoiceCooking(
 
     void (async () => {
       try {
-        const response = await fetch('/api/tts/step', {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({ text: spokenText }),
-          signal: abortController.signal,
-        });
+        let audioBlob = ttsAudioCacheRef.current.get(spokenText);
 
-        if (!response.ok) {
-          fallbackToNative();
-          return;
+        if (!audioBlob) {
+          const response = await fetch('/api/tts/step', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({ text: spokenText }),
+            signal: abortController.signal,
+          });
+
+          if (!response.ok) {
+            fallbackToNative();
+            return;
+          }
+
+          audioBlob = await response.blob();
+          ttsAudioCacheRef.current.set(spokenText, audioBlob);
         }
 
-        const audioBlob = await response.blob();
         if (speechRunIdRef.current !== currentRunId) return;
 
         const audioUrl = URL.createObjectURL(audioBlob);
@@ -409,8 +417,7 @@ export function useVoiceCooking(
           clearGeneratedAudio(false);
           fallbackToNative();
         };
-        audio.onloadedmetadata = startAudioProgress;
-        audio.onplay = startAudioProgress;
+        audio.onplaying = startAudioProgress;
 
         await audio.play();
       } catch (error) {
@@ -421,8 +428,50 @@ export function useVoiceCooking(
   }, [clearGeneratedAudio, isSpeechEnabled, speakWithNativeSpeechSynthesis]);
 
   useEffect(() => {
+    if (!isSpeechEnabled || typeof window === 'undefined') return;
+
+    const nextStepText = steps[currentStep + 1]?.text;
+    if (!nextStepText) return;
+
+    const spokenText = prepareSpeechText(nextStepText);
+    if (!spokenText || ttsAudioCacheRef.current.has(spokenText)) return;
+
+    ttsPrefetchAbortRef.current?.abort();
+    const abortController = new AbortController();
+    ttsPrefetchAbortRef.current = abortController;
+
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const response = await fetch('/api/tts/step', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({ text: spokenText }),
+            signal: abortController.signal,
+          });
+
+          if (!response.ok || abortController.signal.aborted) return;
+
+          const audioBlob = await response.blob();
+          ttsAudioCacheRef.current.set(spokenText, audioBlob);
+        } catch {
+          // Prefetch is best effort. Normal playback still has native fallback.
+        }
+      })();
+    }, 600);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      abortController.abort();
+    };
+  }, [currentStep, isSpeechEnabled, steps]);
+
+  useEffect(() => {
     return () => {
       speechRunIdRef.current += 1;
+      ttsPrefetchAbortRef.current?.abort();
       clearGeneratedAudio();
       synthRef.current?.cancel();
     };
