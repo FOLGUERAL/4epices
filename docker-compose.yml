@@ -61,7 +61,7 @@ services:
       # Fallback OpenAI (optionnel)
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       # TTS local pour le Mode Cuisine
-      KOKORO_TTS_URL: http://kokoro-tts:8880
+      KOKORO_TTS_URL: ${KOKORO_TTS_URL:-http://kokoro-tts:8880}
     ports:
       - "3000:3000"
     depends_on:
