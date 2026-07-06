@@ -4,6 +4,8 @@
  * Service pour gérer les tokens Pinterest par utilisateur
  */
 module.exports = ({ strapi }) => ({
+  ADMIN_SESSION_ID: '__pinterest_admin__',
+
   /**
    * Récupérer le token Pinterest d'un utilisateur
    * @param {number|string} userId - ID de l'utilisateur Strapi
@@ -94,6 +96,21 @@ module.exports = ({ strapi }) => ({
       strapi.log.error('Erreur lors de la sauvegarde du token Pinterest:', error);
       throw error;
     }
+  },
+
+  async getAdminToken() {
+    return await this.getUserToken(null, this.ADMIN_SESSION_ID);
+  },
+
+  async saveAdminToken(data) {
+    return await this.saveUserToken({
+      ...data,
+      sessionId: this.ADMIN_SESSION_ID,
+    });
+  },
+
+  async deleteAdminToken() {
+    return await this.deleteUserToken(null, this.ADMIN_SESSION_ID);
   },
 
   /**

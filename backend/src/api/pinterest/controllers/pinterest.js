@@ -182,6 +182,13 @@ module.exports = {
           user: pinterestUser,
         });
 
+        await strapi.service('api::pinterest-token.pinterest-token').saveAdminToken({
+          accessToken,
+          refreshToken: tokenData.refresh_token,
+          expiresAt,
+          username,
+        });
+
         // Rediriger vers l'admin Strapi si c'est une connexion admin
         // IMPORTANT: Pour les connexions admin, on redirige toujours vers l'admin Strapi,
         // pas vers le frontend, même si PINTEREST_POST_AUTH_REDIRECT est configuré
@@ -277,13 +284,25 @@ module.exports = {
    * et confirmer que la connexion fonctionne.
    */
   async me(ctx) {
-    const auth = getPinterestAuth();
+    let auth = getPinterestAuth();
 
     if (!auth?.accessToken) {
-      return ctx.send({
-        connected: false,
-        username: null,
-      });
+      const adminToken = await strapi.service('api::pinterest-token.pinterest-token').getAdminToken();
+
+      if (adminToken?.accessToken) {
+        auth = {
+          accessToken: adminToken.accessToken,
+          refreshToken: adminToken.refreshToken,
+          expiresAt: adminToken.expiresAt,
+          user: null,
+        };
+        setPinterestAuth(auth);
+      } else {
+        return ctx.send({
+          connected: false,
+          username: null,
+        });
+      }
     }
 
     try {
@@ -329,6 +348,7 @@ module.exports = {
       const status = e?.response?.status;
       if (status === 401 || status === 403) {
         clearPinterestAuth();
+        await strapi.service('api::pinterest-token.pinterest-token').deleteAdminToken();
         return ctx.unauthorized('Token Pinterest invalide ou expiré');
       }
 

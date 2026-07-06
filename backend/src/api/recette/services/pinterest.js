@@ -125,6 +125,8 @@ module.exports = ({ strapi }) => ({
     // Priorité admin : OAuth en mémoire (token le plus frais), puis PINTEREST_ACCESS_TOKEN (.env)
     const envToken = (process.env.PINTEREST_ACCESS_TOKEN || '').trim() || null;
     const oauthAccessToken = getPinterestAuth()?.accessToken;
+    const adminToken = await strapi.service('api::pinterest-token.pinterest-token').getAdminToken();
+    const persistedAdminAccessToken = adminToken?.accessToken;
     const tokenCandidates = [];
 
     if (oauthAccessToken) {
@@ -134,7 +136,14 @@ module.exports = ({ strapi }) => ({
       });
     }
 
-    if (envToken && envToken !== oauthAccessToken) {
+    if (persistedAdminAccessToken && persistedAdminAccessToken !== oauthAccessToken) {
+      tokenCandidates.push({
+        accessToken: persistedAdminAccessToken,
+        source: 'OAuth admin (base)',
+      });
+    }
+
+    if (envToken && !tokenCandidates.some((candidate) => candidate.accessToken === envToken)) {
       tokenCandidates.push({
         accessToken: envToken,
         source: 'PINTEREST_ACCESS_TOKEN (.env)',
