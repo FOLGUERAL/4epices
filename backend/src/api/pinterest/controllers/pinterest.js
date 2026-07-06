@@ -22,6 +22,18 @@ function buildRecipeUrl(frontendUrl, slug) {
   return `${normalizedFrontendUrl}/recettes/${encodeURIComponent(String(slug || '').trim())}`;
 }
 
+function buildStrapiAdminUrl() {
+  const configuredUrl =
+    process.env.STRAPI_ADMIN_URL ||
+    process.env.ADMIN_URL ||
+    process.env.PUBLIC_STRAPI_URL ||
+    process.env.PUBLIC_URL ||
+    `http://localhost:${process.env.PORT || 1337}`;
+
+  const normalizedUrl = String(configuredUrl || '').replace(/\/$/, '');
+  return normalizedUrl.endsWith('/admin') ? normalizedUrl : `${normalizedUrl}/admin`;
+}
+
 /**
  * Génère un ID de session unique pour les utilisateurs anonymes
  */
@@ -192,9 +204,7 @@ module.exports = {
         // Rediriger vers l'admin Strapi si c'est une connexion admin
         // IMPORTANT: Pour les connexions admin, on redirige toujours vers l'admin Strapi,
         // pas vers le frontend, même si PINTEREST_POST_AUTH_REDIRECT est configuré
-        const strapiAdminUrl = process.env.STRAPI_ADMIN_URL || 
-                               process.env.ADMIN_URL || 
-                               (process.env.PUBLIC_STRAPI_URL || process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 1337}`) + '/admin';
+        const strapiAdminUrl = buildStrapiAdminUrl();
         
         // Pour les connexions admin, on ignore PINTEREST_POST_AUTH_REDIRECT et on redirige toujours vers l'admin
         // PINTEREST_POST_AUTH_REDIRECT est utilisé uniquement pour les connexions utilisateurs normaux
@@ -720,8 +730,9 @@ module.exports = {
    */
   async adminBoards(ctx) {
     const auth = getPinterestAuth();
-    // Priorité inversée pour l'admin : token .env d'abord, puis OAuth en fallback
-    const accessToken = process.env.PINTEREST_ACCESS_TOKEN || auth?.accessToken;
+    // Priorite admin : OAuth le plus frais, puis token persistant, puis .env en fallback.
+    const adminToken = await strapi.service('api::pinterest-token.pinterest-token').getAdminToken();
+    const accessToken = auth?.accessToken || adminToken?.accessToken || process.env.PINTEREST_ACCESS_TOKEN;
 
     if (!accessToken) {
       return ctx.unauthorized('Token Pinterest manquant. Configurez PINTEREST_ACCESS_TOKEN dans .env ou connectez-vous via OAuth');
@@ -749,7 +760,14 @@ module.exports = {
       });
     } catch (e) {
       const status = e?.response?.status;
-      strapi.log.error('[Pinterest Admin Boards] Erreur:', e.message);
+      strapi.log.error(`[Pinterest Admin Boards] Erreur: ${JSON.stringify({
+        message: e?.message || null,
+        name: e?.name || null,
+        status: status || null,
+        data: e?.response?.data || null,
+        api: getPinterestApiUrl(),
+        tokenSource: auth?.accessToken ? 'OAuth (memoire)' : (adminToken?.accessToken ? 'OAuth admin (base)' : 'PINTEREST_ACCESS_TOKEN (.env)'),
+      })}`);
       
       return ctx.internalServerError('Erreur lors de la récupération des boards', {
         status,
