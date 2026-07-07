@@ -18,6 +18,7 @@ interface VoiceState {
 }
 
 const SPEECH_ENABLED_STORAGE_KEY = 'kitchenVoiceSpeechEnabled';
+const USE_KOKORO_TTS = process.env.NEXT_PUBLIC_USE_KOKORO_TTS === 'true';
 const NEXT_COMMAND_PATTERN = /\b(suiv\w*|prochain\w*|apres|apre|continu\w*|suite)\b/;
 const PREVIOUS_COMMAND_PATTERN = /\b(preced\w*|president|retour|avant|revenir|revien\w*)\b/;
 
@@ -344,6 +345,11 @@ export function useVoiceCooking(
       speakWithNativeSpeechSynthesis(spokenText, allowVoiceFallback);
     };
 
+    if (!USE_KOKORO_TTS) {
+      fallbackToNative();
+      return;
+    }
+
     void (async () => {
       try {
         let audioBlob = ttsAudioCacheRef.current.get(spokenText);
@@ -428,7 +434,7 @@ export function useVoiceCooking(
   }, [clearGeneratedAudio, isSpeechEnabled, speakWithNativeSpeechSynthesis]);
 
   useEffect(() => {
-    if (!isSpeechEnabled || typeof window === 'undefined') return;
+    if (!USE_KOKORO_TTS || !isSpeechEnabled || typeof window === 'undefined') return;
 
     const nextStepText = steps[currentStep + 1]?.text;
     if (!nextStepText) return;
