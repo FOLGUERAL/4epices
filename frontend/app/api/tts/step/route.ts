@@ -8,8 +8,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MAX_TEXT_LENGTH = 1200;
-const DEFAULT_VOICE = process.env.KOKORO_TTS_VOICE || 'fm_lewis';
-const FALLBACK_VOICES = ['fm_lewis', 'ff_siwis'];
+const DEFAULT_VOICE = process.env.KOKORO_TTS_VOICE || 'ff_siwis';
+const FALLBACK_VOICES = ['ff_siwis'];
 const DEFAULT_FORMAT = 'mp3';
 
 const getCacheDir = () =>
