@@ -21,6 +21,7 @@ const SPEECH_ENABLED_STORAGE_KEY = 'kitchenVoiceSpeechEnabled';
 const USE_KOKORO_TTS = process.env.NEXT_PUBLIC_USE_KOKORO_TTS === 'true';
 const NEXT_COMMAND_PATTERN = /\b(suiv\w*|prochain\w*|apres|apre|continu\w*|suite)\b/;
 const PREVIOUS_COMMAND_PATTERN = /\b(preced\w*|president|retour|avant|revenir|revien\w*)\b/;
+const FINISH_COMMAND_PATTERN = /\b(termin\w*|fini\w*|finir)\b|c.?est fini|j.?ai fini|j.?ai termine/;
 
 const normalizeSpeechText = (text: string): string =>
   text
@@ -159,7 +160,8 @@ export function useVoiceCooking(
   onPrevious: () => void,
   onGoTo: (index: number) => void,
   getCoachLine?: () => string,
-  getRecipeTimeLine?: () => string
+  getRecipeTimeLine?: () => string,
+  onFinish?: () => void
 ) {
   const [voiceState, setVoiceState] = useState<VoiceState>({
     isListening: false,
@@ -488,7 +490,9 @@ export function useVoiceCooking(
       const normalized = normalizeSpeechText(text);
       const lastSpokenText = lastSpokenTextRef.current;
       const isNavigationCommand =
-        NEXT_COMMAND_PATTERN.test(normalized) || PREVIOUS_COMMAND_PATTERN.test(normalized);
+        NEXT_COMMAND_PATTERN.test(normalized) ||
+        PREVIOUS_COMMAND_PATTERN.test(normalized) ||
+        FINISH_COMMAND_PATTERN.test(normalized);
 
       if (
         !isNavigationCommand &&
@@ -507,6 +511,11 @@ export function useVoiceCooking(
 
       if (PREVIOUS_COMMAND_PATTERN.test(normalized)) {
         onPrevious();
+        return true;
+      }
+
+      if (FINISH_COMMAND_PATTERN.test(normalized)) {
+        onFinish?.();
         return true;
       }
 
@@ -541,7 +550,7 @@ export function useVoiceCooking(
 
       if (/aide|help|commande|que dire|coach|conseil|astuce|guide/.test(normalized)) {
         speak(
-          'Commandes disponibles : suivant, précédent, répète, aller à l\'étape 3, temps total, quelle étape',
+          'Commandes disponibles : suivant, précédent, répète, terminer, aller à l\'étape 3, temps total, quelle étape',
           true
         );
         return true;
@@ -549,7 +558,7 @@ export function useVoiceCooking(
 
       return false;
     },
-    [currentStep, getRecipeTimeLine, onGoTo, onNext, onPrevious, speak, steps]
+    [currentStep, getRecipeTimeLine, onFinish, onGoTo, onNext, onPrevious, speak, steps]
   );
 
   useEffect(() => {

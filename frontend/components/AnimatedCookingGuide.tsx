@@ -11,6 +11,7 @@ type AnimatedCookingGuideProps = {
   speakingText: string;
   speakingCharIndex: number;
   isSpeechEnabled: boolean;
+  isComplete?: boolean;
   onSpeak: () => void;
 };
 
@@ -31,6 +32,7 @@ export default function AnimatedCookingGuide({
   speakingText,
   speakingCharIndex,
   isSpeechEnabled,
+  isComplete = false,
   onSpeak,
 }: AnimatedCookingGuideProps) {
   const [visibleLength, setVisibleLength] = useState(stepText.length);
@@ -124,30 +126,43 @@ export default function AnimatedCookingGuide({
     <section className="mb-5 overflow-hidden rounded-xl border border-orange-100 bg-white shadow-sm">
       <div className="grid gap-0 md:grid-cols-[17rem_minmax(0,1fr)]">
         <div className="relative bg-[#fffdfa] p-3">
-          <div className="relative aspect-[281/319] overflow-hidden rounded-lg bg-[#fffdfa]">
-            <img
-              src={imageSrc}
-              alt={guide.imageAlt}
-              className="h-full w-full object-contain"
-              draggable={false}
-              onError={() => {
-                if (imageSrc !== guide.fallbackImageSrc) {
-                  setImageSrc(guide.fallbackImageSrc);
-                }
-              }}
-            />
+          <div className="relative flex aspect-[281/319] items-center justify-center overflow-hidden rounded-lg bg-[#fffdfa]">
+            {isComplete ? (
+              <img
+                src="/fin_recette.png"
+                alt="Recette terminée"
+                className="h-full w-full object-contain"
+                draggable={false}
+              />
+            ) : (
+              <img
+                src={imageSrc}
+                alt={guide.imageAlt}
+                className="h-full w-full object-contain"
+                draggable={false}
+                onError={() => {
+                  if (imageSrc !== guide.fallbackImageSrc) {
+                    setImageSrc(guide.fallbackImageSrc);
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
 
         <div className="flex min-w-0 flex-col justify-between gap-4 p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="mb-1 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">
-                  {guide.action}
-                </span>
-              </div>
-              <h3 className="truncate text-lg font-bold text-gray-900">{guide.title}</h3>
+              {!isComplete && (
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">
+                    {guide.action}
+                  </span>
+                </div>
+              )}
+              <h3 className="truncate text-lg font-bold text-gray-900">
+                {isComplete ? 'Bravo' : guide.title}
+              </h3>
             </div>
 
             <div className="flex items-center gap-2">

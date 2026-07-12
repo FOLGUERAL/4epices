@@ -12,9 +12,18 @@ interface FavoriteButtonProps {
     imageUrl?: string;
   };
   className?: string;
+  showTextOnMobile?: boolean;
+  label?: string;
+  activeLabel?: string;
 }
 
-export default function FavoriteButton({ recette, className = '' }: FavoriteButtonProps) {
+export default function FavoriteButton({
+  recette,
+  className = '',
+  showTextOnMobile = false,
+  label = 'Favoris',
+  activeLabel = 'Favori',
+}: FavoriteButtonProps) {
   const [isFav, setIsFav] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -62,10 +71,9 @@ export default function FavoriteButton({ recette, className = '' }: FavoriteButt
           d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
         />
       </svg>
-      <span className="hidden sm:inline whitespace-nowrap">
-        {isFav ? 'Favori' : 'Favoris'}
+      <span className={`${showTextOnMobile ? 'inline' : 'hidden sm:inline'} whitespace-nowrap`}>
+        {isFav ? activeLabel : label}
       </span>
     </button>
   );
 }
-

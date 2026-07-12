@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, CircleHelp, Mic, Play, Pointer, Volume2, VolumeX, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleHelp, Mic, Play, Pointer, Share2, Volume2, VolumeX, X } from 'lucide-react';
 import { getRecetteBySlug, Recette } from '@/lib/strapi';
 import RecettesGridSkeleton from '@/components/RecettesGridSkeleton';
 import AnimatedCookingGuide from '@/components/AnimatedCookingGuide';
 import OptimizedImage from '@/components/OptimizedImage';
 import RatingForm from '@/components/RatingForm';
+import FavoriteButton from '@/components/FavoriteButton';
+import PublishPinterestButton from '@/components/PublishPinterestButton';
 import { getKitchenRecipeStorageKey } from '@/components/KitchenModeLink';
 import { toast } from '@/components/Toast';
 import { useVoiceCooking } from '@/hooks/useVoiceCooking';
@@ -165,6 +167,20 @@ const extractSteps = (html: string): StepData[] => {
     .map((line, index) => ({ id: index + 1, text: line.trim() }));
 };
 
+const addCompletionStep = (steps: StepData[], recipeTitle: string): StepData[] => {
+  if (steps.length === 0) return steps;
+
+  const title = recipeTitle.trim() || 'cette recette';
+
+  return [
+    ...steps,
+    {
+      id: steps.length + 1,
+      text: `Vous avez terminé la recette de ${title}. Belle cuisine !`,
+    },
+  ];
+};
+
 const isRecette = (value: unknown, slug: string): value is Recette => {
   if (!value || typeof value !== 'object') return false;
 
@@ -197,6 +213,47 @@ const playCookingStartSound = (): number => {
       // Le navigateur peut refuser la lecture audio selon le contexte.
     });
     return 5000;
+  } catch {
+    return 0;
+  }
+};
+
+const playCookingSuccessSound = (): number => {
+  if (typeof window === 'undefined') return 0;
+
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return 0;
+
+    const audioContext = new AudioContextClass();
+    const now = audioContext.currentTime;
+    const notes = [
+      { frequency: 523.25, start: 0, duration: 0.12 },
+      { frequency: 659.25, start: 0.12, duration: 0.12 },
+      { frequency: 783.99, start: 0.24, duration: 0.22 },
+    ];
+
+    notes.forEach(({ frequency, start, duration }) => {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, now + start);
+      gain.gain.setValueAtTime(0, now + start);
+      gain.gain.linearRampToValueAtTime(0.12, now + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + start + duration);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(now + start);
+      oscillator.stop(now + start + duration + 0.02);
+    });
+
+    window.setTimeout(() => {
+      void audioContext.close().catch(() => {});
+    }, 800);
+
+    return 650;
   } catch {
     return 0;
   }
@@ -256,9 +313,8 @@ export default function CuisineModePage() {
 
       setSelectedPortions(savedPortions);
       setIngredients(adjustIngredients(rawIngredients, basePortions, savedPortions));
-      setSteps(
-        extractSteps(typeof data.attributes.etapes === 'string' ? data.attributes.etapes : '')
-      );
+      const recipeSteps = extractSteps(typeof data.attributes.etapes === 'string' ? data.attributes.etapes : '');
+      setSteps(addCompletionStep(recipeSteps, data.attributes.titre));
     };
 
     const loadRecette = async () => {
@@ -378,16 +434,18 @@ export default function CuisineModePage() {
   }, [steps.length]);
 
   const currentStepData = useMemo(() => steps[currentStep], [currentStep, steps]);
+  const cookingStepCount = Math.max(steps.length - 1, 0);
+  const guideStepIndex = Math.min(currentStep, Math.max(cookingStepCount - 1, 0));
   const cookingGuide = useMemo(
     () =>
       getCookingGuide(
         recette?.attributes.titre || 'la recette',
         ingredients,
         currentStepData?.text || '',
-        currentStep,
-        steps.length
+        guideStepIndex,
+        cookingStepCount
       ),
-    [currentStep, currentStepData?.text, ingredients, recette?.attributes.titre, steps.length]
+    [cookingStepCount, currentStepData?.text, guideStepIndex, ingredients, recette?.attributes.titre]
   );
   const getCoachLine = useCallback(
     () => currentStepData?.text || cookingGuide.line,
@@ -412,6 +470,35 @@ export default function CuisineModePage() {
       : `Le temps total est de ${formatDuration(total)}.`;
   }, [recette?.attributes.tempsCuisson, recette?.attributes.tempsPreparation]);
 
+  const handleFinishCooking = useCallback(() => {
+    if (!recette) return;
+
+    router.push(`/recettes/${recette.attributes.slug}/classique`);
+  }, [recette, router]);
+
+  const handleShareSuccess = useCallback(async () => {
+    if (!recette || typeof window === 'undefined') return;
+
+    const recipeUrl = `${window.location.origin}/recettes/${recette.attributes.slug}/classique`;
+    const shareData = {
+      title: recette.attributes.titre,
+      text: `J'ai terminé la recette de ${recette.attributes.titre} sur 4 Epices.`,
+      url: recipeUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      await navigator.clipboard.writeText(recipeUrl);
+      toast.success('Lien de la recette copié');
+    } catch {
+      toast.info('Partage annulé');
+    }
+  }, [recette]);
+
   const { voiceState, speak, startListening, stopListening, isSpeechEnabled, setSpeechEnabled } = useVoiceCooking(
     steps,
     currentStep,
@@ -419,9 +506,11 @@ export default function CuisineModePage() {
     handlePreviousStep,
     handleGoToStep,
     getCoachLine,
-    getRecipeTimeLine
+    getRecipeTimeLine,
+    handleFinishCooking
   );
   const lastAutoReadStepRef = useRef(currentStep);
+  const isCompletionStep = hasStartedCooking && steps.length > 0 && currentStep === steps.length - 1;
 
   useEffect(() => {
     return () => {
@@ -436,9 +525,14 @@ export default function CuisineModePage() {
     lastAutoReadStepRef.current = currentStep;
 
     if (isSpeechEnabled && currentStepData?.text) {
-      speak(currentStepData.text, true);
+      const successSoundDelay = isCompletionStep ? playCookingSuccessSound() : 0;
+      const speakTimeoutId = window.setTimeout(() => {
+        speak(currentStepData.text, true);
+      }, successSoundDelay);
+
+      return () => window.clearTimeout(speakTimeoutId);
     }
-  }, [currentStep, currentStepData?.text, hasStartedCooking, isSpeechEnabled, speak]);
+  }, [currentStep, currentStepData?.text, hasStartedCooking, isCompletionStep, isSpeechEnabled, speak]);
 
   const handleStartCooking = useCallback(() => {
     const firstStepIndex = 0;
@@ -514,8 +608,10 @@ export default function CuisineModePage() {
     }
   }, [hasShownVoiceHint, hasStartedCooking, startListening, stopListening, voiceState.isListening]);
 
-  const progress = hasStartedCooking && steps.length > 0 ? ((currentStep + 1) / steps.length) * 100 : 0;
-  const isLastStep = hasStartedCooking && currentStep === steps.length - 1;
+  const progress =
+    hasStartedCooking && cookingStepCount > 0
+      ? ((Math.min(currentStep, cookingStepCount - 1) + 1) / cookingStepCount) * 100
+      : 0;
   const recipeImageUrl = recette?.attributes.imagePrincipale?.data?.attributes?.url || null;
   const recipeImageAlt =
     recette?.attributes.imagePrincipale?.data?.attributes?.alternativeText ||
@@ -918,17 +1014,12 @@ export default function CuisineModePage() {
           ) : (
             <>
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Étape {currentStep + 1} sur {steps.length}
-              </h2>
-              <div className="mt-2 flex flex-wrap gap-2 text-sm text-gray-500">
-                {currentStepData?.temperature && (
-                  <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">
-                    🔥 {currentStepData.temperature}°C
-                  </span>
-                )}
-              </div>
+            <div className="flex flex-wrap gap-2 text-sm text-gray-500">
+              {currentStepData?.temperature && (
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">
+                  🔥 {currentStepData.temperature}°C
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">{renderVoiceControls(false)}</div>
           </div>
@@ -938,36 +1029,95 @@ export default function CuisineModePage() {
             onTouchStart={handleStepTouchStart}
             onTouchEnd={handleStepTouchEnd}
           >
-            <button
-              type="button"
-              onClick={handlePreviousStep}
-              disabled={currentStep === 0}
-              className="absolute left-1 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white/85 text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-30 sm:-left-3 sm:h-11 sm:w-11"
-              aria-label="Étape précédente"
-              title="Étape précédente"
-            >
-              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={handleNextStep}
-              disabled={currentStep === steps.length - 1}
-              className="absolute right-1 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white/85 text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-30 sm:-right-3 sm:h-11 sm:w-11"
-              aria-label="Étape suivante"
-              title="Étape suivante"
-            >
-              <ChevronRight className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <AnimatedCookingGuide
-              guide={cookingGuide}
-              stepText={currentStepData?.text || ''}
-              isSpeaking={voiceState.isSpeaking}
-              speakingText={voiceState.speakingText}
-              speakingCharIndex={voiceState.speakingCharIndex}
-              isSpeechEnabled={isSpeechEnabled}
-              onSpeak={handleSpeakGuide}
-            />
-            {isSwipeCoachVisible && (
+            {!isCompletionStep && (
+              <button
+                type="button"
+                onClick={handlePreviousStep}
+                disabled={currentStep === 0}
+                className="absolute left-1 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white/85 text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-30 sm:-left-3 sm:h-11 sm:w-11"
+                aria-label="Étape précédente"
+                title="Étape précédente"
+              >
+                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+              </button>
+            )}
+            {!isCompletionStep && (
+              <button
+                type="button"
+                onClick={handleNextStep}
+                disabled={currentStep === steps.length - 1}
+                className="absolute right-1 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white/85 text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white disabled:pointer-events-none disabled:opacity-30 sm:-right-3 sm:h-11 sm:w-11"
+                aria-label="Étape suivante"
+                title="Étape suivante"
+              >
+                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+              </button>
+            )}
+            {isCompletionStep ? (
+              <div className="rounded-xl border border-orange-100 bg-orange-50/50 px-5 py-6 text-center shadow-sm sm:px-7">
+                <h2 className="text-2xl font-bold text-gray-900">Bravo</h2>
+                <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-gray-700">
+                  {currentStepData?.text || 'Vous avez terminé la recette. Belle cuisine !'}
+                </p>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <FavoriteButton
+                    recette={{
+                      id: recette.id,
+                      slug: recette.attributes.slug,
+                      titre: recette.attributes.titre,
+                      imageUrl: recipeImageUrl || undefined,
+                    }}
+                    className="w-full text-sm font-bold"
+                    showTextOnMobile
+                    label="Ajouter aux favoris"
+                    activeLabel="Dans vos favoris"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleShareSuccess}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-ring"
+                  >
+                    <Share2 className="h-4 w-4" aria-hidden="true" />
+                    Partager cette réussite
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => router.push('/recettes')}
+                    className="inline-flex min-h-12 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-ring"
+                  >
+                    Voir d'autres recettes
+                  </button>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+                  <PublishPinterestButton
+                    recetteId={recette.id}
+                    pinterestPinId={recette.attributes.pinterestPinId}
+                  />
+                </div>
+
+                <div className="mt-6 text-left">
+                  <RatingForm
+                    recetteId={recette.id}
+                    recetteTitle={recette.attributes.titre}
+                  />
+                </div>
+              </div>
+            ) : (
+              <AnimatedCookingGuide
+                guide={cookingGuide}
+                stepText={currentStepData?.text || ''}
+                isSpeaking={voiceState.isSpeaking}
+                speakingText={voiceState.speakingText}
+                speakingCharIndex={voiceState.speakingCharIndex}
+                isSpeechEnabled={isSpeechEnabled}
+                onSpeak={handleSpeakGuide}
+              />
+            )}
+            {!isCompletionStep && isSwipeCoachVisible && (
               <div className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-gray-900/30 px-6 backdrop-blur-[2px] ${
                 isVoiceCommandEnabled ? '' : 'sm:hidden'
               }`}>
@@ -1014,38 +1164,26 @@ export default function CuisineModePage() {
             )}
           </div>
 
-          <div className="mt-5 flex gap-1">
-            {steps.map((step, index) => (
-              <button
-                key={step.id}
-                type="button"
-                onClick={() => handleGoToStep(index)}
-                title={`Aller à l'étape ${index + 1}`}
-                className={`h-2 flex-1 rounded transition-all hover:scale-y-150 ${
-                  index < currentStep
-                    ? 'bg-orange-400'
-                    : index === currentStep
-                      ? 'bg-orange-600'
-                      : 'bg-gray-200'
-                }`}
-              />
-            ))}
-          </div>
-
-          {isLastStep && (
-            <div className="mt-6 border-t border-gray-100 pt-6">
-              <div className="mb-4">
-                <h3 className="text-xl font-bold text-gray-900">Vous avez termine ?</h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  Partagez votre note ou un commentaire pour aider les prochains cuisiniers.
-                </p>
-              </div>
-              <RatingForm
-                recetteId={recette.id}
-                recetteTitle={recette.attributes.titre}
-              />
+          {!isCompletionStep && (
+            <div className="mt-5 flex gap-1">
+              {steps.slice(0, cookingStepCount).map((step, index) => (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={() => handleGoToStep(index)}
+                  title={`Aller à l'étape ${index + 1}`}
+                  className={`h-2 flex-1 rounded transition-all hover:scale-y-150 ${
+                    index < currentStep
+                      ? 'bg-orange-400'
+                      : index === currentStep
+                        ? 'bg-orange-600'
+                        : 'bg-gray-200'
+                  }`}
+                />
+              ))}
             </div>
           )}
+
             </>
           )}
         </div>
