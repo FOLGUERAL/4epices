@@ -4,7 +4,23 @@ import Link from 'next/link';
 import { getRecettes, getCategories, getRecettesByCategory, Recette, Categorie } from '@/lib/strapi';
 import HorizontalCarousel from '@/components/HorizontalCarousel';
 import KitchenModeHelp from '@/components/KitchenModeHelp';
+import OptimizedImage from '@/components/OptimizedImage';
 import { SITE_NAME } from '@/lib/seo';
+
+function formatTime(minutes: number): string {
+  if (minutes <= 0) {
+    return '';
+  }
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (mins === 0) {
+    return `${hours}h`;
+  }
+  return `${hours}h ${mins}min`;
+}
 
 export default async function Home() {
   let recettesRecent: Recette[] = [];
@@ -35,6 +51,14 @@ export default async function Home() {
     console.error('Erreur lors de la recuperation des donnees:', error);
   }
 
+  const derniereRecette = recettesRecent[0] || null;
+  const derniereRecetteImage =
+    derniereRecette?.attributes.imagePrincipale?.data?.attributes?.url || null;
+  const derniereRecetteTempsPreparation = derniereRecette?.attributes.tempsPreparation || 0;
+  const derniereRecetteTempsCuisson = derniereRecette?.attributes.tempsCuisson || 0;
+  const derniereRecetteTempsTotal =
+    derniereRecetteTempsPreparation + derniereRecetteTempsCuisson;
+
   return (
     <div className="min-h-screen bg-white">
       <section className="relative mb-8 overflow-hidden bg-[#111827] text-white">
@@ -44,7 +68,7 @@ export default async function Home() {
           <div className="absolute bottom-0 left-0 h-24 w-full bg-[linear-gradient(0deg,rgba(234,88,12,0.12),transparent)]" />
         </div>
 
-        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8 lg:py-16">
+        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-2 lg:items-center lg:px-8 lg:py-16">
           <div className="flex max-w-3xl flex-col justify-center">
             <p className="mb-3 text-sm font-bold uppercase tracking-wide text-orange-200">
               MODE CUISINE
@@ -70,6 +94,55 @@ export default async function Home() {
               <KitchenModeHelp triggerLabel="Découvrir le Mode Cuisine" />
             </div>
           </div>
+
+          {derniereRecette && (
+            <Link
+              href={`/recettes/${derniereRecette.attributes.slug}`}
+              className="group relative min-h-[360px] overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl outline-none transition-transform hover:-translate-y-1 focus-ring sm:min-h-[420px] lg:min-h-[500px]"
+            >
+              <OptimizedImage
+                src={derniereRecetteImage}
+                alt={
+                  derniereRecette.attributes.imagePrincipale?.data?.attributes?.alternativeText ||
+                  derniereRecette.attributes.titre
+                }
+                fill
+                disableAspectRatio
+                priority
+                className="object-cover transition-transform duration-700 group-hover:scale-105"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/5" />
+              <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
+                <p className="mb-3 inline-flex rounded-full bg-orange-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+                  Dernière recette
+                </p>
+                <h2 className="text-2xl font-bold leading-tight text-white transition-colors group-hover:text-orange-200 sm:text-3xl">
+                  {derniereRecette.attributes.titre}
+                </h2>
+                <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-orange-50 sm:text-base">
+                  {derniereRecette.attributes.description}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2 text-sm font-semibold text-white">
+                  {derniereRecetteTempsPreparation > 0 && (
+                    <span className="rounded-full bg-white/15 px-3 py-1.5 backdrop-blur">
+                      Prép. {formatTime(derniereRecetteTempsPreparation)}
+                    </span>
+                  )}
+                  {derniereRecetteTempsTotal > 0 && (
+                    <span className="rounded-full bg-white/15 px-3 py-1.5 backdrop-blur">
+                      Total {formatTime(derniereRecetteTempsTotal)}
+                    </span>
+                  )}
+                  {derniereRecette.attributes.difficulte && (
+                    <span className="rounded-full bg-white/15 px-3 py-1.5 capitalize backdrop-blur">
+                      {derniereRecette.attributes.difficulte}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Link>
+          )}
         </div>
       </section>
 
