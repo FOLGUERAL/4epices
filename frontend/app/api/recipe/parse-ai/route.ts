@@ -551,9 +551,8 @@ async function callGroq(prompt: string): Promise<string> {
     throw new Error('GROQ_API_KEY non configurée');
   }
 
-  // Modèle recommandé : llama-3.3-70b-versatile (gratuit, très performant)
-  // Alternatives : mixtral-8x7b-32768, llama-3.1-8b-instant (plus rapide)
-  const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  // Modele Groq recommande pour la generation texte/JSON.
+  const model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
   console.log(`[Groq] Utilisation du modèle ${model}`);
 

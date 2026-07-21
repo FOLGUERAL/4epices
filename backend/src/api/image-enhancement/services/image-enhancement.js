@@ -19,10 +19,9 @@ async function enhanceImageWithGroq(imageBuffer, imageMimeType) {
   const base64Image = imageBuffer.toString('base64');
   const dataUrl = `data:${imageMimeType};base64,${base64Image}`;
 
-  // Utiliser un modèle avec vision
-  // Modèles disponibles avec vision: llama-4-scout-17b-16e-instruct (llama-3.2-90b-vision-preview est décommissionné)
-  // Si le modèle vision n'est pas configuré, essayer d'utiliser le modèle Groq standard avec une approche différente
-  const model = process.env.GROQ_VISION_MODEL || process.env.GROQ_MODEL || 'llama-4-scout-17b-16e-instruct';
+  // Utiliser un modele Groq supporte. Llama 4 Scout et les anciens modeles vision
+  // ont ete decommissionnes, donc le fallback reste textuel si aucun modele vision n'est configure.
+  const model = process.env.GROQ_VISION_MODEL || process.env.GROQ_MODEL || 'qwen/qwen3.6-27b';
   
   // Vérifier si le modèle supporte la vision
   const supportsVision = model.includes('vision') || model.includes('scout');
