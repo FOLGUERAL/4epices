@@ -83,6 +83,14 @@ module.exports = {
       },
     },
     {
+      method: 'GET',
+      path: '/pinterest/stats',
+      handler: 'pinterest.stats',
+      config: {
+        auth: false, // UI admin protegee cote frontend
+      },
+    },
+    {
       method: 'POST',
       path: '/pinterest/process-queue',
       handler: 'pinterest.processQueue',

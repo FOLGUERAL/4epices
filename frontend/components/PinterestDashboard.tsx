@@ -49,6 +49,7 @@ export default function PinterestDashboard() {
   const [stockDays, setStockDays] = useState(30);
   const [stockPinsPerDay, setStockPinsPerDay] = useState(6);
   const [includeAlreadyPinned, setIncludeAlreadyPinned] = useState(false);
+  const [includeCookingBases, setIncludeCookingBases] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
   const [boardsMap, setBoardsMap] = useState<Record<string, string>>({});
 
@@ -78,13 +79,13 @@ export default function PinterestDashboard() {
       const taskIds = new Set<string>((queueResponse.data.tasks || []).map((task: QueueTask) => task.id));
       setSelectedTaskIds((previous) => new Set([...previous].filter((taskId) => taskIds.has(taskId))));
 
-      // TODO: Récupérer les statistiques depuis un endpoint dédié
-      // Pour l'instant, on calcule depuis la queue
+      const statsResponse = await axios.get('/api/pinterest/stats');
+      const statsData = statsResponse.data || {};
       const queueData = queueResponse.data;
       setStats({
-        totalPins: 0, // À implémenter
-        pinsToday: 0, // À implémenter
-        pinsThisWeek: 0, // À implémenter
+        totalPins: statsData.totalPins || 0,
+        pinsToday: statsData.pinsToday || 0,
+        pinsThisWeek: statsData.pinsThisWeek || 0,
         queueSize: queueData.total,
         readyTasks: queueData.ready,
       });
@@ -188,6 +189,7 @@ export default function PinterestDashboard() {
         days: stockDays,
         pinsPerDay: stockPinsPerDay,
         includeAlreadyPinned,
+        includeCookingBases,
         minDaysBetweenPins: 14,
       });
 
@@ -298,7 +300,7 @@ export default function PinterestDashboard() {
             {planningStock ? 'Planification...' : 'Alimenter la queue'}
           </button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className="text-sm font-medium text-gray-700">
             Jours
             <input
@@ -329,6 +331,15 @@ export default function PinterestDashboard() {
               className="h-4 w-4 rounded border-gray-300 text-orange-600"
             />
             Inclure les recettes déjà épinglées
+          </label>
+          <label className="flex items-center gap-2 rounded-lg border border-orange-100 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+            <input
+              type="checkbox"
+              checked={includeCookingBases}
+              onChange={(event) => setIncludeCookingBases(event.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-orange-600"
+            />
+            Inclure les bases de cuisine
           </label>
         </div>
       </div>

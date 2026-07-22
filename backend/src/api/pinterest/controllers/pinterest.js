@@ -34,6 +34,29 @@ function buildStrapiAdminUrl() {
   return normalizedUrl.endsWith('/admin') ? normalizedUrl : `${normalizedUrl}/admin`;
 }
 
+function parsePinterestPins(value) {
+  if (!value) return {};
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) || {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function getPinEntries(recette) {
+  const pins = parsePinterestPins(recette.pinterestPins);
+  const entries = Object.entries(pins).filter(([pinId]) => Boolean(pinId));
+
+  if (entries.length === 0 && recette.pinterestPinId) {
+    return [[recette.pinterestPinId, { createdAt: null, legacy: true }]];
+  }
+
+  return entries;
+}
+
 /**
  * Génère un ID de session unique pour les utilisateurs anonymes
  */
@@ -718,6 +741,68 @@ module.exports = {
       });
     } catch (error) {
       return ctx.internalServerError('Erreur lors de la récupération de l\'état de la queue', {
+        error: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/pinterest/stats
+   * Calcule les statistiques de pins depuis les recettes.
+   */
+  async stats(ctx) {
+    try {
+      const recettes = await strapi.entityService.findMany('api::recette.recette', {
+        fields: ['pinterestPinId', 'pinterestPins'],
+        limit: 1000,
+      });
+
+      const now = new Date();
+      const startOfToday = new Date(now);
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const startOfWeek = new Date(now);
+      const day = startOfWeek.getDay() || 7;
+      startOfWeek.setDate(startOfWeek.getDate() - day + 1);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      let totalPins = 0;
+      let pinsToday = 0;
+      let pinsThisWeek = 0;
+      let recipesWithPins = 0;
+
+      for (const recette of recettes) {
+        const entries = getPinEntries(recette);
+        if (entries.length > 0) {
+          recipesWithPins += 1;
+        }
+
+        totalPins += entries.length;
+
+        for (const [, pin] of entries) {
+          const createdAt = pin?.createdAt ? new Date(pin.createdAt) : null;
+          if (!createdAt || Number.isNaN(createdAt.getTime())) {
+            continue;
+          }
+
+          if (createdAt >= startOfToday) {
+            pinsToday += 1;
+          }
+          if (createdAt >= startOfWeek) {
+            pinsThisWeek += 1;
+          }
+        }
+      }
+
+      return ctx.send({
+        totalPins,
+        pinsToday,
+        pinsThisWeek,
+        recipesWithPins,
+      });
+    } catch (error) {
+      strapi.log.error('[Pinterest Stats] Erreur:', error);
+      return ctx.internalServerError('Erreur lors de la recuperation des statistiques Pinterest', {
         error: error.message,
       });
     }

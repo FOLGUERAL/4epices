@@ -11,6 +11,38 @@ const {
   loadAllTags,
 } = require('../../../utils/tagMatching');
 
+function parsePinterestPins(value) {
+  if (!value) return {};
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) || {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+async function recordRecipePin(strapi, recetteId, pinId, metadata = {}) {
+  const recette = await strapi.entityService.findOne('api::recette.recette', recetteId, {
+    fields: ['pinterestPins', 'pinterestPinId'],
+  });
+
+  const pins = parsePinterestPins(recette?.pinterestPins);
+  pins[pinId] = {
+    ...pins[pinId],
+    ...metadata,
+    createdAt: metadata.createdAt || pins[pinId]?.createdAt || new Date().toISOString(),
+  };
+
+  return strapi.entityService.update('api::recette.recette', recetteId, {
+    data: {
+      pinterestPinId: recette?.pinterestPinId || pinId,
+      pinterestPins: pins,
+    },
+  });
+}
+
 async function findOrCreateTag(strapi, tagName, allTagsCache) {
   if (!tagName || typeof tagName !== 'string' || !tagName.trim()) {
     return null;
@@ -173,10 +205,9 @@ module.exports = createCoreController('api::recette.recette', ({ strapi }) => ({
         const pinData = await pinterestService.createPin(response.data);
         
         // Mettre à jour la recette avec le Pin ID
-        await strapi.entityService.update('api::recette.recette', response.data.id, {
-          data: {
-            pinterestPinId: pinData.id,
-          },
+        await recordRecipePin(strapi, response.data.id, pinData.id, {
+          pinIndex: 0,
+          source: 'auto-create',
         });
 
         response.data.pinterestPinId = pinData.id;
@@ -244,10 +275,9 @@ module.exports = createCoreController('api::recette.recette', ({ strapi }) => ({
       const pinData = await pinterestService.createPin(recette);
 
       // Mettre à jour la recette avec le Pin ID
-      const updatedRecette = await strapi.entityService.update('api::recette.recette', id, {
-        data: {
-          pinterestPinId: pinData.id,
-        },
+      const updatedRecette = await recordRecipePin(strapi, id, pinData.id, {
+        pinIndex: 0,
+        source: 'manual',
       });
 
       return ctx.send({

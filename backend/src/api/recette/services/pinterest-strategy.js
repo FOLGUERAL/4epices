@@ -28,6 +28,32 @@ function getRelationName(item) {
   return String(data.nom || data.name || data.titre || data.slug || '').toLowerCase();
 }
 
+function getRelationSlug(item) {
+  const data = item?.attributes || item || {};
+  return String(data.slug || '').toLowerCase();
+}
+
+function normalizeSearchValue(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function isCookingBaseCategory(category) {
+  const slug = normalizeSearchValue(getRelationSlug(category));
+  const name = normalizeSearchValue(getRelationName(category));
+  return ['bases-de-cuisine', 'base-de-cuisine'].includes(slug) ||
+    ['bases-de-cuisine', 'base-de-cuisine'].includes(name);
+}
+
+function isCookingBaseOnlyRecette(recette) {
+  const categories = asArray(recette.categories);
+  return categories.length > 0 && categories.every(isCookingBaseCategory);
+}
+
 function parsePins(value) {
   if (!value) return {};
   if (typeof value === 'string') {
@@ -154,6 +180,7 @@ module.exports = ({ strapi }) => ({
     const maxRecipes = Math.min(Math.max(Number(options.maxRecipes) || days * pinsPerDay, 1), 300);
     const minDaysBetweenPins = Math.min(Math.max(Number(options.minDaysBetweenPins) || 14, 1), 120);
     const includeAlreadyPinned = options.includeAlreadyPinned === true;
+    const includeCookingBases = options.includeCookingBases === true;
     const dryRun = options.dryRun === true;
     const now = new Date();
 
@@ -179,6 +206,7 @@ module.exports = ({ strapi }) => ({
       alreadyQueued: 0,
       recentlyPinned: 0,
       alreadyPinned: 0,
+      cookingBases: 0,
     };
 
     for (const recette of recettes) {
@@ -189,6 +217,11 @@ module.exports = ({ strapi }) => ({
 
       if (queuedRecipeIds.has(Number(recette.id))) {
         skipped.alreadyQueued += 1;
+        continue;
+      }
+
+      if (!includeCookingBases && isCookingBaseOnlyRecette(recette)) {
+        skipped.cookingBases += 1;
         continue;
       }
 
@@ -276,6 +309,7 @@ module.exports = ({ strapi }) => ({
         maxRecipes,
         minDaysBetweenPins,
         includeAlreadyPinned,
+        includeCookingBases,
       },
       planned,
       errors,
