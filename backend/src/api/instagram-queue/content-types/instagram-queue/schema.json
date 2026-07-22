@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "instagram_queue_tasks",
+  "info": {
+    "singularName": "instagram-queue",
+    "pluralName": "instagram-queues",
+    "displayName": "Instagram Queue Task",
+    "description": "Taches Instagram planifiees et persistantes"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "taskUid": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "recetteId": {
+      "type": "integer",
+      "required": true
+    },
+    "recetteTitle": {
+      "type": "string"
+    },
+    "recetteSlug": {
+      "type": "string"
+    },
+    "imageUrl": {
+      "type": "text",
+      "required": true
+    },
+    "scheduledTime": {
+      "type": "datetime",
+      "required": true
+    },
+    "attempts": {
+      "type": "integer",
+      "required": true,
+      "default": 0
+    },
+    "maxAttempts": {
+      "type": "integer",
+      "required": true,
+      "default": 3
+    },
+    "source": {
+      "type": "string"
+    },
+    "strategyScore": {
+      "type": "integer"
+    },
+    "lastError": {
+      "type": "text"
+    }
+  }
+}

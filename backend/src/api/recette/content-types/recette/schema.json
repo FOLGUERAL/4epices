@@ -92,6 +92,24 @@
       "type": "boolean",
       "default": false
     },
+    "instagramPostId": {
+      "type": "string",
+      "required": false
+    },
+    "instagramPosts": {
+      "type": "json",
+      "required": false
+    },
+    "instagramAutoPublish": {
+      "type": "boolean",
+      "default": false
+    },
+    "imagesInstagram": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
     "metaTitle": {
       "type": "string",
       "maxLength": 60
@@ -112,4 +130,3 @@
     }
   }
 }
-

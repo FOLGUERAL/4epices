@@ -6,6 +6,7 @@ import { toast } from '@/components/Toast';
 import AdminAuth from '@/components/AdminAuth';
 import PinterestDashboard from '@/components/PinterestDashboard';
 import PinterestConnectPanel from '@/components/PinterestConnectPanel';
+import InstagramDashboard from '@/components/InstagramDashboard';
 import CommentsViewer from '@/components/CommentsViewer';
 import ImageEnhancement from '@/components/ImageEnhancement';
 
@@ -47,7 +48,7 @@ function CreerRecettePageContent() {
   const [selectedAIProvider, setSelectedAIProvider] = useState<'groq' | 'ollama' | 'openai'>('groq');
   
   // État pour les onglets
-  const [activeTab, setActiveTab] = useState<'create' | 'pinterest' | 'comments' | 'image-enhancement'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'pinterest' | 'instagram' | 'comments' | 'image-enhancement'>('create');
 
   // Fonction pour parser le texte avec l'IA (appelée manuellement via bouton)
   const handleParseWithAI = async () => {
@@ -776,6 +777,16 @@ function CreerRecettePageContent() {
               📌 Dashboard Pinterest
             </button>
             <button
+              onClick={() => setActiveTab('instagram')}
+              className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
+                activeTab === 'instagram'
+                  ? 'bg-pink-50 text-pink-600 border-b-2 border-pink-600'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Instagram
+            </button>
+            <button
               onClick={() => setActiveTab('comments')}
               className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
                 activeTab === 'comments'
@@ -1095,6 +1106,18 @@ function CreerRecettePageContent() {
               
               {/* Dashboard Pinterest */}
               <PinterestDashboard />
+            </div>
+          )}
+
+          {activeTab === 'instagram' && (
+            <div className="space-y-6">
+              <div className="bg-pink-50 border border-pink-200 rounded-xl p-4 text-sm text-pink-800">
+                <p className="font-semibold mb-1">Configuration Instagram</p>
+                <p>
+                  La phase 1 publie une image unique dans le Feed via <code className="px-1 py-0.5 bg-pink-100 rounded">INSTAGRAM_ACCESS_TOKEN</code> et <code className="px-1 py-0.5 bg-pink-100 rounded">INSTAGRAM_USER_ID</code>.
+                </p>
+              </div>
+              <InstagramDashboard />
             </div>
           )}
 

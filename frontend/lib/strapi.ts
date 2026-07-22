@@ -84,6 +84,9 @@ export interface Recette {
     };
     pinterestPinId?: string;
     pinterestAutoPublish?: boolean;
+    instagramPostId?: string;
+    instagramPosts?: Record<string, any>;
+    instagramAutoPublish?: boolean;
   };
 }
 
