@@ -1,5 +1,37 @@
 module.exports = {
   /**
+   * Traiter la queue Instagram planifiee.
+   */
+  '*/10 * * * *': async ({ strapi }) => {
+    try {
+      const queueService = strapi.service('api::instagram-queue.instagram-queue');
+      const readyTasks = await queueService.getReadyTasks();
+
+      if (readyTasks.length === 0) {
+        return;
+      }
+
+      let processed = 0;
+      for (const task of readyTasks) {
+        const result = await queueService.processTask(task);
+        if (result.success) {
+          processed += 1;
+          break;
+        }
+        strapi.log.warn(`[Instagram Cron] Tache ${task.id} echouee: ${result.error}`);
+      }
+
+      if (processed > 0) {
+        strapi.log.info(`[Instagram Cron] ${processed} publication(s) traitee(s)`);
+      }
+
+      await queueService.cleanup();
+    } catch (error) {
+      strapi.log.error('[Instagram Cron] Erreur lors du traitement de la queue:', error);
+    }
+  },
+
+  /**
    * Traiter la queue de pins Pinterest planifiés
    * Exécuté toutes les 5 minutes pour respecter le rate limiting
    */
@@ -161,4 +193,3 @@ module.exports = {
     }
   },
 };
-

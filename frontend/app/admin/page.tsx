@@ -46,6 +46,7 @@ function CreerRecettePageContent() {
   
   // État pour le modèle IA sélectionné
   const [selectedAIProvider, setSelectedAIProvider] = useState<'groq' | 'ollama' | 'openai'>('groq');
+  const [selectedGroqAccount, setSelectedGroqAccount] = useState<'primary' | 'secondary'>('primary');
   
   // État pour les onglets
   const [activeTab, setActiveTab] = useState<'create' | 'pinterest' | 'instagram' | 'comments' | 'image-enhancement'>('create');
@@ -66,7 +67,9 @@ function CreerRecettePageContent() {
         },
         body: JSON.stringify({ 
           text: transcript.trim(),
-          provider: selectedAIProvider
+          provider: selectedAIProvider,
+          // Identifiant non sensible : la clé correspondante est résolue côté serveur.
+          ...(selectedAIProvider === 'groq' && { groqAccount: selectedGroqAccount }),
         }),
       });
 
@@ -77,7 +80,7 @@ function CreerRecettePageContent() {
           
           // Stocker et afficher le provider utilisé
           const provider = result.provider || 'unknown';
-          setUsedProvider(provider);
+          setUsedProvider(provider === 'groq' ? `groq-${result.groqAccount === 'secondary' ? '2' : '1'}` : provider);
           
           const providerName = provider === 'groq' ? 'Groq' 
             : provider === 'openai' ? 'OpenAI' 
@@ -852,6 +855,23 @@ function CreerRecettePageContent() {
               <option value="ollama">🦙 Ollama (Local - Gratuit)</option>
               <option value="openai">💬 ChatGPT (OpenAI - Payant)</option>
             </select>
+            {selectedAIProvider === 'groq' && (
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-gray-600 mb-1" htmlFor="groq-account">
+                  Compte Groq à utiliser
+                </label>
+                <select
+                  id="groq-account"
+                  value={selectedGroqAccount}
+                  onChange={(e) => setSelectedGroqAccount(e.target.value as 'primary' | 'secondary')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                  disabled={isParsing}
+                >
+                  <option value="primary">Compte 1 — GROQ_API_KEY_1</option>
+                  <option value="secondary">Compte 2 — GROQ_API_KEY_2</option>
+                </select>
+              </div>
+            )}
             <p className="text-xs text-gray-500 mt-2">
               {selectedAIProvider === 'groq' && 'Gratuit jusqu\'à 30 requêtes/min, très rapide'}
               {selectedAIProvider === 'ollama' && '100% gratuit, nécessite Ollama installé localement'}
@@ -979,12 +999,13 @@ function CreerRecettePageContent() {
                 </h2>
                 {usedProvider && (
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    usedProvider === 'groq' ? 'bg-purple-100 text-purple-700' :
+                    usedProvider.startsWith('groq-') ? 'bg-purple-100 text-purple-700' :
                     usedProvider === 'openai' ? 'bg-green-100 text-green-700' :
                     usedProvider === 'ollama' ? 'bg-blue-100 text-blue-700' :
                     'bg-gray-100 text-gray-700'
                   }`}>
-                    {usedProvider === 'groq' ? '🤖 Groq' :
+                    {usedProvider === 'groq-1' ? '🤖 Groq · compte 1' :
+                     usedProvider === 'groq-2' ? '🤖 Groq · compte 2' :
                      usedProvider === 'openai' ? '🤖 OpenAI' :
                      usedProvider === 'ollama' ? '🦙 Ollama' :
                      '🤖 IA'}

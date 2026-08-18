@@ -28,18 +28,31 @@ function getOllamaModel(): string {
   return process.env.OLLAMA_MODEL || 'llama3.2:3b';
 }
 
-// Fonction pour obtenir la clé API Groq
-function getGroqApiKey(): string | null {
-  return process.env.GROQ_API_KEY || null;
+type GroqAccount = 'primary' | 'secondary';
+
+// Les clés restent uniquement dans les variables d'environnement du serveur Next.js.
+// GROQ_API_KEY est conservée comme alias rétrocompatible du premier compte.
+function getGroqApiKey(account: GroqAccount = 'primary'): string | null {
+  if (account === 'secondary') return process.env.GROQ_API_KEY_2 || null;
+  return process.env.GROQ_API_KEY_1 || process.env.GROQ_API_KEY || null;
+}
+
+function getGroqAccount(value?: string): GroqAccount | null {
+  if (!value || value === 'primary') return 'primary';
+  if (value === 'secondary') return 'secondary';
+  return null;
 }
 
 // Fonction pour déterminer quel provider utiliser
 // Si un provider est fourni explicitement, l'utiliser (pas de fallback)
-function getProvider(requestedProvider?: string): 'groq' | 'ollama' | 'openai' | null {
+function getProvider(
+  requestedProvider?: string,
+  groqAccount: GroqAccount | null = 'primary'
+): 'groq' | 'ollama' | 'openai' | null {
   // Si un provider est explicitement demandé, l'utiliser (sans fallback)
   if (requestedProvider) {
     const provider = requestedProvider.toLowerCase();
-    if (provider === 'groq' && getGroqApiKey()) {
+    if (provider === 'groq' && groqAccount && getGroqApiKey(groqAccount)) {
       return 'groq';
     } else if (provider === 'ollama') {
       return 'ollama';
@@ -70,6 +83,7 @@ function getProvider(requestedProvider?: string): 'groq' | 'ollama' | 'openai' |
  * Reçoit :
  * - text: Le texte dicté de la recette
  * - provider?: 'groq' | 'ollama' | 'openai' - Modèle IA à utiliser (optionnel, pas de fallback automatique)
+ * - groqAccount?: 'primary' | 'secondary' - Compte Groq à utiliser lorsque provider vaut 'groq'
  * 
  * Retourne :
  * - success: boolean
@@ -79,7 +93,7 @@ function getProvider(requestedProvider?: string): 'groq' | 'ollama' | 'openai' |
  */
 export async function POST(request: NextRequest) {
   try {
-    const { text, provider: requestedProvider } = await request.json();
+    const { text, provider: requestedProvider, groqAccount: requestedGroqAccount } = await request.json();
 
     if (!text || !text.trim()) {
       return NextResponse.json(
@@ -89,11 +103,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Déterminer le provider à utiliser (avec le provider demandé si fourni)
-    const provider = getProvider(requestedProvider);
+    const groqAccount = getGroqAccount(requestedGroqAccount);
+    const provider = getProvider(requestedProvider, groqAccount);
     
     // Si aucun provider disponible, retourner une erreur avec détails
     if (!provider) {
-      const hasGroqKey = !!getGroqApiKey();
+      const hasGroqKey = !!getGroqApiKey(groqAccount || 'primary');
       const hasOllamaUrl = !!getOllamaUrl();
       const hasOpenAIKey = !!getOpenAIApiKey();
       
@@ -102,8 +117,11 @@ export async function POST(request: NextRequest) {
       if (requestedProvider) {
         // Provider explicitement demandé mais non disponible
         const requested = requestedProvider.toLowerCase();
-        if (requested === 'groq' && !hasGroqKey) {
-          message = 'Groq est sélectionné mais GROQ_API_KEY n\'est pas configurée. Configurez GROQ_API_KEY dans vos variables d\'environnement.';
+        if (requested === 'groq' && !groqAccount) {
+          message = 'Le compte Groq demandé n\'est pas valide.';
+        } else if (requested === 'groq' && !hasGroqKey) {
+          const keyName = requestedGroqAccount === 'secondary' ? 'GROQ_API_KEY_2' : 'GROQ_API_KEY_1 (ou GROQ_API_KEY)';
+          message = `Groq est sélectionné mais ${keyName} n'est pas configurée.`;
         } else if (requested === 'ollama' && !hasOllamaUrl) {
           message = 'Ollama est sélectionné mais OLLAMA_URL n\'est pas accessible. Vérifiez que Ollama est démarré et que OLLAMA_URL est correctement configurée.';
         } else if (requested === 'openai' && !hasOpenAIKey) {
@@ -211,7 +229,7 @@ ${text.trim()}
 
     try {
       if (provider === 'groq') {
-        content = await callGroq(prompt);
+        content = await callGroq(prompt, groqAccount || 'primary');
       } else if (provider === 'ollama') {
         content = await callOllama(prompt);
       } else if (provider === 'openai') {
@@ -407,6 +425,7 @@ ${text.trim()}
       success: true,
       data: normalizedRecipe,
       provider: usedProvider, // Indiquer quel provider a été utilisé
+      ...(usedProvider === 'groq' && { groqAccount: groqAccount || 'primary' }),
     });
   } catch (error) {
     console.error('[API /recipe/parse-ai] Erreur:', error);
@@ -545,16 +564,16 @@ async function callOpenAI(prompt: string): Promise<string> {
 /**
  * Appeler Groq API (gratuit, rapide, modèles performants)
  */
-async function callGroq(prompt: string): Promise<string> {
-  const apiKey = getGroqApiKey();
+async function callGroq(prompt: string, account: GroqAccount): Promise<string> {
+  const apiKey = getGroqApiKey(account);
   if (!apiKey) {
-    throw new Error('GROQ_API_KEY non configurée');
+    throw new Error(`Clé API Groq du compte ${account === 'secondary' ? '2' : '1'} non configurée`);
   }
 
   // Modele Groq recommande pour la generation texte/JSON.
   const model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
-  console.log(`[Groq] Utilisation du modèle ${model}`);
+  console.log(`[Groq] Compte ${account === 'secondary' ? '2' : '1'} — utilisation du modèle ${model}`);
 
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
