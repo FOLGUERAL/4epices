@@ -312,6 +312,21 @@ h1, h2, h3, h4, h5, h6 {
     to { opacity: 1; transform: translateY(0); }
   }
 
+  @keyframes nonna-breathe {
+    0%, 100% { transform: scale(1.02) translateY(0); }
+    50% { transform: scale(1.045) translateY(-0.2rem); }
+  }
+
+  @keyframes nonna-speak {
+    0%, 100% { transform: scale(1.03) translateY(0); }
+    50% { transform: scale(1.055) translateY(-0.3rem); }
+  }
+
+  @keyframes nonna-bars {
+    0%, 100% { transform: scaleY(0.3); }
+    50% { transform: scaleY(1); }
+  }
+
   @keyframes cooking-guide-breathe {
     0%, 100% { transform: translateY(0) rotate(-1deg); }
     50% { transform: translateY(-4px) rotate(1deg); }

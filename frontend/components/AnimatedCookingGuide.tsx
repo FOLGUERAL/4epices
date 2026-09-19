@@ -3,6 +3,7 @@
 import { RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CookingGuide } from '@/lib/cookingGuide';
+import NonnaCookingAvatar from '@/components/NonnaCookingAvatar';
 
 type AnimatedCookingGuideProps = {
   guide: CookingGuide;
@@ -12,8 +13,11 @@ type AnimatedCookingGuideProps = {
   speakingCharIndex: number;
   isSpeechEnabled: boolean;
   isComplete?: boolean;
+  caption?: string;
   onSpeak: () => void;
 };
+
+const CAPTION_DURATION_MS = 6000;
 
 const normalizeForSync = (text: string): string =>
   text
@@ -33,11 +37,12 @@ export default function AnimatedCookingGuide({
   speakingCharIndex,
   isSpeechEnabled,
   isComplete = false,
+  caption,
   onSpeak,
 }: AnimatedCookingGuideProps) {
   const [visibleLength, setVisibleLength] = useState(stepText.length);
-  const [imageSrc, setImageSrc] = useState(guide.imageSrc);
   const [showSpeechHint, setShowSpeechHint] = useState(false);
+  const [isCaptionVisible, setIsCaptionVisible] = useState(Boolean(caption));
   const fallbackStartedAtRef = useRef<number | null>(null);
   const lastBoundaryAtRef = useRef(0);
 
@@ -49,10 +54,6 @@ export default function AnimatedCookingGuide({
   const displayedText = stepText.slice(0, Math.max(1, visibleLength));
   const remainingText = stepText.slice(Math.max(1, visibleLength));
   const isRevealing = visibleLength < stepText.length;
-
-  useEffect(() => {
-    setImageSrc(guide.imageSrc);
-  }, [guide.imageSrc]);
 
   useEffect(() => {
     if (!isSpeaking || !syncsWithCurrentStep) return;
@@ -112,6 +113,18 @@ export default function AnimatedCookingGuide({
     }
   }, [isSpeechEnabled]);
 
+  useEffect(() => {
+    if (!caption) {
+      setIsCaptionVisible(false);
+      return;
+    }
+
+    setIsCaptionVisible(true);
+    const timeoutId = window.setTimeout(() => setIsCaptionVisible(false), CAPTION_DURATION_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [caption]);
+
   const handleSpeak = () => {
     if (!isSpeechEnabled) {
       setShowSpeechHint(true);
@@ -126,28 +139,11 @@ export default function AnimatedCookingGuide({
     <section className="mb-5 overflow-hidden rounded-xl border border-orange-100 bg-white shadow-sm">
       <div className="grid gap-0 md:grid-cols-[17rem_minmax(0,1fr)]">
         <div className="relative bg-[#fffdfa] p-3">
-          <div className="relative flex aspect-[281/319] items-center justify-center overflow-hidden rounded-lg bg-[#fffdfa]">
-            {isComplete ? (
-              <img
-                src="/fin_recette.png"
-                alt="Recette terminée"
-                className="h-full w-full object-contain"
-                draggable={false}
-              />
-            ) : (
-              <img
-                src={imageSrc}
-                alt={guide.imageAlt}
-                className="h-full w-full object-contain"
-                draggable={false}
-                onError={() => {
-                  if (imageSrc !== guide.fallbackImageSrc) {
-                    setImageSrc(guide.fallbackImageSrc);
-                  }
-                }}
-              />
-            )}
-          </div>
+          <NonnaCookingAvatar
+            state={isComplete ? 'celebrating' : isSpeaking ? 'speaking' : 'idle'}
+            caption={isCaptionVisible ? caption : undefined}
+            className="aspect-[281/319]"
+          />
         </div>
 
         <div className="flex min-w-0 flex-col justify-between gap-4 p-4 sm:p-5">

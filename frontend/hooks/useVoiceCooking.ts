@@ -92,14 +92,20 @@ const selectBestFrenchVoice = (
     'mathieu',
     'remy',
     'daniel',
-    'google français',
-    'google francais',
+    'claude',
+    'jean',
   ];
 
   const feminineVoiceHints = [
     'denise',
+    'eloise',
+    'éloïse',
+    'vivienne',
+    'brigitte',
     'hortense',
     'audrey',
+    'aurelie',
+    'aurélie',
     'amelie',
     'amélie',
     'celine',
@@ -108,6 +114,8 @@ const selectBestFrenchVoice = (
     'marie',
     'lea',
     'léa',
+    'google français',
+    'google francais',
   ];
 
   const qualityVoiceHints = [
@@ -127,7 +135,7 @@ const selectBestFrenchVoice = (
       );
       const exactFrenchScore = voice.lang.toLowerCase() === 'fr-fr' ? 20 : 0;
       const frenchScore = voice.lang.toLowerCase().startsWith('fr') ? 16 : 0;
-      const masculineScore = masculineVoiceHints.reduce(
+      const feminineScore = feminineVoiceHints.reduce(
         (score, hint, index) => score + (name.includes(hint) ? 60 - index : 0),
         0
       );
@@ -135,7 +143,7 @@ const selectBestFrenchVoice = (
         (score, hint, index) => score + (name.includes(hint) ? 20 - index : 0),
         0
       );
-      const femininePenalty = feminineVoiceHints.some((hint) => name.includes(hint)) ? 45 : 0;
+      const masculinePenalty = masculineVoiceHints.some((hint) => name.includes(hint)) ? 45 : 0;
       const localPenalty = voice.localService ? 0 : 4;
 
       return {
@@ -144,10 +152,10 @@ const selectBestFrenchVoice = (
           kokoroScore +
           exactFrenchScore +
           frenchScore +
-          masculineScore +
+          feminineScore +
           qualityScore +
           localPenalty -
-          femininePenalty,
+          masculinePenalty,
       };
     })
     .sort((a, b) => b.score - a.score)[0]?.voice;
@@ -272,8 +280,8 @@ export function useVoiceCooking(
 
     const utterance = new SpeechSynthesisUtterance(spokenText);
     utterance.lang = 'fr-FR';
-    utterance.rate = 0.88;
-    utterance.pitch = 0.88;
+    utterance.rate = 0.86;
+    utterance.pitch = 1;
     utterance.volume = 1;
 
     utterance.onstart = () => {

@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, CircleHelp, Mic, Play, Pointer, Share2, Volu
 import { getRecetteBySlug, Recette } from '@/lib/strapi';
 import RecettesGridSkeleton from '@/components/RecettesGridSkeleton';
 import AnimatedCookingGuide from '@/components/AnimatedCookingGuide';
+import NonnaCookingAvatar from '@/components/NonnaCookingAvatar';
 import OptimizedImage from '@/components/OptimizedImage';
 import RatingForm from '@/components/RatingForm';
 import FavoriteButton from '@/components/FavoriteButton';
@@ -511,6 +512,12 @@ export default function CuisineModePage() {
   );
   const lastAutoReadStepRef = useRef(currentStep);
   const isCompletionStep = hasStartedCooking && steps.length > 0 && currentStep === steps.length - 1;
+  const nonnaCaption =
+    currentStep === 0
+      ? 'Buongiorno ! Je te guide pas à pas, on y va ?'
+      : steps.length > 4 && currentStep === Math.floor((steps.length - 1) / 2)
+        ? 'Molto bene ! Continue, ça sent déjà bon.'
+        : undefined;
 
   useEffect(() => {
     return () => {
@@ -526,8 +533,11 @@ export default function CuisineModePage() {
 
     if (isSpeechEnabled && currentStepData?.text) {
       const successSoundDelay = isCompletionStep ? playCookingSuccessSound() : 0;
+      const spokenLine = isCompletionStep
+        ? `${currentStepData.text} Bravo ! Tu as cuisiné ça comme une vraie nonna. Mangia bene !`
+        : currentStepData.text;
       const speakTimeoutId = window.setTimeout(() => {
-        speak(currentStepData.text, true);
+        speak(spokenLine, true);
       }, successSoundDelay);
 
       return () => window.clearTimeout(speakTimeoutId);
@@ -1055,6 +1065,10 @@ export default function CuisineModePage() {
             )}
             {isCompletionStep ? (
               <div className="rounded-xl border border-orange-100 bg-orange-50/50 px-5 py-6 text-center shadow-sm sm:px-7">
+                <NonnaCookingAvatar
+                  state="celebrating"
+                  className="mx-auto mb-4 aspect-[4/3] w-full max-w-xs shadow-sm"
+                />
                 <h2 className="text-2xl font-bold text-gray-900">Bravo</h2>
                 <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-gray-700">
                   {currentStepData?.text || 'Vous avez terminé la recette. Belle cuisine !'}
@@ -1114,6 +1128,7 @@ export default function CuisineModePage() {
                 speakingText={voiceState.speakingText}
                 speakingCharIndex={voiceState.speakingCharIndex}
                 isSpeechEnabled={isSpeechEnabled}
+                caption={nonnaCaption}
                 onSpeak={handleSpeakGuide}
               />
             )}
