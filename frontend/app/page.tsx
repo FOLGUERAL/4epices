@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-cache';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { getRecettes, getCategories, getRecettesByCategory, Recette, Categorie } from '@/lib/strapi';
 import HorizontalCarousel from '@/components/HorizontalCarousel';
@@ -158,6 +159,48 @@ export default async function Home() {
             seeAllLink="/recettes"
           />
         )}
+
+        <section
+          className="my-12 overflow-hidden rounded-3xl border border-orange-100 bg-gradient-to-br from-orange-50 to-amber-50"
+          aria-labelledby="nonna-heading"
+        >
+          <div className="grid items-center gap-6 p-6 sm:p-10 md:grid-cols-[220px_1fr]">
+            <div className="relative mx-auto h-48 w-48 md:h-56 md:w-56">
+              <Image
+                src="/images/nonna-speaking.webp"
+                alt="La Nonna, votre guide de cuisine"
+                fill
+                sizes="224px"
+                className="object-contain"
+              />
+            </div>
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-orange-700">Mode Cuisine</p>
+              <h2 id="nonna-heading" className="mt-1 text-3xl font-bold text-gray-900 sm:text-4xl">
+                Cuisinez avec la Nonna
+              </h2>
+              <p className="mt-3 max-w-2xl text-lg leading-relaxed text-gray-700">
+                Elle vous guide étape par étape et vous lit la recette à voix haute : vous gardez les mains
+                dans la farine, sans toucher l&apos;écran.
+              </p>
+              <ul className="mt-4 space-y-1 text-gray-700">
+                <li>✓ Étapes guidées, une à la fois</li>
+                <li>✓ Commandes vocales mains libres</li>
+                <li>✓ Minuteurs intégrés</li>
+              </ul>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href={derniereRecette ? `/recettes/${derniereRecette.attributes.slug}/cuisine` : '/recettes'}
+                  data-umami-event="nonna-home-cta"
+                  className="inline-flex min-h-12 items-center justify-center rounded-lg bg-orange-600 px-5 py-3 font-bold text-white shadow-sm transition-colors hover:bg-orange-700 focus-ring"
+                >
+                  {derniereRecette ? 'Essayer avec la dernière recette' : 'Trouver une recette'}
+                </Link>
+                <KitchenModeHelp triggerLabel="Comment ça marche ?" />
+              </div>
+            </div>
+          </div>
+        </section>
 
         {categories.map((categorie) => {
           const recettesCategorie = recettesParCategorie[categorie.attributes.slug] || [];

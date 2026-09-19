@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { searchRecettes, Recette } from '@/lib/strapi';
 import OptimizedImage from '@/components/OptimizedImage';
 import { SITE_NAME } from '@/lib/seo';
+import { recordSearchMiss } from '@/lib/searchMisses';
 
 // Rendu à chaque requête, mais les appels Strapi sont mis en cache (revalidation 5 min dans fetchAPI)
 // pour ne pas solliciter le backend à chaque visite.
@@ -38,6 +39,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       const response = await searchRecettes(query, { pageSize: 50 });
       recettes = response.data || [];
       total = response.meta?.pagination?.total || 0;
+
+      // Garde la trace des recherches sans résultat (idées de recettes à écrire)
+      if (recettes.length === 0) {
+        void recordSearchMiss(query);
+      }
     } catch (error) {
       console.error('Erreur lors de la recherche:', error);
     }

@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "search_misses",
+  "info": {
+    "singularName": "search-miss",
+    "pluralName": "search-misses",
+    "displayName": "Recherche sans résultat",
+    "description": "Termes recherchés sur le site qui n'ont donné aucune recette (idées de contenu à écrire)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "terme": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "maxLength": 80
+    },
+    "compteur": {
+      "type": "integer",
+      "default": 1,
+      "min": 1
+    },
+    "derniereRecherche": {
+      "type": "datetime"
+    }
+  }
+}
