@@ -49,7 +49,60 @@ function CreerRecettePageContent() {
   const [selectedGroqAccount, setSelectedGroqAccount] = useState<'primary' | 'secondary'>('primary');
   
   // État pour les onglets
-  const [activeTab, setActiveTab] = useState<'create' | 'pinterest' | 'instagram' | 'comments' | 'image-enhancement'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'generator' | 'pinterest' | 'instagram' | 'comments' | 'image-enhancement'>('create');
+
+  // Générateur de recettes : il prépare uniquement un aperçu et ne crée rien dans Strapi.
+  const [generatorIngredients, setGeneratorIngredients] = useState('');
+  const [generatorCuisine, setGeneratorCuisine] = useState('italienne');
+  const [generatorPersons, setGeneratorPersons] = useState(4);
+  const [generatorDifficulty, setGeneratorDifficulty] = useState<'facile' | 'moyen' | 'difficile'>('facile');
+  const [generatorMaxTime, setGeneratorMaxTime] = useState('');
+  const [generatedRecipe, setGeneratedRecipe] = useState<any>(null);
+  const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
+
+  const handleGenerateRecipe = async () => {
+    const ingredients = generatorIngredients
+      .split(/[\n,;]/)
+      .map((ingredient) => ingredient.trim())
+      .filter(Boolean);
+
+    if (ingredients.length === 0) {
+      toast.warning('Ajoutez au moins un ingrédient.');
+      return;
+    }
+
+    setIsGeneratingRecipe(true);
+    setGeneratedRecipe(null);
+
+    try {
+      const response = await fetch('/api/recipe/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ingredients,
+          cuisine: generatorCuisine,
+          nombrePersonnes: generatorPersons,
+          difficulte: generatorDifficulty,
+          maxTime: generatorMaxTime ? Number(generatorMaxTime) : undefined,
+          provider: selectedAIProvider,
+          ...(selectedAIProvider === 'groq' && { groqAccount: selectedGroqAccount }),
+        }),
+      });
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || !result?.success || !result.data) {
+        throw new Error(result?.message || 'La génération a échoué.');
+      }
+
+      setGeneratedRecipe(result.data);
+      toast.success('Recette générée. Elle n’a pas été enregistrée dans Strapi.');
+    } catch (error) {
+      console.error('Erreur génération recette:', error);
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la génération de la recette.');
+    } finally {
+      setIsGeneratingRecipe(false);
+    }
+  };
 
   // Fonction pour parser le texte avec l'IA (appelée manuellement via bouton)
   const handleParseWithAI = async () => {
@@ -770,6 +823,16 @@ function CreerRecettePageContent() {
               📝 Créer une recette
             </button>
             <button
+              onClick={() => setActiveTab('generator')}
+              className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
+                activeTab === 'generator'
+                  ? 'bg-emerald-50 text-emerald-700 border-b-2 border-emerald-600'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              ✨ Générateur
+            </button>
+            <button
               onClick={() => setActiveTab('pinterest')}
               className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
                 activeTab === 'pinterest'
@@ -1109,6 +1172,94 @@ function CreerRecettePageContent() {
                 <p>💡 Astuce : Vous pouvez dicter et prendre une photo</p>
               </div>
             </>
+          )}
+
+          {activeTab === 'generator' && (
+            <div className="max-w-3xl mx-auto space-y-6">
+              <div className="bg-white rounded-xl p-6 shadow-md">
+                <h2 className="text-2xl font-bold text-gray-900">Générateur de recettes</h2>
+                <p className="mt-2 text-sm text-gray-600">
+                  Générez un aperçu à partir des ingrédients disponibles et d’un style de cuisine. La recette ne sera pas enregistrée.
+                </p>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <label className="md:col-span-2 block">
+                    <span className="text-sm font-medium text-gray-700">Ingrédients disponibles</span>
+                    <textarea
+                      value={generatorIngredients}
+                      onChange={(event) => setGeneratorIngredients(event.target.value)}
+                      placeholder="Tomates, pâtes, basilic, mozzarella"
+                      rows={4}
+                      disabled={isGeneratingRecipe}
+                      className="mt-1 w-full rounded-lg border border-gray-300 p-3 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                    />
+                    <span className="mt-1 block text-xs text-gray-500">Séparez les ingrédients par des virgules ou des retours à la ligne.</span>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">Style de cuisine</span>
+                    <select value={generatorCuisine} onChange={(event) => setGeneratorCuisine(event.target.value)} disabled={isGeneratingRecipe} className="mt-1 w-full rounded-lg border border-gray-300 p-3">
+                      <option value="italienne">Italienne</option>
+                      <option value="méditerranéenne">Méditerranéenne</option>
+                      <option value="asiatique">Asiatique</option>
+                      <option value="française">Française</option>
+                      <option value="mexicaine">Mexicaine</option>
+                      <option value="végétarienne">Végétarienne</option>
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">Personnes</span>
+                    <input type="number" min="1" max="20" value={generatorPersons} onChange={(event) => setGeneratorPersons(Math.min(20, Math.max(1, Number(event.target.value) || 1)))} disabled={isGeneratingRecipe} className="mt-1 w-full rounded-lg border border-gray-300 p-3" />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">Difficulté</span>
+                    <select value={generatorDifficulty} onChange={(event) => setGeneratorDifficulty(event.target.value as 'facile' | 'moyen' | 'difficile')} disabled={isGeneratingRecipe} className="mt-1 w-full rounded-lg border border-gray-300 p-3">
+                      <option value="facile">Facile</option>
+                      <option value="moyen">Moyen</option>
+                      <option value="difficile">Difficile</option>
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">Temps maximum (minutes)</span>
+                    <input type="number" min="5" max="480" value={generatorMaxTime} onChange={(event) => setGeneratorMaxTime(event.target.value)} placeholder="Facultatif" disabled={isGeneratingRecipe} className="mt-1 w-full rounded-lg border border-gray-300 p-3" />
+                  </label>
+                </div>
+
+                <button onClick={handleGenerateRecipe} disabled={isGeneratingRecipe} className="mt-6 w-full rounded-xl bg-emerald-600 px-6 py-4 font-semibold text-white shadow-lg transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-400">
+                  {isGeneratingRecipe ? 'Génération en cours…' : '✨ Générer une recette'}
+                </button>
+              </div>
+
+              {generatedRecipe && (
+                <article className="rounded-xl bg-white p-6 shadow-md">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">{generatedRecipe.titre}</h2>
+                      <p className="mt-2 text-gray-600">{generatedRecipe.description}</p>
+                    </div>
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800">Aperçu non enregistré</span>
+                  </div>
+                  <p className="mt-4 text-sm text-gray-600">{generatedRecipe.nombrePersonnes} personnes · {generatedRecipe.tempsPreparation || 0} min de préparation · {generatedRecipe.tempsCuisson || 0} min de cuisson · {generatedRecipe.difficulte}</p>
+                  <div className="mt-6 grid gap-6 md:grid-cols-2">
+                    <section>
+                      <h3 className="font-semibold text-gray-900">Ingrédients</h3>
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-gray-700">
+                        {(generatedRecipe.ingredients || []).map((ingredient: any, index: number) => <li key={`${String(ingredient)}-${index}`}>{typeof ingredient === 'string' ? ingredient : `${ingredient.quantite || ''} ${ingredient.ingredient || ''}`.trim()}</li>)}
+                      </ul>
+                    </section>
+                    <section>
+                      <h3 className="font-semibold text-gray-900">Préparation</h3>
+                      <ol className="mt-2 list-decimal space-y-2 pl-5 text-gray-700">
+                        {(generatedRecipe.etapes || []).map((step: string, index: number) => <li key={`${index}-${step}`}>{step}</li>)}
+                      </ol>
+                    </section>
+                  </div>
+                </article>
+              )}
+            </div>
           )}
 
           {activeTab === 'pinterest' && (
