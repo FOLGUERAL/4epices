@@ -4,6 +4,7 @@ import Navigation from "@/components/Navigation";
 import AdSenseScript from "@/components/AdSenseScript";
 import FundingChoices from "@/components/FundingChoices";
 import ConsentSettingsButton from "@/components/ConsentSettingsButton";
+import UmamiAnalytics from "@/components/UmamiAnalytics";
 import EzoicScript from "@/components/EzoicScript";
 import AdBlockNotice from "@/components/AdBlockNotice";
 import PWARegister from "@/components/PWARegister";
@@ -93,6 +94,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
+        <UmamiAnalytics />
         {adsenseActive && <FundingChoices />}
         {adsenseActive && <AdSenseScript />}
         {adProvider === 'ezoic' && <EzoicScript />}
