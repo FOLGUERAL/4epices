@@ -9,6 +9,21 @@ const EZOIC_PLACEHOLDER_ENV: Record<RecipeAdPlacement, string | undefined> = {
   'recipe-after-preparation': process.env.NEXT_PUBLIC_EZOIC_PLACEHOLDER_RECIPE_AFTER_PREPARATION,
 };
 
+// Un identifiant de slot par emplacement pour mesurer chacun séparément dans AdSense.
+// Repli sur NEXT_PUBLIC_GOOGLE_ADS_SLOT si l'emplacement n'a pas son propre slot.
+const ADSENSE_SLOT_ENV: Record<RecipeAdPlacement, string | undefined> = {
+  'recipe-after-ingredients': process.env.NEXT_PUBLIC_GOOGLE_ADS_SLOT_RECIPE_AFTER_INGREDIENTS,
+  'recipe-after-preparation': process.env.NEXT_PUBLIC_GOOGLE_ADS_SLOT_RECIPE_AFTER_PREPARATION,
+};
+
+export function getAdSenseSlotId(placement: RecipeAdPlacement): string {
+  return (
+    ADSENSE_SLOT_ENV[placement]?.trim() ||
+    process.env.NEXT_PUBLIC_GOOGLE_ADS_SLOT?.trim() ||
+    ''
+  );
+}
+
 export function isAdSenseEnabled(): boolean {
   return process.env.NEXT_PUBLIC_ENABLE_ADSENSE === 'true';
 }

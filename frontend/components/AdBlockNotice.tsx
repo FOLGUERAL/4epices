@@ -2,9 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+const DISMISS_STORAGE_KEY = 'adblock-notice-dismissed-at';
+const DISMISS_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+
 export default function AdBlockNotice() {
   const [isAdBlockDetected, setIsAdBlockDetected] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   const isLocalEnvironment = useMemo(() => {
     if (typeof window === 'undefined') {
@@ -86,50 +90,55 @@ export default function AdBlockNotice() {
     };
   }, []);
 
-  const shouldShowNotice = useMemo(() => !isLocalEnvironment && isAdBlockDetected, [isAdBlockDetected, isLocalEnvironment]);
+  useEffect(() => {
+    try {
+      const dismissedAt = Number(window.localStorage.getItem(DISMISS_STORAGE_KEY));
+      if (dismissedAt && Date.now() - dismissedAt < DISMISS_DURATION_MS) {
+        setIsDismissed(true);
+      }
+    } catch {
+      // localStorage indisponible (navigation privée, données bloquées) : le bandeau reste affichable
+    }
+  }, []);
+
+  const dismiss = () => {
+    setIsDismissed(true);
+    try {
+      window.localStorage.setItem(DISMISS_STORAGE_KEY, String(Date.now()));
+    } catch {
+      // Sans stockage, la fermeture ne vaut que pour cette page
+    }
+  };
+
+  const shouldShowNotice = useMemo(
+    () => !isLocalEnvironment && isAdBlockDetected && !isDismissed,
+    [isAdBlockDetected, isDismissed, isLocalEnvironment]
+  );
 
   if (isChecking || !shouldShowNotice) {
     return null;
   }
 
+  // Bandeau discret en bas de page : ne bloque ni la lecture ni la navigation
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-3xl border border-amber-200 bg-white p-6 shadow-2xl sm:p-8">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-          <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0 3.75h.01M10.5 3.75 2.25 18a1.5 1.5 0 0 0 1.3 2.25h16.9a1.5 1.5 0 0 0 1.3-2.25L13.5 3.75a1.5 1.5 0 0 0-2.6 0Z" />
-          </svg>
-        </div>
-
-        <h2 className="mt-5 text-center text-2xl font-bold text-gray-950">
-          Les publicités sont nécessaires pour maintenir 4epices
-        </h2>
-
-        <p className="mt-3 text-center text-sm leading-6 text-gray-700">
-          Un bloqueur de publicités semble être actif. Merci de l&apos;autoriser sur ce site pour
-          nous aider à continuer à proposer du contenu gratuit. Nous évitons de diffuser des publicités
-          de façon intrusive : contrairement à beaucoup de sites de cuisine,
-          nous privilégions une expérience de lecture plus propre et plus sereine.
+    <div
+      role="region"
+      aria-label="Soutenir 4epices"
+      className="fixed inset-x-0 bottom-0 z-[1000] px-3 pb-3 sm:px-4 sm:pb-4"
+    >
+      <div className="mx-auto flex max-w-3xl items-start gap-3 rounded-2xl border border-amber-200 bg-white p-4 shadow-lg">
+        <p className="flex-1 text-sm leading-6 text-gray-700">
+          <span className="font-semibold text-gray-900">4epices reste gratuit grâce à quelques publicités discrètes.</span>{' '}
+          Si vous utilisez un bloqueur, pensez à l&apos;autoriser sur ce site pour nous soutenir. Merci !
         </p>
-
-        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-semibold">Que faire ?</p>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Désactivez temporairement votre bloqueur pour ce site.</li>
-            <li>Actualisez la page après modification.</li>
-            <li>Si vous ne souhaitez pas autoriser les annonces, vous pouvez quitter cette page.</li>
-          </ul>
-        </div>
-
-        <div className="mt-6 flex justify-center">
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-orange-700"
-          >
-            Recharger la page
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Fermer ce message"
+          className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold text-orange-700 transition-colors hover:bg-orange-50"
+        >
+          Fermer
+        </button>
       </div>
     </div>
   );

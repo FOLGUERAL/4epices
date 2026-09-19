@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Navigation from "@/components/Navigation";
 import AdSenseScript from "@/components/AdSenseScript";
+import FundingChoices from "@/components/FundingChoices";
+import ConsentSettingsButton from "@/components/ConsentSettingsButton";
 import EzoicScript from "@/components/EzoicScript";
 import AdBlockNotice from "@/components/AdBlockNotice";
 import PWARegister from "@/components/PWARegister";
@@ -76,6 +78,7 @@ export default function RootLayout({
 }>) {
   const adProvider = getAdProvider();
   const adsenseFallbackEnabled = isAdSenseEnabled();
+  const adsenseActive = adProvider === 'adsense' || (adProvider === 'ezoic' && adsenseFallbackEnabled);
   const organizationJsonLd = buildOrganizationJsonLd();
   const webSiteJsonLd = buildWebSiteJsonLd();
 
@@ -90,7 +93,8 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
-        {(adProvider === 'adsense' || (adProvider === 'ezoic' && adsenseFallbackEnabled)) && <AdSenseScript />}
+        {adsenseActive && <FundingChoices />}
+        {adsenseActive && <AdSenseScript />}
         {adProvider === 'ezoic' && <EzoicScript />}
         <AdBlockNotice />
         <PWARegister />
@@ -104,13 +108,16 @@ export default function RootLayout({
               <p className="text-gray-400 text-sm">
                 © {new Date().getFullYear()} {SITE_NAME}. Tous droits réservés.
               </p>
-              <nav className="mt-4 md:mt-0">
+              <nav className="mt-4 md:mt-0 flex flex-col items-center gap-2 md:flex-row md:gap-6">
                 <Link
                   href="/politique-de-confidentialite"
                   className="text-gray-400 hover:text-white text-sm transition-colors"
                 >
                   Politique de confidentialité
                 </Link>
+                {adsenseActive && (
+                  <ConsentSettingsButton className="text-gray-400 hover:text-white text-sm transition-colors" />
+                )}
               </nav>
             </div>
           </div>

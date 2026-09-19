@@ -51,9 +51,25 @@ export default function PolitiqueConfidentialite() {
               texte stockés sur votre appareil qui nous permettent de reconnaître votre navigateur et de mémoriser certaines 
               informations.
             </p>
-            <p className="text-gray-700">
-              Vous pouvez désactiver les cookies dans les paramètres de votre navigateur, mais cela peut affecter certaines 
+            <p className="text-gray-700 mb-4">
+              Vous pouvez désactiver les cookies dans les paramètres de votre navigateur, mais cela peut affecter certaines
               fonctionnalités du site.
+            </p>
+
+            <h3 className="text-xl font-semibold text-gray-800 mb-3">2.3. Publicité</h3>
+            <p className="text-gray-700 mb-4">
+              Notre site affiche des publicités via Google AdSense. Google et ses partenaires peuvent utiliser des cookies
+              et des identifiants pour diffuser et mesurer des annonces, éventuellement personnalisées selon vos centres
+              d&apos;intérêt. Pour les visiteurs de l&apos;Espace économique européen, ces cookies ne sont déposés qu&apos;avec
+              votre consentement, que vous pouvez donner, refuser ou modifier à tout moment via le lien
+              « Gérer mes choix publicitaires » en bas de chaque page.
+            </p>
+            <p className="text-gray-700">
+              Pour en savoir plus sur l&apos;utilisation des données par Google, consultez
+              {' '}
+              <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                la page « Comment Google utilise les données »
+              </a>.
             </p>
           </section>
 

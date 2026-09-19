@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import {
   getAdProvider,
+  getAdSenseSlotId,
   getEzoicPlaceholderId,
   isAdSenseEnabled,
   RecipeAdPlacement,
@@ -60,7 +61,7 @@ export default function AdSlot({
   if (provider === 'adsense' || (provider === 'ezoic' && isAdSenseEnabled())) {
     return (
       <GoogleAdSense
-        adSlot={adSlot}
+        adSlot={adSlot || getAdSenseSlotId(placement)}
         adFormat={adFormat}
         className={className}
         style={style}
