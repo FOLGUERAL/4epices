@@ -392,21 +392,104 @@ export async function searchRecettes(
     return { data: [] };
   }
 
-  const queryParams = new URLSearchParams();
-  const searchTerm = query.trim();
-  
-  // Recherche dans le titre et la description avec $containsi (insensible à la casse)
-  // Syntaxe Strapi v4 pour $or
-  queryParams.append('filters[$or][0][titre][$containsi]', searchTerm);
-  queryParams.append('filters[$or][1][description][$containsi]', searchTerm);
-  
-  if (params?.page) queryParams.append('pagination[page]', params.page.toString());
-  if (params?.pageSize) queryParams.append('pagination[pageSize]', params.pageSize.toString());
-  
-  queryParams.append('populate', 'imagePrincipale,categories,tags');
-  queryParams.append('sort', 'publishedAt:desc');
+  const tokens = tokenizeSearch(query);
+  if (tokens.length === 0) {
+    return { data: [] };
+  }
 
-  return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+  // Le filtrage Strapi ($containsi) est trop strict (pluriels, accents, fautes de frappe,
+  // ingrédients non couverts) : on récupère les recettes publiées et on filtre côté serveur.
+  const all: Recette[] = [];
+  const pageSize = 100;
+  for (let page = 1; page <= 20; page++) {
+    const queryParams = new URLSearchParams();
+    queryParams.append('pagination[page]', page.toString());
+    queryParams.append('pagination[pageSize]', pageSize.toString());
+    queryParams.append('populate', 'imagePrincipale,categories,tags');
+    queryParams.append('sort', 'publishedAt:desc');
+
+    const response = await fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+    all.push(...(response.data || []));
+    const pageCount = response.meta?.pagination?.pageCount ?? 1;
+    if (page >= pageCount) break;
+  }
+
+  const scored = all
+    .map((recette) => ({ recette, score: scoreRecetteForSearch(recette, tokens) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const total = scored.length;
+  const pageSizeOut = params?.pageSize || total || 1;
+  const pageOut = params?.page || 1;
+  const start = (pageOut - 1) * pageSizeOut;
+
+  return {
+    data: scored.slice(start, start + pageSizeOut).map((entry) => entry.recette),
+    meta: {
+      pagination: {
+        page: pageOut,
+        pageSize: pageSizeOut,
+        pageCount: Math.max(1, Math.ceil(total / pageSizeOut)),
+        total,
+      },
+    },
+  };
+}
+
+// Minuscules, sans accents, sans ponctuation, doubles lettres réduites (courgete = courgette)
+function normalizeForSearch(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/œ/g, 'oe')
+    .replace(/æ/g, 'ae')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/([a-z])\1+/g, '$1')
+    .trim();
+}
+
+function tokenizeSearch(query: string): string[] {
+  return normalizeForSearch(query)
+    .split(' ')
+    .filter(Boolean)
+    // Singulier approximatif : « courgettes » → « courgette », « choux » → « chou »
+    .map((word) => (word.length > 3 ? word.replace(/[sx]$/, '') : word));
+}
+
+function collectStrings(value: unknown, out: string[] = []): string[] {
+  if (typeof value === 'string') out.push(value);
+  else if (Array.isArray(value)) value.forEach((v) => collectStrings(v, out));
+  else if (value && typeof value === 'object') Object.values(value).forEach((v) => collectStrings(v, out));
+  return out;
+}
+
+// Tous les mots doivent être trouvés ; le titre pèse plus que les tags/ingrédients, puis la description.
+function scoreRecetteForSearch(recette: Recette, tokens: string[]): number {
+  const { titre, description, ingredients, categories, tags } = recette.attributes;
+  const fields: Array<{ text: string; weight: number }> = [
+    { text: normalizeForSearch(titre || ''), weight: 10 },
+    {
+      text: normalizeForSearch(
+        [...(tags?.data || []), ...(categories?.data || [])].map((x) => x.attributes.nom).join(' ')
+      ),
+      weight: 5,
+    },
+    { text: normalizeForSearch(collectStrings(ingredients).join(' ')), weight: 4 },
+    { text: normalizeForSearch(description || ''), weight: 2 },
+  ];
+
+  let total = 0;
+  for (const token of tokens) {
+    let best = 0;
+    for (const field of fields) {
+      if (field.text.includes(token)) best = Math.max(best, field.weight);
+    }
+    if (best === 0) return 0;
+    total += best;
+  }
+  return total;
 }
 
 export function getStrapiMediaUrl(url: string): string {
