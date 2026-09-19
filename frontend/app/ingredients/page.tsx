@@ -32,6 +32,9 @@ function MixerSkeleton() {
 export default async function IngredientsHubPage() {
   const mixerData = await getIngredientMixerData();
   const { ingredients } = mixerData;
+  // Les hubs trop maigres (noindex) sont présentés à part, sans mise en avant
+  const mainIngredients = ingredients.filter((i) => i.recetteCount >= MIN_RECIPES_FOR_INDEX);
+  const upcomingIngredients = ingredients.filter((i) => i.recetteCount < MIN_RECIPES_FOR_INDEX);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -68,8 +71,10 @@ export default async function IngredientsHubPage() {
         </div>
 
         {ingredients.length > 0 ? (
+          <>
+          {mainIngredients.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ingredients.map((ingredient) => (
+            {mainIngredients.map((ingredient) => (
               <Link
                 key={ingredient.slug}
                 href={`/ingredients/${ingredient.slug}`}
@@ -81,13 +86,30 @@ export default async function IngredientsHubPage() {
                 <p className="text-gray-600 text-sm">
                   {ingredient.recetteCount}{' '}
                   {ingredient.recetteCount === 1 ? 'recette' : 'recettes'}
-                  {ingredient.recetteCount < MIN_RECIPES_FOR_INDEX && (
-                    <span className="text-gray-400"> · catalogue en cours</span>
-                  )}
                 </p>
               </Link>
             ))}
           </div>
+          )}
+
+          {upcomingIngredients.length > 0 && (
+            <div className="mt-10">
+              <h3 className="text-lg font-semibold text-gray-700 mb-3">Bientôt plus de recettes</h3>
+              <div className="flex flex-wrap gap-2">
+                {upcomingIngredients.map((ingredient) => (
+                  <Link
+                    key={ingredient.slug}
+                    href={`/ingredients/${ingredient.slug}`}
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-full text-sm text-gray-700 hover:bg-orange-50 hover:border-orange-200 transition-colors capitalize"
+                  >
+                    {ingredient.nom}
+                    <span className="ml-2 text-xs text-gray-400">{ingredient.recetteCount}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+          </>
         ) : (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">

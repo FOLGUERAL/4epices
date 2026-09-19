@@ -6,10 +6,13 @@ import {
   getRecetteCountByIngredient,
   buildIngredientMetaTitle,
   buildIngredientMetaDescription,
-  buildIngredientDescription,
+  buildIngredientHeading,
+  buildIngredientStats,
+  buildIngredientSummary,
+  getRelatedIngredients,
   MIN_RECIPES_FOR_INDEX,
 } from '@/lib/ingredients';
-import { buildItemListJsonLd, getSiteUrl, SITE_NAME } from '@/lib/seo';
+import { buildBreadcrumbJsonLd, buildItemListJsonLd, getSiteUrl, SITE_NAME } from '@/lib/seo';
 import OptimizedImage from '@/components/OptimizedImage';
 
 export async function generateMetadata({
@@ -39,8 +42,9 @@ export async function generateMetadata({
   }
 
   const nom = ingredient.nom;
-  const title = buildIngredientMetaTitle(nom);
-  const description = buildIngredientMetaDescription(nom, recetteCount);
+  const stats = buildIngredientStats(ingredient.recettes);
+  const title = buildIngredientMetaTitle(nom, recetteCount);
+  const description = buildIngredientMetaDescription(nom, recetteCount, stats.quickCount);
   const canonicalPath = `/ingredients/${params.slug}`;
   const thin = recetteCount < MIN_RECIPES_FOR_INDEX;
 
@@ -83,7 +87,14 @@ export default async function IngredientPage({ params }: { params: { slug: strin
   const { nom, recettes } = ingredient;
   const siteUrl = getSiteUrl();
   const pageUrl = `${siteUrl}/ingredients/${params.slug}`;
-  const description = buildIngredientDescription(nom, recettes.length);
+  const stats = buildIngredientStats(recettes);
+  const summary = buildIngredientSummary(nom, stats);
+  const relatedIngredients = await getRelatedIngredients(params.slug).catch(() => []);
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: 'Accueil', url: siteUrl },
+    { name: 'Ingrédients', url: `${siteUrl}/ingredients` },
+    { name: nom, url: pageUrl },
+  ]);
 
   const itemListJsonLd = buildItemListJsonLd(
     recettes.map((r) => ({
@@ -95,6 +106,10 @@ export default async function IngredientPage({ params }: { params: { slug: strin
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       {itemListJsonLd && (
         <script
           type="application/ld+json"
@@ -121,16 +136,25 @@ export default async function IngredientPage({ params }: { params: { slug: strin
           </nav>
 
           <h1 className="text-4xl font-bold text-gray-900 mb-4 capitalize">
-            Recettes à base de {nom}
+            {buildIngredientHeading(nom)}
           </h1>
 
-          <p className="text-xl text-gray-600 mb-3">{description}</p>
+          <p className="text-xl text-gray-600 mb-3">{summary}</p>
 
-          <p className="text-gray-500">
-            {recettes.length > 0
-              ? `${recettes.length} ${recettes.length === 1 ? 'recette' : 'recettes'}`
-              : 'Aucune recette pour le moment'}
-          </p>
+          {stats.categories.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-gray-500">À retrouver en :</span>
+              {stats.categories.slice(0, 5).map((categorie) => (
+                <Link
+                  key={categorie.slug}
+                  href={`/categories/${categorie.slug}`}
+                  className="px-3 py-1 bg-white border border-gray-200 text-gray-700 rounded-full hover:bg-orange-50 hover:border-orange-200 transition-colors"
+                >
+                  {categorie.nom}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {recettes.length > 0 ? (
@@ -204,6 +228,26 @@ export default async function IngredientPage({ params }: { params: { slug: strin
               ← Voir tous les ingrédients
             </Link>
           </div>
+        )}
+
+        {relatedIngredients.length > 0 && (
+          <section className="mt-12" aria-labelledby="related-ingredients">
+            <h2 id="related-ingredients" className="text-2xl font-bold text-gray-900 mb-4 capitalize">
+              Se cuisine aussi avec
+            </h2>
+            <div className="flex flex-wrap gap-3">
+              {relatedIngredients.map((related) => (
+                <Link
+                  key={related.slug}
+                  href={`/ingredients/${related.slug}`}
+                  className="px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 text-gray-800 hover:shadow-md hover:text-orange-700 transition capitalize"
+                >
+                  {related.nom}
+                  <span className="ml-2 text-xs text-gray-400">{related.recetteCount}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
         )}
       </div>
     </div>

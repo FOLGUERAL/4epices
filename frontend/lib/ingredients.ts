@@ -247,24 +247,140 @@ export function filterRecipesByIngredientSlugs(
   );
 }
 
-export function buildIngredientMetaTitle(nom: string): string {
-  const title = `Recettes à base de ${nom}`;
+// Mots en « h » aspiré : pas d'élision (« de haricots », mais « d'huile »)
+const ASPIRATED_H = ['haricot', 'homard', 'hareng', 'hachis', 'harissa', 'houmous'];
+
+/** « de courgette », « d'ail », « d'œufs », « de haricots » : article partitif avec élision. */
+export function deIngredient(nom: string): string {
+  const lower = nom.trim().toLowerCase();
+  const startsWithVowel = /^[aeiouyàâäéèêëîïôöùûüœ]/.test(lower);
+  const startsWithMuteH = lower.startsWith('h') && !ASPIRATED_H.some((w) => lower.startsWith(w));
+  return startsWithVowel || startsWithMuteH ? `d'${nom}` : `de ${nom}`;
+}
+
+export function buildIngredientHeading(nom: string): string {
+  return `Recettes à base ${deIngredient(nom)}`;
+}
+
+export function buildIngredientMetaTitle(nom: string, count = 0): string {
+  const short = buildIngredientHeading(nom);
+  const withCount = count >= 2 ? `${short} : ${count} idées faciles` : short;
+  const title = withCount.length <= 60 ? withCount : short;
   return title.length <= 60 ? title : title.substring(0, 57) + '...';
 }
 
-export function buildIngredientMetaDescription(nom: string, count: number): string {
-  const base = `Découvrez nos recettes à base de ${nom}`;
-  const suffix =
-    count > 0
-      ? ` : ${count} ${count === 1 ? 'idée' : 'idées'} faciles et gourmandes sur ${SITE_NAME}.`
-      : ` : idées faciles et gourmandes sur ${SITE_NAME}.`;
+export function buildIngredientMetaDescription(
+  nom: string,
+  count: number,
+  quickCount = 0
+): string {
+  const base = `Découvrez nos recettes à base ${deIngredient(nom)}`;
+  let suffix: string;
+  if (count > 0) {
+    const quick =
+      quickCount > 0
+        ? `, dont ${quickCount} en moins de 30 minutes`
+        : '';
+    suffix = ` : ${count} ${count === 1 ? 'idée' : 'idées'} faciles et gourmandes${quick} sur ${SITE_NAME}.`;
+  } else {
+    suffix = ` : idées faciles et gourmandes sur ${SITE_NAME}.`;
+  }
   const desc = base + suffix;
   return desc.length <= 160 ? desc : desc.substring(0, 157) + '...';
 }
 
 export function buildIngredientDescription(nom: string, count: number): string {
   if (count === 0) {
-    return `Recettes à base de ${nom} sur ${SITE_NAME}.`;
+    return `Recettes à base ${deIngredient(nom)} sur ${SITE_NAME}.`;
   }
-  return `${count} ${count === 1 ? 'recette' : 'recettes'} à base de ${nom} : des idées simples et savoureuses pour cuisiner ce produit au quotidien.`;
+  return `${count} ${count === 1 ? 'recette' : 'recettes'} à base ${deIngredient(nom)} : des idées simples et savoureuses pour cuisiner ce produit au quotidien.`;
+}
+
+export const QUICK_RECIPE_MINUTES = 30;
+
+export interface IngredientCategory {
+  nom: string;
+  slug: string;
+  count: number;
+}
+
+export interface IngredientStats {
+  total: number;
+  quickCount: number;
+  easyCount: number;
+  categories: IngredientCategory[];
+}
+
+/** Chiffres du hub, calculés à partir des recettes réelles (rien de générique). */
+export function buildIngredientStats(recettes: Recette[]): IngredientStats {
+  let quickCount = 0;
+  let easyCount = 0;
+  const categories = new Map<string, IngredientCategory>();
+
+  for (const recette of recettes) {
+    const { tempsPreparation = 0, tempsCuisson = 0, difficulte } = recette.attributes;
+    const total = (tempsPreparation || 0) + (tempsCuisson || 0);
+    if (total > 0 && total <= QUICK_RECIPE_MINUTES) quickCount++;
+    if (difficulte === 'facile') easyCount++;
+
+    for (const cat of recette.attributes.categories?.data || []) {
+      const existing = categories.get(cat.attributes.slug);
+      if (existing) existing.count++;
+      else categories.set(cat.attributes.slug, { nom: cat.attributes.nom, slug: cat.attributes.slug, count: 1 });
+    }
+  }
+
+  return {
+    total: recettes.length,
+    quickCount,
+    easyCount,
+    categories: Array.from(categories.values()).sort(
+      (a, b) => b.count - a.count || a.nom.localeCompare(b.nom, 'fr')
+    ),
+  };
+}
+
+/** Paragraphe d'introduction unique par hub, fondé sur les chiffres réels. */
+export function buildIngredientSummary(nom: string, stats: IngredientStats): string {
+  const { total, quickCount, easyCount } = stats;
+  if (total === 0) return buildIngredientDescription(nom, 0);
+
+  const parts: string[] = [
+    `${total} ${total === 1 ? 'recette' : 'recettes'} à base ${deIngredient(nom)}`,
+  ];
+  const details: string[] = [];
+  if (quickCount > 0) {
+    details.push(`${quickCount} ${quickCount === 1 ? 'prête' : 'prêtes'} en ${QUICK_RECIPE_MINUTES} minutes ou moins`);
+  }
+  if (easyCount > 0) {
+    details.push(`${easyCount} ${easyCount === 1 ? 'facile' : 'faciles'} à réaliser`);
+  }
+  if (details.length > 0) parts.push(`dont ${details.join(' et ')}`);
+
+  return `${parts.join(', ')}.`;
+}
+
+/** Ingrédients qui reviennent dans les mêmes recettes, limités aux hubs assez fournis pour être indexés. */
+export async function getRelatedIngredients(slug: string, limit = 6): Promise<IngredientHub[]> {
+  const index = await getIngredientsIndex();
+  const entry = index.get(slug);
+  if (!entry) return [];
+
+  const shared = new Map<string, number>();
+  for (const recette of entry.recettes) {
+    for (const source of getRecipeHubSources(recette)) {
+      if (source.slug === slug) continue;
+      shared.set(source.slug, (shared.get(source.slug) || 0) + 1);
+    }
+  }
+
+  return Array.from(shared.entries())
+    .flatMap(([otherSlug, sharedCount]) => {
+      const other = index.get(otherSlug);
+      if (!other || other.recettes.length < MIN_RECIPES_FOR_INDEX) return [];
+      return [{ nom: other.nom, slug: otherSlug, recetteCount: other.recettes.length, sharedCount }];
+    })
+    .sort((a, b) => b.sharedCount - a.sharedCount || b.recetteCount - a.recetteCount)
+    .slice(0, limit)
+    .map(({ nom, slug: otherSlug, recetteCount }) => ({ nom, slug: otherSlug, recetteCount }));
 }
