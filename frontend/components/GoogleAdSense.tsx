@@ -24,14 +24,14 @@ export default function GoogleAdSense({
   style,
   className = '',
 }: GoogleAdSenseProps) {
-  if (!isAdSenseEnabled()) {
-    return null;
-  }
+  const enabled = isAdSenseEnabled();
 
   // Utiliser le slot fourni ou celui de l'environnement
   const finalAdSlot = adSlot || process.env.NEXT_PUBLIC_GOOGLE_ADS_SLOT || '';
+  const shouldRender = enabled && Boolean(finalAdSlot);
 
   useEffect(() => {
+    if (!shouldRender) return;
     try {
       // Initialiser les annonces AdSense après le chargement du script
       if (typeof window !== 'undefined' && (window as any).adsbygoogle) {
@@ -40,10 +40,10 @@ export default function GoogleAdSense({
     } catch (error) {
       console.error('Erreur lors de l\'initialisation de Google AdSense:', error);
     }
-  }, []);
+  }, [shouldRender]);
 
-  // Ne pas afficher si aucun slot n'est configuré
-  if (!finalAdSlot) {
+  // Ne pas afficher si AdSense est désactivé ou si aucun slot n'est configuré
+  if (!shouldRender) {
     return null;
   }
 

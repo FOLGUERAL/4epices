@@ -870,7 +870,7 @@ function CreerRecettePageContent() {
                   : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              🎨 Retouche d'Images
+              🎨 Retouche d&apos;Images
             </button>
           </div>
         </div>
@@ -1102,7 +1102,7 @@ function CreerRecettePageContent() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    ⏳ Analyse en cours par l'IA...
+                    ⏳ Analyse en cours par l&apos;IA...
                   </div>
                 ) : generatedJson ? (
                   <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap break-words">
@@ -1268,8 +1268,8 @@ function CreerRecettePageContent() {
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
                 <p className="font-semibold mb-1">ℹ️ Configuration Pinterest</p>
                 <p>
-                  L'interface admin utilise par défaut le token configuré dans <code className="px-1 py-0.5 bg-blue-100 rounded">PINTEREST_ACCESS_TOKEN</code> du fichier <code className="px-1 py-0.5 bg-blue-100 rounded">backend/.env</code>.
-                  Vous pouvez aussi vous connecter via OAuth ci-dessous pour obtenir un token avec les permissions d'écriture.
+                  L&apos;interface admin utilise par défaut le token configuré dans <code className="px-1 py-0.5 bg-blue-100 rounded">PINTEREST_ACCESS_TOKEN</code> du fichier <code className="px-1 py-0.5 bg-blue-100 rounded">backend/.env</code>.
+                  Vous pouvez aussi vous connecter via OAuth ci-dessous pour obtenir un token avec les permissions d&apos;écriture.
                 </p>
               </div>
               

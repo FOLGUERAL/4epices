@@ -261,7 +261,7 @@ export default function ImageEnhancement() {
                 }}
                 className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 transition-all"
               >
-                🔄 Changer l'image
+                🔄 Changer l&apos;image
               </button>
             </div>
           </div>
@@ -275,7 +275,7 @@ export default function ImageEnhancement() {
           {results.analysis && (
             <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                📊 Analyse de l'Image
+                📊 Analyse de l&apos;Image
               </h3>
               <p className="text-gray-700 leading-relaxed">{results.analysis}</p>
             </div>
@@ -285,7 +285,7 @@ export default function ImageEnhancement() {
           {results.suggestions && results.suggestions.length > 0 && (
             <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                💡 Suggestions d'Amélioration
+                💡 Suggestions d&apos;Amélioration
               </h3>
               <ul className="space-y-2">
                 {results.suggestions.map((suggestion, index) => (
@@ -304,7 +304,7 @@ export default function ImageEnhancement() {
           {results.enhancement_prompt && (
             <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                🎯 Prompt d'Amélioration
+                🎯 Prompt d&apos;Amélioration
               </h3>
               <p className="text-gray-700 italic leading-relaxed">{results.enhancement_prompt}</p>
             </div>
@@ -330,7 +330,7 @@ export default function ImageEnhancement() {
                     download="image-amelioree.png"
                     className="px-4 py-2 bg-purple-500 text-white rounded-lg font-semibold hover:bg-purple-600 transition-colors inline-block"
                   >
-                    💾 Télécharger l'image améliorée
+                    💾 Télécharger l&apos;image améliorée
                   </a>
                 </div>
               </div>
@@ -344,7 +344,7 @@ export default function ImageEnhancement() {
         <p className="font-semibold mb-1">💡 Comment ça fonctionne ?</p>
         <p className="mb-2">
           Groq Vision analyse votre image culinaire et génère des suggestions pour la rendre plus attrayante.
-          Les suggestions incluent des améliorations d'éclairage, de couleurs, de composition et d'optimisation pour les réseaux sociaux.
+          Les suggestions incluent des améliorations d&apos;éclairage, de couleurs, de composition et d&apos;optimisation pour les réseaux sociaux.
         </p>
         <p className="font-semibold mt-3 mb-1">💰 Coûts :</p>
         <ul className="list-disc list-inside space-y-1">

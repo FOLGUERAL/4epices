@@ -78,7 +78,7 @@ export default function InstallPWAButton({ className = '' }: InstallPWAButtonPro
               <div>
                 <h2 className="text-lg font-bold">Installer 4epices</h2>
                 <p className="mt-1 text-sm text-gray-600">
-                  L'installation native n'est pas proposee automatiquement par ce navigateur pour le moment.
+                  L&apos;installation native n&apos;est pas proposee automatiquement par ce navigateur pour le moment.
                 </p>
               </div>
               <button
@@ -94,11 +94,11 @@ export default function InstallPWAButton({ className = '' }: InstallPWAButtonPro
             <div className="space-y-3 text-sm text-gray-700">
               <p>
                 Sur Android Chrome : ouvrez le menu en haut a droite, puis choisissez
-                "Installer l'application" ou "Ajouter a l'ecran d'accueil".
+                &quot;Installer l&apos;application&quot; ou &quot;Ajouter a l&apos;ecran d&apos;accueil&quot;.
               </p>
               <p>
-                Sur Windows Chrome ou Edge : utilisez l'icone d'installation dans la barre
-                d'adresse, ou le menu du navigateur.
+                Sur Windows Chrome ou Edge : utilisez l&apos;icone d&apos;installation dans la barre
+                d&apos;adresse, ou le menu du navigateur.
               </p>
             </div>
 
@@ -107,7 +107,7 @@ export default function InstallPWAButton({ className = '' }: InstallPWAButtonPro
               onClick={() => setIsHelpOpen(false)}
               className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-orange-600 px-4 py-2 font-bold text-white transition-colors hover:bg-orange-700 focus-ring"
             >
-              J'ai compris
+              J&apos;ai compris
             </button>
           </div>
         </div>

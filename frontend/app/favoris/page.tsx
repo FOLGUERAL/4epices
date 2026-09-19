@@ -94,7 +94,7 @@ export default function FavorisPage() {
             </svg>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Aucun favori</h2>
             <p className="text-gray-600 mb-6">
-              Vous n'avez pas encore ajouté de recettes à vos favoris.
+              Vous n&apos;avez pas encore ajouté de recettes à vos favoris.
             </p>
             <Link
               href="/"

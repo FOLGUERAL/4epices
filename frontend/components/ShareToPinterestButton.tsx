@@ -492,7 +492,7 @@ export default function ShareToPinterestButton({
                       </select>
                     ) : (
                       <div className="text-sm text-gray-500 py-2">
-                        Aucun board. Cliquez sur "Créer un board" pour en créer un.
+                        Aucun board. Cliquez sur &quot;Créer un board&quot; pour en créer un.
                       </div>
                     )}
                   </div>

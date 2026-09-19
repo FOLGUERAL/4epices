@@ -131,7 +131,7 @@ export default function KitchenModeHelp({
               onClick={close}
               className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-orange-600 px-4 py-2 font-bold text-white transition-colors hover:bg-orange-700 focus-ring"
             >
-              J'ai compris
+              J&apos;ai compris
             </button>
           </div>
         </div>

@@ -81,7 +81,7 @@ export default async function Home() {
                 4epices transforme chaque recette en un véritable assistant de cuisine :
                 étapes guidées, commandes vocales et minuteurs intégrés.
               </p>
-              <p>Vous cuisinez, 4epices s'occupe du reste.</p>
+              <p>Vous cuisinez, 4epices s&apos;occupe du reste.</p>
             </div>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -191,7 +191,7 @@ export default async function Home() {
               </div>
               <h3 className="mb-3 text-xl font-bold text-gray-900 sm:text-2xl">Guide</h3>
               <p className="text-sm leading-relaxed text-gray-600 sm:text-base">
-                Un Mode Cuisine pense pour suivre chaque etape sans toucher l'ecran toutes les trente secondes.
+                Un Mode Cuisine pense pour suivre chaque etape sans toucher l&apos;ecran toutes les trente secondes.
               </p>
             </div>
             <div className="text-center">

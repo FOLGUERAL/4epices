@@ -267,7 +267,7 @@ export default function PinterestDashboard() {
             <div className="text-xs text-red-500 mt-1">{stats.readyTasks} prête(s)</div>
           </div>
           <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-            <div className="text-sm text-blue-600 font-medium">Aujourd'hui</div>
+            <div className="text-sm text-blue-600 font-medium">Aujourd&apos;hui</div>
             <div className="text-2xl font-bold text-blue-700">{stats.pinsToday}</div>
             <div className="text-xs text-blue-500 mt-1">pins créés</div>
           </div>

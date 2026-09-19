@@ -32,7 +32,7 @@ export default function Error({ error, reset }: ErrorProps) {
           </svg>
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Une erreur s'est produite
+          Une erreur s&apos;est produite
         </h2>
         <p className="text-gray-600 mb-6">
           {error.message || 'Une erreur inattendue est survenue'}

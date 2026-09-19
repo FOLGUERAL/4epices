@@ -818,7 +818,7 @@ export default function CuisineModePage() {
                       key={command}
                       className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700"
                     >
-                      "{command}"
+                      &quot;{command}&quot;
                     </span>
                   ))}
                 </div>
@@ -982,7 +982,7 @@ export default function CuisineModePage() {
                   Configurez le guidage avant de lancer la recette
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-gray-600">
-                  Vérifiez vos ingrédients, choisissez le son et activez la commande vocale si vous voulez garder les mains libres en utilisant votre voix pour passer d'une étape à l'autre.
+                  Vérifiez vos ingrédients, choisissez le son et activez la commande vocale si vous voulez garder les mains libres en utilisant votre voix pour passer d&apos;une étape à l&apos;autre.
                 </p>
               </div>
 
@@ -1102,7 +1102,7 @@ export default function CuisineModePage() {
                     onClick={() => router.push('/recettes')}
                     className="inline-flex min-h-12 items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-ring"
                   >
-                    Voir d'autres recettes
+                    Voir d&apos;autres recettes
                   </button>
                 </div>
 
@@ -1156,10 +1156,10 @@ export default function CuisineModePage() {
                         </span>
                         <div>
                           <p className="text-sm font-semibold text-gray-800">
-                            Dites "suivant"
+                            Dites &quot;suivant&quot;
                           </p>
                           <p className="mt-1 text-xs font-medium text-gray-500">
-                            ou "précédent"
+                            ou &quot;précédent&quot;
                           </p>
                         </div>
                       </div>
@@ -1169,7 +1169,7 @@ export default function CuisineModePage() {
                       <Pointer className="h-12 w-12 motion-safe:animate-[swipe-hand_2.5s_ease-in-out_2]" aria-hidden="true" />
                       <p className="flex items-center gap-2 text-center text-sm font-semibold text-gray-800">
                         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                        Glissez pour changer d'étape
+                        Glissez pour changer d&apos;étape
                         <ChevronRight className="h-4 w-4" aria-hidden="true" />
                       </p>
                     </>

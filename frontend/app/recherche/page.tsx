@@ -138,10 +138,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         ) : query && recettes.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg mb-4">
-              Aucune recette ne correspond à votre recherche "{query}".
+              Aucune recette ne correspond à votre recherche &quot;{query}&quot;.
             </p>
             <p className="text-gray-400 text-sm">
-              Essayez avec d'autres mots-clés ou consultez nos catégories.
+              Essayez avec d&apos;autres mots-clés ou consultez nos catégories.
             </p>
           </div>
         ) : null}

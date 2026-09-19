@@ -190,7 +190,7 @@ export default function InstagramDashboard() {
             <div className="mt-1 text-xs text-pink-500">{stats.readyTasks} prete(s)</div>
           </div>
           <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
-            <div className="text-sm font-medium text-blue-600">Aujourd'hui</div>
+            <div className="text-sm font-medium text-blue-600">Aujourd&apos;hui</div>
             <div className="text-2xl font-bold text-blue-700">{stats.postsToday}</div>
             <div className="mt-1 text-xs text-blue-500">posts crees</div>
           </div>

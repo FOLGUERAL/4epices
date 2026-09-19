@@ -23,7 +23,7 @@ export default function PolitiqueConfidentialite() {
             <p className="text-gray-700 mb-4">
               La présente politique de confidentialité décrit la manière dont {SITE_NAME} (« nous », « notre » ou « le site ») 
               collecte, utilise et protège vos informations personnelles lorsque vous utilisez notre site web accessible à 
-              l'adresse <strong>https://4epices.fr</strong>.
+              l&apos;adresse <strong>https://4epices.fr</strong>.
             </p>
             <p className="text-gray-700">
               En utilisant notre site, vous acceptez les pratiques décrites dans cette politique de confidentialité.
@@ -39,10 +39,10 @@ export default function PolitiqueConfidentialite() {
             <ul className="list-disc pl-6 text-gray-700 mb-4">
               <li>Votre adresse IP</li>
               <li>Le type de navigateur et la version</li>
-              <li>Le système d'exploitation</li>
+              <li>Le système d&apos;exploitation</li>
               <li>Les pages visitées et la durée de visite</li>
-              <li>La date et l'heure de votre visite</li>
-              <li>L'URL de référence (site d'origine)</li>
+              <li>La date et l&apos;heure de votre visite</li>
+              <li>L&apos;URL de référence (site d&apos;origine)</li>
             </ul>
 
             <h3 className="text-xl font-semibold text-gray-800 mb-3">2.2. Cookies</h3>
@@ -64,7 +64,7 @@ export default function PolitiqueConfidentialite() {
             </p>
             <ul className="list-disc pl-6 text-gray-700 mb-4">
               <li>Fournir et améliorer nos services</li>
-              <li>Analyser l'utilisation du site et comprendre comment les visiteurs interagissent avec notre contenu</li>
+              <li>Analyser l&apos;utilisation du site et comprendre comment les visiteurs interagissent avec notre contenu</li>
               <li>Assurer la sécurité et prévenir les fraudes</li>
               <li>Personnaliser votre expérience de navigation</li>
               <li>Respecter nos obligations légales</li>
@@ -74,7 +74,7 @@ export default function PolitiqueConfidentialite() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">4. Partage des informations</h2>
             <p className="text-gray-700 mb-4">
-              Nous ne vendons, n'échangeons ni ne louons vos informations personnelles à des tiers. Nous pouvons partager 
+              Nous ne vendons, n&apos;échangeons ni ne louons vos informations personnelles à des tiers. Nous pouvons partager 
               vos informations uniquement dans les cas suivants :
             </p>
             <ul className="list-disc pl-6 text-gray-700 mb-4">
@@ -82,7 +82,7 @@ export default function PolitiqueConfidentialite() {
               <li>Pour respecter une obligation légale ou une ordonnance judiciaire</li>
               <li>Avec nos prestataires de services de confiance qui nous aident à exploiter notre site (sous réserve de 
                 leur engagement à protéger vos informations)</li>
-              <li>En cas de fusion, acquisition ou vente d'actifs (avec notification préalable)</li>
+              <li>En cas de fusion, acquisition ou vente d&apos;actifs (avec notification préalable)</li>
             </ul>
           </section>
 
@@ -93,7 +93,7 @@ export default function PolitiqueConfidentialite() {
               vous acceptez également la politique de confidentialité de Pinterest. Nous vous encourageons à consulter la 
               <a href="https://policy.pinterest.com/fr/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                 politique de confidentialité de Pinterest
-              </a> pour plus d'informations.
+              </a> pour plus d&apos;informations.
             </p>
           </section>
 
@@ -101,8 +101,8 @@ export default function PolitiqueConfidentialite() {
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">6. Sécurité des données</h2>
             <p className="text-gray-700 mb-4">
               Nous mettons en œuvre des mesures de sécurité techniques et organisationnelles appropriées pour protéger vos 
-              informations personnelles contre l'accès non autorisé, la perte, la destruction ou la modification. Cependant, 
-              aucune méthode de transmission sur Internet ou de stockage électronique n'est totalement sécurisée.
+              informations personnelles contre l&apos;accès non autorisé, la perte, la destruction ou la modification. Cependant, 
+              aucune méthode de transmission sur Internet ou de stockage électronique n&apos;est totalement sécurisée.
             </p>
           </section>
 
@@ -112,15 +112,15 @@ export default function PolitiqueConfidentialite() {
               Conformément au Règlement Général sur la Protection des Données (RGPD), vous disposez des droits suivants :
             </p>
             <ul className="list-disc pl-6 text-gray-700 mb-4">
-              <li><strong>Droit d'accès</strong> : Vous pouvez demander une copie de vos données personnelles</li>
+              <li><strong>Droit d&apos;accès</strong> : Vous pouvez demander une copie de vos données personnelles</li>
               <li><strong>Droit de rectification</strong> : Vous pouvez demander la correction de données inexactes</li>
-              <li><strong>Droit à l'effacement</strong> : Vous pouvez demander la suppression de vos données</li>
+              <li><strong>Droit à l&apos;effacement</strong> : Vous pouvez demander la suppression de vos données</li>
               <li><strong>Droit à la limitation</strong> : Vous pouvez demander la limitation du traitement de vos données</li>
               <li><strong>Droit à la portabilité</strong> : Vous pouvez demander le transfert de vos données</li>
-              <li><strong>Droit d'opposition</strong> : Vous pouvez vous opposer au traitement de vos données</li>
+              <li><strong>Droit d&apos;opposition</strong> : Vous pouvez vous opposer au traitement de vos données</li>
             </ul>
             <p className="text-gray-700">
-              Pour exercer ces droits, veuillez nous contacter à l'adresse indiquée dans la section « Contact ».
+              Pour exercer ces droits, veuillez nous contacter à l&apos;adresse indiquée dans la section « Contact ».
             </p>
           </section>
 

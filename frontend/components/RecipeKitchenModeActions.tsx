@@ -42,7 +42,7 @@ export default function RecipeKitchenModeActions({ recette }: RecipeKitchenModeA
               </p>
               {isStandalone && (
                 <p className="mt-2 text-sm font-semibold text-orange-800">
-                  App installee : l'interface est optimisee pour cuisiner en plein ecran.
+                  App installee : l&apos;interface est optimisee pour cuisiner en plein ecran.
                 </p>
               )}
             </div>

@@ -97,7 +97,7 @@ export default function AdminAuth({ children, redirectTo = '/' }: AdminAuthProps
             onClick={() => router.push(redirectTo)}
             className="mt-4 w-full text-gray-600 hover:text-gray-800 text-sm"
           >
-            ← Retour à l'accueil
+            ← Retour à l&apos;accueil
           </button>
         </div>
       </div>
