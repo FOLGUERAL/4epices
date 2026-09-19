@@ -22,7 +22,7 @@ export default function PublishPinterestButton({
   const [isAdminUser, setIsAdminUser] = useState(false);
 
   useEffect(() => {
-    setIsAdminUser(isAdmin());
+    isAdmin().then(setIsAdminUser);
   }, []);
 
   const handlePublish = async () => {

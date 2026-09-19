@@ -1,144 +1,58 @@
-# Configuration de l'authentification Admin
+# Authentification Admin
 
-## Vue d'ensemble
+## Fonctionnement
 
-Le système d'authentification admin protège :
-- La page `/creer-recette` (création de recettes)
-- Le bouton "Publier sur Pinterest" sur les pages de détail de recette
+L'accès admin repose sur une **session côté serveur** :
+
+1. Sur `/admin`, vous saisissez le secret. Il est envoyé à `POST /api/admin/session` et vérifié **côté serveur**
+   (comparaison à temps constant, 5 tentatives échouées maximum par IP sur 15 minutes).
+2. Si le secret est correct, le serveur pose un cookie `admin_session` : `HttpOnly`, `Secure` (en production),
+   `SameSite=Strict`, valable **8 heures**. Il contient uniquement une date d'expiration et une signature HMAC,
+   jamais le secret.
+3. Toutes les routes sensibles vérifient ce cookie (`requireAdmin` dans `frontend/lib/admin-session.ts`) :
+   génération et import de recettes, Pinterest/Instagram (file d'attente, stats, stratégie), avis, transcription vocale.
+
+Le secret n'est **jamais** envoyé au navigateur. L'ancienne variable `NEXT_PUBLIC_ADMIN_SECRET` est supprimée : son
+préfixe `NEXT_PUBLIC_` l'intégrait au JavaScript public, donc lisible par tous les visiteurs.
 
 ## Configuration
 
-### 1. Définir le secret admin
+Définir `ADMIN_SECRET` (variable **serveur**, sans préfixe `NEXT_PUBLIC_`).
 
-**En développement** : Ajoutez la variable dans `frontend/.env.local` :
+- **Développement** : dans `frontend/.env.local`
+  ```env
+  ADMIN_SECRET=votre_secret_ici
+  ```
+- **Production (Docker Compose)** : dans le fichier `.env` à la racine du projet (à côté de `docker-compose.yml`).
+  Il est transmis au conteneur frontend à l'exécution.
+  ```env
+  ADMIN_SECRET=votre_secret_ici
+  ```
+  Puis :
+  ```bash
+  docker compose build frontend
+  docker compose up -d
+  ```
 
-```env
-NEXT_PUBLIC_ADMIN_SECRET=votre_secret_ici
-```
+Sans `ADMIN_SECRET`, tout l'accès admin est refusé.
 
-**En production** : Deux options selon votre méthode de déploiement :
+### Générer un secret
 
-#### Option A : Build manuel (sans Docker)
-
-Ajoutez la variable dans `frontend/.env.production` :
-
-```env
-NEXT_PUBLIC_ADMIN_SECRET=votre_secret_ici
-```
-
-Next.js chargera automatiquement ce fichier lors du build en production (`NODE_ENV=production`).
-
-#### Option B : Build avec Docker Compose (Recommandé pour la production)
-
-⚠️ **IMPORTANT** : Avec Docker Compose, le fichier `frontend/.env.production` n'est **PAS** utilisé. Vous devez créer un fichier `.env` à la **racine du projet** (au même niveau que `docker-compose.yml`).
-
-1. Créez un fichier `.env` à la racine du projet :
-
-```bash
-# À la racine du projet (même niveau que docker-compose.yml)
-touch .env
-```
-
-2. Ajoutez la variable dans ce fichier `.env` :
-
-```env
-NEXT_PUBLIC_ADMIN_SECRET=votre_secret_ici
-NEXT_PUBLIC_STRAPI_URL=https://api.4epices.fr
-NEXT_PUBLIC_SITE_URL=https://4epices.fr
-```
-
-3. Rebuild l'image Docker pour intégrer la variable :
-
-```bash
-docker-compose build frontend
-docker-compose up -d
-```
-
-**Pourquoi ?** : Docker Compose lit les variables depuis un fichier `.env` à la racine du projet (ligne 45 de `docker-compose.yml`). Les variables `NEXT_PUBLIC_*` sont intégrées au build Docker, donc elles doivent être disponibles lors de la construction de l'image.
-
-#### Option C : Build Docker manuel (sans docker-compose)
-
-Passez la variable via `--build-arg` lors du build :
-
-```bash
-docker build --build-arg NEXT_PUBLIC_ADMIN_SECRET=votre_secret_ici ...
-```
-
-**Important** : 
-- Utilisez un secret fort et unique (minimum 16 caractères recommandé)
-- Ne partagez jamais ce secret publiquement
-- Les variables `NEXT_PUBLIC_*` sont intégrées dans le bundle JavaScript au moment du BUILD
-- Si vous changez le secret, vous devez **rebuilder** l'application
-
-### 2. Générer un secret sécurisé
-
-**Sur Linux/Mac :**
 ```bash
 openssl rand -base64 32
 ```
 
-**Sur Windows (PowerShell) :**
-```powershell
-[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
-```
+### Changer le secret
 
-**Ou utilisez un générateur en ligne :**
-- https://www.random.org/strings/
-- Générez une chaîne aléatoire de 32 caractères
-
-### 3. Redémarrer le serveur
-
-Après avoir ajouté la variable d'environnement, redémarrez votre serveur Next.js :
-
-**En développement :**
-```bash
-# Arrêtez le serveur (Ctrl+C)
-# Puis relancez
-npm run dev
-```
-
-**En production avec Docker Compose :**
-```bash
-# 1. Créez/modifiez le fichier .env à la racine du projet
-# 2. Rebuild l'image frontend
-docker-compose build frontend
-# 3. Redémarrez les services
-docker-compose up -d
-```
-
-**En production sans Docker :**
-```bash
-# Les variables de .env.production seront chargées automatiquement lors du build
-npm run build
-```
-
-## Utilisation
-
-### Accès à la page créer-recette
-
-1. Accédez à `/creer-recette`
-2. Une page de connexion s'affiche
-3. Entrez le secret admin configuré dans `.env.local`
-4. Vous êtes maintenant authentifié pour cette session
-
-### Bouton Pinterest
-
-Le bouton "Publier sur Pinterest" n'apparaît que si :
-- Vous êtes authentifié en tant qu'admin
-- La recette n'est pas déjà publiée sur Pinterest
-
-## Sécurité
-
-⚠️ **Note importante** : Cette implémentation utilise `sessionStorage` pour stocker le token. 
-
-**Pour la production**, vous devriez :
-- Utiliser des cookies HTTP-only sécurisés
-- Implémenter une vraie session côté serveur
-- Utiliser JWT avec expiration
-- Ajouter une protection CSRF
-
-Cette solution est adaptée pour un usage personnel/administratif simple.
+Modifier `ADMIN_SECRET` puis redémarrer le conteneur frontend : toutes les sessions en cours sont invalidées.
+**Si vous utilisiez `NEXT_PUBLIC_ADMIN_SECRET`, choisissez une valeur différente** : l'ancienne était lisible
+dans le JavaScript public et doit être considérée comme compromise.
 
 ## Déconnexion
 
-Pour vous déconnecter, videz le `sessionStorage` de votre navigateur ou fermez l'onglet (le token est stocké en session, pas en localStorage).
+La session expire au bout de 8 heures. Pour la révoquer immédiatement, changer `ADMIN_SECRET` et redémarrer le frontend.
+
+## Limites connues
+
+- La limitation de tentatives est en mémoire (une seule instance frontend) : elle est remise à zéro au redémarrage.
+- `/api/tts/step` (voix de la Nonna) reste public, car le mode cuisine l'utilise pour tous les visiteurs.

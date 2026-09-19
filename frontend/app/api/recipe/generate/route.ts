@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-session';
 import { POST as parseRecipeWithAI } from '@/app/api/recipe/parse-ai/route';
 
 export const runtime = 'nodejs';
@@ -21,6 +22,9 @@ const CUISINES = new Set([
  * La route ne contacte jamais Strapi pour créer ou publier une recette.
  */
 export async function POST(request: NextRequest) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
+
   try {
     const body = await request.json();
     const ingredients = Array.isArray(body.ingredients)
@@ -57,7 +61,8 @@ export async function POST(request: NextRequest) {
     // Réutilise le flux IA existant : providers, JSON strict, catégories et tags normalisés.
     const parseRequest = new NextRequest(new URL('/api/recipe/parse-ai', request.url), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // Transmet la session admin : parse-ai vérifie lui aussi l'accès
+      headers: { 'Content-Type': 'application/json', cookie: request.headers.get('cookie') ?? '' },
       body: JSON.stringify({
         text,
         provider: body.provider,

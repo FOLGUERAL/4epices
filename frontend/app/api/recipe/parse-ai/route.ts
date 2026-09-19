@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-session';
 import {
   buildExistingCategoriesPromptSection,
   fetchExistingCategories,
@@ -92,6 +93,9 @@ function getProvider(
  * - provider?: string - Le provider utilisé
  */
 export async function POST(request: NextRequest) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
+
   try {
     const { text, provider: requestedProvider, groqAccount: requestedGroqAccount } = await request.json();
 

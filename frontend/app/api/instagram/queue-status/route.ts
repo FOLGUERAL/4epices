@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-session';
 import axios from 'axios';
 
 export const runtime = 'nodejs';
@@ -21,7 +22,10 @@ function getStrapiUrl() {
   return strapiUrl;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
+
   try {
     const response = await axios.get(`${getStrapiUrl()}/api/instagram/queue-status`, {
       timeout: 15_000,

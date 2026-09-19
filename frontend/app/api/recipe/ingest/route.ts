@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-session';
 import {
   ExistingCategory,
   fetchExistingCategories,
@@ -421,6 +422,9 @@ async function createRecipeInStrapi(parsedRecipe: any, imageId: number | null): 
  * - slug?: string (si la recette a été créée)
  */
 export async function POST(request: NextRequest) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
+
   console.log('[Ingest] Début de la requête POST');
   try {
     const formData = await request.formData();

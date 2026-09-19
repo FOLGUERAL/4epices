@@ -36,7 +36,7 @@ export default function PinterestConnectPanel() {
   const [me, setMe] = useState<PinterestMeResponse | null>(null);
 
   useEffect(() => {
-    setIsAdminUser(isAdmin());
+    isAdmin().then(setIsAdminUser);
   }, []);
 
   const fetchMe = async () => {

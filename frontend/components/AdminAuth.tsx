@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { isAdmin, loginAdmin, isAdminConfigured } from '@/lib/admin-auth';
+import { fetchAdminSession, loginAdmin } from '@/lib/admin-auth';
 
 interface AdminAuthProps {
   children: React.ReactNode;
@@ -19,27 +19,30 @@ export default function AdminAuth({ children, redirectTo = '/' }: AdminAuthProps
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!isAdminConfigured()) {
-      setError('Configuration admin manquante. Veuillez définir NEXT_PUBLIC_ADMIN_SECRET dans .env.local');
-      setIsAuthenticated(false);
-      return;
-    }
+    let cancelled = false;
 
-    if (isAdmin()) {
-      setIsAuthenticated(true);
-    } else {
-      setIsAuthenticated(false);
-    }
+    fetchAdminSession().then((session) => {
+      if (cancelled) return;
+      if (!session.configured) {
+        setError('Configuration admin manquante. Veuillez définir ADMIN_SECRET dans les variables d\'environnement du serveur');
+      }
+      setIsAuthenticated(session.authenticated);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    if (loginAdmin(secret)) {
+
+    const result = await loginAdmin(secret);
+    if (result.ok) {
       setIsAuthenticated(true);
     } else {
-      setError('Secret incorrect');
+      setError(result.error || 'Secret incorrect');
       setSecret('');
     }
   };

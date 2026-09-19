@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -8,7 +9,10 @@ export const dynamic = 'force-dynamic';
  * Proxy Next.js -> Strapi
  * Permet au frontend d'appeler /api/pinterest/me sans gérer le CORS / URL Strapi côté client.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
+
   try {
     // Même logique que /api/publish-pinterest
     let strapiUrl =

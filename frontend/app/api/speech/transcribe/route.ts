@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,9 @@ export const dynamic = 'force-dynamic';
  * Nécessite NEXT_PUBLIC_GOOGLE_SPEECH_API_KEY dans les variables d'environnement
  */
 export async function POST(request: NextRequest) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
+
   try {
     // Vérifier la clé API
     const apiKey = process.env.GOOGLE_SPEECH_API_KEY;

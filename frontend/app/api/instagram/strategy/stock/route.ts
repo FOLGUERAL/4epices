@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-session';
 import axios from 'axios';
 
 export const runtime = 'nodejs';
@@ -22,6 +23,9 @@ function getStrapiUrl() {
 }
 
 export async function POST(request: NextRequest) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
+
   try {
     const body = await request.json().catch(() => ({}));
     const response = await axios.post(`${getStrapiUrl()}/api/instagram/strategy/stock`, body, {

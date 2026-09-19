@@ -60,20 +60,15 @@ export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewe
 
   const handleApprove = async (commentId: number) => {
     try {
-      const adminSecret =
-        typeof window !== 'undefined' ? sessionStorage.getItem('admin_token') : null;
-      if (!adminSecret) {
+      const response = await fetch(`/api/admin/avis-recettes/${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { approuve: true } }),
+      });
+      if (response.status === 401) {
         toast.error('Session admin requise pour modérer les avis');
         return;
       }
-      const response = await fetch(`/api/admin/avis-recettes/${commentId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Secret': adminSecret,
-        },
-        body: JSON.stringify({ data: { approuve: true } }),
-      });
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error || response.statusText);
@@ -92,18 +87,13 @@ export default function CommentsViewer({ recetteId, recetteSlug }: CommentsViewe
     }
 
     try {
-      const adminSecret =
-        typeof window !== 'undefined' ? sessionStorage.getItem('admin_token') : null;
-      if (!adminSecret) {
+      const response = await fetch(`/api/admin/avis-recettes/${commentId}`, {
+        method: 'DELETE',
+      });
+      if (response.status === 401) {
         toast.error('Session admin requise pour modérer les avis');
         return;
       }
-      const response = await fetch(`/api/admin/avis-recettes/${commentId}`, {
-        method: 'DELETE',
-        headers: {
-          'X-Admin-Secret': adminSecret,
-        },
-      });
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error || response.statusText);

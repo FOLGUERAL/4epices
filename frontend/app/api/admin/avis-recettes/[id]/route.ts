@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-session';
 
 function resolveStrapiUrl(): string {
   let strapiUrl =
@@ -13,25 +14,14 @@ function resolveStrapiUrl(): string {
   return strapiUrl.replace(/\/$/, '');
 }
 
-function verifyAdminSecret(request: NextRequest): boolean {
-  const expected =
-    process.env.ADMIN_SECRET || process.env.NEXT_PUBLIC_ADMIN_SECRET || '';
-  if (!expected) {
-    return false;
-  }
-  const provided = request.headers.get('x-admin-secret');
-  return provided === expected;
-}
-
 async function proxyToStrapi(
   request: NextRequest,
   id: string,
   method: 'PUT' | 'DELETE',
   body?: unknown
 ) {
-  if (!verifyAdminSecret(request)) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-  }
+  const denied = requireAdmin(request);
+  if (denied) return denied;
 
   const token = process.env.STRAPI_API_TOKEN;
   if (!token) {

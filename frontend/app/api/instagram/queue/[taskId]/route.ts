@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/admin-session';
 import axios from 'axios';
 
 export const runtime = 'nodejs';
@@ -25,6 +26,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { taskId: string } }
 ) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
+
   try {
     const { taskId } = params;
     const response = await axios.delete(

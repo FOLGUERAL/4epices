@@ -49,12 +49,13 @@ services:
       args:
         NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-https://api.4epices.fr}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://4epices.fr}
-        NEXT_PUBLIC_ADMIN_SECRET: ${NEXT_PUBLIC_ADMIN_SECRET:-}
     container_name: 4epices_frontend
     restart: unless-stopped
     environment:
       # URL pour les requêtes serveur (SSR) - utilise le service Docker
       STRAPI_URL: http://backend:1337
+      # Secret admin (serveur uniquement, jamais NEXT_PUBLIC_*) : voir ADMIN_AUTH.md
+      ADMIN_SECRET: ${ADMIN_SECRET:-}
       # URL publique pour le client (déjà dans NEXT_PUBLIC_STRAPI_URL)
       # Configuration IA (Groq recommandé - gratuit et performant)
       AI_PROVIDER: ${AI_PROVIDER:-groq}
