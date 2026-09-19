@@ -1,4 +1,7 @@
+// Rendu à chaque requête, mais les appels Strapi sont mis en cache (revalidation 5 min dans fetchAPI)
+// pour ne pas solliciter le backend à chaque visite.
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'default-cache';
 
 import Link from 'next/link';
 import { getRecettes, getCategories, getRecettesByCategory, Recette, Categorie } from '@/lib/strapi';
