@@ -8,6 +8,7 @@ import {
   formatDayLabel,
   formatSlotLabel,
   getPlanDays,
+  getQuickSlots,
   getUpcomingEntry,
   type PlannableRecipe,
   type PlanSlot,
@@ -49,6 +50,7 @@ export default function DayMealPicker({ recipe, state, onPick, onClose }: DayMea
 
   const days = getPlanDays(state);
   const current = getUpcomingEntry(state, recipe.id);
+  const quickSlots = getQuickSlots(state, new Date());
 
   return (
     <div
@@ -85,6 +87,28 @@ export default function DayMealPicker({ recipe, state, onPick, onClose }: DayMea
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
+
+        {quickSlots.length > 0 && (
+          <ul aria-label="Raccourcis" className="mt-4 flex flex-wrap gap-2">
+            {quickSlots.map(({ label, slot }) => (
+              <li key={`${slot.date}|${slot.meal}`}>
+                <button
+                  type="button"
+                  onClick={() => onPick(slot)}
+                  className="min-h-11 rounded-full bg-orange-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-orange-700"
+                >
+                  {label}
+                  {label === 'Prochain libre' && (
+                    <span className="font-normal capitalize">
+                      {' '}
+                      : {formatDayLabel(slot.date, 'short')} · {MEAL_LABELS[slot.meal].toLowerCase()}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         <ul className="mt-4 space-y-2">
           {days.map((day) => {

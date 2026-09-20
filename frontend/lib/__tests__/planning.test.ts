@@ -4,10 +4,13 @@ import {
   countFreeDinners,
   countFreeSlots,
   formatDayLabel,
+  formatMealWhen,
   formatSlotLabel,
   getHistoryPlanDays,
+  getNextMeal,
   getNextFreeSlot,
   getPile,
+  getQuickSlots,
   getPlanDays,
   getPlanEvents,
   getShoppingEntries,
@@ -424,6 +427,81 @@ describe('getNextFreeSlot (enchaîner les ajouts)', () => {
     });
     expect(getNextFreeSlot(state, null, WEDNESDAY)).toBeNull();
     expect(getNextFreeSlot(stateWith(), { date: '2026-09-23', meal: 'soir' }, WEDNESDAY)).toBeNull();
+  });
+});
+
+describe('getNextMeal / formatMealWhen (accueil)', () => {
+  const dinner = (date: string) => ({ date, meal: 'soir' as const });
+
+  it('renvoie le prochain repas prévu, dans l’ordre du calendrier', () => {
+    let state = planRecipe(stateWith(), recipe(2), dinner('2026-09-18'));
+    state = planRecipe(state, recipe(1), dinner('2026-09-17'));
+    expect(getNextMeal(state, WEDNESDAY)?.recipeId).toBe(1);
+  });
+
+  it('renvoie undefined quand rien n’est prévu', () => {
+    expect(getNextMeal(stateWith(), WEDNESDAY)).toBeUndefined();
+  });
+
+  it('saute un repas déjà cuisiné', () => {
+    let state = planRecipe(stateWith(), recipe(1), dinner(TODAY_KEY));
+    state = planRecipe(state, recipe(2), dinner('2026-09-17'));
+    state = toggleCookedAt(state, dinner(TODAY_KEY));
+    expect(getNextMeal(state, WEDNESDAY)?.recipeId).toBe(2);
+  });
+
+  it('le déjeuner d’aujourd’hui ne compte plus l’après-midi', () => {
+    let state = planRecipe(stateWith(), recipe(1), { date: TODAY_KEY, meal: 'midi' });
+    state = planRecipe(state, recipe(2), dinner(TODAY_KEY));
+    expect(getNextMeal(state, WEDNESDAY)?.recipeId).toBe(1);
+    expect(getNextMeal(state, new Date(2026, 8, 16, 15, 0, 0))?.recipeId).toBe(2);
+  });
+
+  it('formate le moment du repas', () => {
+    expect(formatMealWhen(dinner(TODAY_KEY), WEDNESDAY)).toBe('Ce soir');
+    expect(formatMealWhen({ date: TODAY_KEY, meal: 'midi' }, WEDNESDAY)).toBe('Ce midi');
+    expect(formatMealWhen(dinner('2026-09-17'), WEDNESDAY)).toBe('Demain · soir');
+    expect(formatMealWhen({ date: '2026-09-19', meal: 'midi' }, WEDNESDAY)).toBe(
+      `${formatDayLabel('2026-09-19', 'short')} · midi`
+    );
+  });
+});
+
+describe('getQuickSlots (raccourcis de placement)', () => {
+  const summary = (state: SwipeState) =>
+    getQuickSlots(state, WEDNESDAY).map(({ label, slot }) => `${label} ${slot.date} ${slot.meal}`);
+
+  it('propose ce soir et demain soir quand ils sont libres', () => {
+    expect(summary(stateWith())).toEqual(['Ce soir 2026-09-16 soir', 'Demain soir 2026-09-17 soir']);
+  });
+
+  it('ne propose pas un soir déjà occupé', () => {
+    const state = planRecipe(stateWith(), recipe(1), { date: TODAY_KEY, meal: 'soir' });
+    expect(summary(state)).toEqual(['Demain soir 2026-09-17 soir']);
+  });
+
+  it('ajoute le prochain créneau libre quand ce soir et demain sont pris', () => {
+    let state = planRecipe(stateWith(), recipe(1), { date: TODAY_KEY, meal: 'soir' });
+    state = planRecipe(state, recipe(2), { date: '2026-09-17', meal: 'soir' });
+    expect(summary(state)).toEqual(['Prochain libre 2026-09-18 soir']);
+  });
+
+  it('avec le midi affiché, le prochain libre peut être le déjeuner d’aujourd’hui', () => {
+    const base = stateWith();
+    const state: SwipeState = { ...base, prefs: { ...base.prefs, showLunch: true } };
+    expect(summary(state)).toEqual([
+      'Ce soir 2026-09-16 soir',
+      'Demain soir 2026-09-17 soir',
+      'Prochain libre 2026-09-16 midi',
+    ]);
+  });
+
+  it('ne renvoie rien quand tout est occupé', () => {
+    let state = stateWith();
+    getWindowDays(state.windowStart).forEach((date, index) => {
+      state = planRecipe(state, recipe(index + 1), { date, meal: 'soir' });
+    });
+    expect(summary(state)).toEqual([]);
   });
 });
 

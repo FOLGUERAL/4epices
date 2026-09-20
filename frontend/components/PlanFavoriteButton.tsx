@@ -11,10 +11,18 @@ import { trackEvent } from '@/lib/track';
 
 interface PlanFavoriteButtonProps {
   recette: { id: number; slug: string; titre: string; imageUrl?: string };
+  /** Largeur du bouton : pleine largeur par défaut (carte de favori) */
+  className?: string;
+  /** Sur mobile, n'affiche que l'icône (barre d'actions de la page recette) */
+  iconOnlyOnMobile?: boolean;
 }
 
-/** Bouton « Planifier » d'une carte de favori : choisit le jour et le repas dans le calendrier. */
-export default function PlanFavoriteButton({ recette }: PlanFavoriteButtonProps) {
+/** Bouton « Planifier » (carte de favori, page recette) : choisit le jour et le repas dans le calendrier. */
+export default function PlanFavoriteButton({
+  recette,
+  className = 'w-full',
+  iconOnlyOnMobile = false,
+}: PlanFavoriteButtonProps) {
   const [state, setState] = useState<SwipeState | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -41,7 +49,12 @@ export default function PlanFavoriteButton({ recette }: PlanFavoriteButtonProps)
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+        aria-label={
+          upcoming
+            ? `Planifiée ${formatDayLabel(upcoming.date)}, ${MEAL_LABELS[upcoming.meal].toLowerCase()} : modifier`
+            : `Planifier ${recette.titre}`
+        }
+        className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${className} ${
           upcoming
             ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
             : 'border border-orange-200 text-orange-700 hover:bg-orange-50'
@@ -52,7 +65,7 @@ export default function PlanFavoriteButton({ recette }: PlanFavoriteButtonProps)
         ) : (
           <CalendarPlus className="h-4 w-4" aria-hidden="true" />
         )}
-        <span className="capitalize">
+        <span className={`capitalize ${iconOnlyOnMobile ? 'hidden sm:inline' : ''}`}>
           {upcoming
             ? `${formatDayLabel(upcoming.date, 'short')} · ${MEAL_LABELS[upcoming.meal].toLowerCase()}`
             : 'Planifier'}

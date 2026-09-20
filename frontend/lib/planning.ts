@@ -9,6 +9,7 @@
 import type { IcsEvent } from '@/lib/ics';
 import {
   formatLocalDate,
+  getDayRange,
   getHistoryDays,
   getWindowDays,
   parseLocalDate,
@@ -274,6 +275,56 @@ export function getNextFreeSlot(state: SwipeState, after: PlanSlot | null, today
       .sort((a, b) => order(a).localeCompare(order(b)))
       .find((slot) => afterKey === null || order(slot) > afterKey) ?? null
   );
+}
+
+/**
+ * Le prochain repas à cuisiner : à venir (aujourd'hui compris) et pas encore cuisiné.
+ * Le déjeuner d'aujourd'hui compte jusqu'à 14 h, comme pour la répartition automatique.
+ */
+export function getNextMeal(state: SwipeState, now: Date): PlanEntry | undefined {
+  const todayKey = formatLocalDate(now);
+  return getUpcomingEntries(state).find((entry) => {
+    if (entry.cooked || entry.date < todayKey) return false;
+    return !(entry.date === todayKey && entry.meal === 'midi' && now.getHours() >= LUNCH_CUTOFF_HOUR);
+  });
+}
+
+/** « Ce soir », « Ce midi », « Demain · soir », « jeu. 18 · midi » */
+export function formatMealWhen(slot: PlanSlot, now: Date): string {
+  const todayKey = formatLocalDate(now);
+  const meal = MEAL_LABELS[slot.meal].toLowerCase();
+  if (slot.date === todayKey) return slot.meal === 'soir' ? 'Ce soir' : 'Ce midi';
+  if (slot.date === getDayRange(todayKey, 1, 1)[0]) return `Demain · ${meal}`;
+  return `${formatDayLabel(slot.date, 'short')} · ${meal}`;
+}
+
+export interface QuickSlot {
+  label: string;
+  slot: PlanSlot;
+}
+
+/**
+ * Raccourcis pour placer une recette en un geste : ce soir, demain soir, puis le prochain créneau libre
+ * s'il n'est pas déjà l'un des deux. Seuls les créneaux libres sont proposés.
+ */
+export function getQuickSlots(state: SwipeState, today: Date): QuickSlot[] {
+  const windowDays = getWindowDays(state.windowStart);
+  const todayKey = formatLocalDate(today);
+  const tomorrowKey = getDayRange(todayKey, 1, 1)[0];
+
+  const candidates: QuickSlot[] = [
+    { label: 'Ce soir', slot: { date: todayKey, meal: 'soir' } },
+    { label: 'Demain soir', slot: { date: tomorrowKey, meal: 'soir' } },
+  ];
+  const shortcuts = candidates.filter(
+    ({ slot }) => windowDays.includes(slot.date) && !getSlotOccupant(state, slot)
+  );
+
+  const next = getNextFreeSlot(state, null, today);
+  if (next && !shortcuts.some(({ slot }) => slot.date === next.date && slot.meal === next.meal)) {
+    shortcuts.push({ label: 'Prochain libre', slot: next });
+  }
+  return shortcuts;
 }
 
 /**
