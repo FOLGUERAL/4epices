@@ -155,7 +155,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, SwipeCardProps>(function SwipeCard
       )}
 
       <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-        <h2 className="text-2xl font-bold leading-tight sm:text-3xl">{recipe.titre}</h2>
+        <h2 className="text-2xl font-bold leading-tight [text-wrap:balance] sm:text-3xl">{recipe.titre}</h2>
         <div className="mt-2 flex flex-wrap gap-2 text-sm font-semibold">
           {recipe.totalMinutes > 0 && (
             <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 backdrop-blur">

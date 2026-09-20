@@ -9,41 +9,39 @@ import { SITE_NAME } from '@/lib/seo';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-cache';
 
-const TITLE = 'Choisissez vos recettes en un swipe';
+const TITLE = 'Découvrir des recettes en un swipe';
 const DESCRIPTION =
-  'Faites défiler les recettes et gardez celles qui vous plaisent : elles rejoignent vos favoris, prêtes à être placées dans votre calendrier.';
+  'Faites défiler les recettes et gardez celles qui vous plaisent : elles rejoignent votre carnet, prêtes à être placées dans votre calendrier.';
 
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
-  alternates: { canonical: '/menu-semaine' },
+  alternates: { canonical: '/decouvrir' },
   openGraph: {
     title: `${TITLE} | ${SITE_NAME}`,
     description: DESCRIPTION,
-    url: '/menu-semaine',
+    url: '/decouvrir',
     type: 'website',
     locale: 'fr_FR',
     siteName: SITE_NAME,
   },
 };
 
-export default async function MenuSemainePage() {
+export default async function DecouvrirPage() {
   let recipes: SwipeRecipe[] = [];
   try {
     recipes = await getSwipeRecipes();
   } catch (error) {
-    console.error('Erreur lors du chargement des recettes pour le menu de la semaine :', error);
+    console.error('Erreur lors du chargement des recettes pour la page Découvrir :', error);
   }
 
   return (
     <main className="min-h-screen bg-orange-50/40">
-      <div className="mx-auto max-w-xl px-4 py-8 sm:py-12">
-        <header className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">Choisissez vos recettes</h1>
-          <p className="mt-3 text-gray-600">
-            Gardez les recettes qui vous tentent, passez les autres. Celles que vous gardez rejoignent vos favoris,
-            prêtes à être placées dans votre calendrier.
-          </p>
+      <div className="mx-auto max-w-xl px-4 py-4 sm:py-8">
+        {/* En-tête minimal : la première carte doit être visible sans défiler */}
+        <header className="mb-3 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Découvrir des recettes</h1>
+          <p className="sr-only">{DESCRIPTION}</p>
         </header>
 
         <SwipeDeck recipes={recipes} mode="week" />
@@ -58,12 +56,12 @@ export default async function MenuSemainePage() {
           </p>
         </noscript>
 
-        <p className="mt-10 text-center text-sm text-gray-500">
-          Vos recettes gardées sont enregistrées sur cet appareil, dans{' '}
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Les recettes gardées sont enregistrées sur cet appareil, dans{' '}
           <Link href="/favoris" className="font-semibold text-orange-700 underline">
             votre carnet
           </Link>
-          . Pas envie de planifier ?{' '}
+          . Pas envie de swiper ?{' '}
           <Link href="/ce-soir" className="font-semibold text-orange-700 underline">
             Trouvez juste un dîner pour ce soir
           </Link>

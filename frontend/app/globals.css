@@ -377,3 +377,19 @@ select option {
   color: #000000 !important;
   background-color: #ffffff !important;
 }
+
+/* Aide du premier passage sur /decouvrir : une main qui glisse de gauche à droite */
+@keyframes discover-swipe-hint {
+  0%, 100% { transform: translateX(-1.6rem) rotate(-8deg); opacity: 0.45; }
+  50% { transform: translateX(1.6rem) rotate(8deg); opacity: 1; }
+}
+
+.swipe-hint {
+  animation: discover-swipe-hint 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swipe-hint {
+    animation: none;
+  }
+}

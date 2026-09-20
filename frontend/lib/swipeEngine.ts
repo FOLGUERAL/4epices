@@ -9,8 +9,6 @@
 
 export const REFUSAL_COOLDOWN_DAYS = 28;
 export const QUICK_MINUTES = 30;
-export const WEEK_ROUND_SIZE = 12;
-export const TONIGHT_ROUND_SIZE = 8;
 /** Jours affichés à partir d'aujourd'hui : aujourd'hui et les 7 suivants */
 export const WINDOW_DAYS = 8;
 /** Jours passés que l'on peut encore consulter et corriger */
@@ -18,8 +16,6 @@ export const HISTORY_DAYS = 7;
 
 // Pondération de la pioche
 const VARIETY_PENALTY = 0.5;
-const ECONOMICAL_BONUS_PER_SHARED_INGREDIENT = 0.2;
-const ECONOMICAL_MAX_SHARED_INGREDIENTS = 3;
 const VARIETY_LOOKBACK = 2;
 
 export type SwipeMode = 'week' | 'tonight';
@@ -59,10 +55,10 @@ export interface PlanEntry {
 export interface SwipePrefs {
   /** null = aucune limite de durée */
   maxMinutes: number | null;
-  /** Proposer plus souvent des recettes qui partagent des ingrédients avec celles déjà prévues ou gardées */
-  economical: boolean;
   /** Affiche aussi le repas du midi dans le calendrier (le soir est toujours affiché) */
   showLunch: boolean;
+  /** Affichage du planning : une ligne par jour (liste) ou grille de la semaine */
+  planView: 'list' | 'week';
 }
 
 export interface SwipeState {
@@ -132,7 +128,7 @@ export function createInitialState(now: Date = new Date()): SwipeState {
     windowStart: getWindowStart(now),
     plan: [],
     refused: {},
-    prefs: { maxMinutes: null, economical: true, showLunch: false },
+    prefs: { maxMinutes: null, showLunch: false, planView: 'list' },
   };
 }
 
@@ -193,8 +189,8 @@ export function normalizeState(raw: unknown, now: Date = new Date()): SwipeState
   const prefs: SwipePrefs = {
     maxMinutes:
       typeof data.prefs?.maxMinutes === 'number' && data.prefs.maxMinutes > 0 ? data.prefs.maxMinutes : null,
-    economical: data.prefs?.economical !== false,
     showLunch: data.prefs?.showLunch === true,
+    planView: data.prefs?.planView === 'week' ? 'week' : 'list',
   };
 
   return { windowStart: today, plan, refused, prefs };
@@ -219,10 +215,6 @@ export function setPrefs(state: SwipeState, prefs: Partial<SwipePrefs>): SwipeSt
   return { ...state, prefs: { ...state.prefs, ...prefs } };
 }
 
-export function getRoundSize(mode: SwipeMode): number {
-  return mode === 'tonight' ? TONIGHT_ROUND_SIZE : WEEK_ROUND_SIZE;
-}
-
 /** Score aléatoire de base par recette, tiré une fois par partie pour que l'ordre reste stable. */
 export function createBaseScores(recipes: SwipeRecipe[], random: () => number = Math.random): Map<number, number> {
   return new Map(recipes.map((recipe) => [recipe.id, random()]));
@@ -240,8 +232,6 @@ export interface PickContext {
   state: SwipeState;
   /** Recettes déjà en favoris : le swipe « semaine » ne les repropose pas */
   favoriteIds: ReadonlySet<number>;
-  /** Recettes servant de référence au bonus « économe » (repas déjà prévus, recettes gardées pendant la partie) */
-  anchorIds: readonly number[];
   /** Recettes déjà montrées pendant cette partie, dans l'ordre */
   shownIds: number[];
   baseScores: Map<number, number>;
@@ -263,25 +253,18 @@ export function getEligibleRecipes(context: PickContext): SwipeRecipe[] {
   });
 }
 
-/** Choisit la prochaine carte : aléatoire pondéré par la variété et, en option, l'économie de courses. */
+/** Choisit la prochaine carte : aléatoire, pondéré pour varier les catégories et les ingrédients proposés. */
 export function pickNext(context: PickContext): SwipeRecipe | null {
   const candidates = getEligibleRecipes(context);
   if (candidates.length === 0) return null;
 
-  const { recipes, state, anchorIds, shownIds, baseScores, mode } = context;
+  const { recipes, shownIds, baseScores } = context;
   const byId = new Map(recipes.map((recipe) => [recipe.id, recipe]));
 
   const recentRecipes = shownIds
     .slice(-VARIETY_LOOKBACK)
     .map((id) => byId.get(id))
     .filter((recipe): recipe is SwipeRecipe => Boolean(recipe));
-
-  const anchorIngredients = new Set<string>();
-  if (mode === 'week' && state.prefs.economical) {
-    for (const id of anchorIds) {
-      byId.get(id)?.ingredientSlugs.forEach((slug) => anchorIngredients.add(slug));
-    }
-  }
 
   let best: SwipeRecipe | null = null;
   let bestScore = -Infinity;
@@ -291,11 +274,6 @@ export function pickNext(context: PickContext): SwipeRecipe | null {
 
     for (const recent of recentRecipes) {
       if (sharesCategoryOrIngredient(recipe, recent)) score -= VARIETY_PENALTY;
-    }
-
-    if (anchorIngredients.size > 0) {
-      const shared = recipe.ingredientSlugs.filter((slug) => anchorIngredients.has(slug)).length;
-      score += Math.min(shared, ECONOMICAL_MAX_SHARED_INGREDIENTS) * ECONOMICAL_BONUS_PER_SHARED_INGREDIENT;
     }
 
     if (score > bestScore) {

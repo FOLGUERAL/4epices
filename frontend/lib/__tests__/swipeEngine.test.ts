@@ -45,7 +45,6 @@ function context(recipes: SwipeRecipe[], overrides: Partial<PickContext> = {}): 
     recipes,
     state: createInitialState(WEDNESDAY),
     favoriteIds: new Set<number>(),
-    anchorIds: [],
     shownIds: [],
     baseScores: new Map(recipes.map((r) => [r.id, 0.5])),
     mode: 'week',
@@ -123,12 +122,12 @@ describe('normalizeState', () => {
   it('conserve les préférences et purge les refus expirés', () => {
     let state = createInitialState(WEDNESDAY);
     state = refuseRecipe(state, { id: 2 }, WEDNESDAY);
-    state = setPrefs(state, { maxMinutes: 30, economical: false, showLunch: true });
+    state = setPrefs(state, { maxMinutes: 30, showLunch: true });
 
     const restored = normalizeState(JSON.parse(JSON.stringify(state)), new Date(2026, 8, 20, 21, 0, 0));
     expect(restored.windowStart).toBe('2026-09-20');
     expect(Object.keys(restored.refused)).toEqual(['2']);
-    expect(restored.prefs).toEqual({ maxMinutes: 30, economical: false, showLunch: true });
+    expect(restored.prefs).toEqual({ maxMinutes: 30, showLunch: true, planView: 'list' });
   });
 
   it(`purge les refus de plus de ${REFUSAL_COOLDOWN_DAYS} jours`, () => {
@@ -143,12 +142,18 @@ describe('normalizeState', () => {
     expect(Object.keys(normalizeState(state, WEDNESDAY).refused)).toEqual(['2']);
   });
 
-  it('active le midi et le mode économe selon les préférences stockées', () => {
+  it('lit les préférences stockées avec des valeurs par défaut sûres', () => {
     const base = createInitialState(WEDNESDAY);
     expect(normalizeState({ ...base, prefs: { showLunch: true } }, WEDNESDAY).prefs.showLunch).toBe(true);
     expect(normalizeState({ ...base, prefs: { showLunch: 'oui' } }, WEDNESDAY).prefs.showLunch).toBe(false);
-    expect(normalizeState({ ...base, prefs: {} }, WEDNESDAY).prefs.economical).toBe(true);
     expect(normalizeState({ ...base, prefs: { maxMinutes: -5 } }, WEDNESDAY).prefs.maxMinutes).toBeNull();
+  });
+
+  it('ignore l’ancienne préférence « menu économe » présente dans un stockage antérieur', () => {
+    const restored = normalizeState({ ...createInitialState(WEDNESDAY), prefs: { maxMinutes: 30, economical: true, showLunch: false } }, WEDNESDAY);
+    expect(restored.prefs).toEqual({ maxMinutes: 30, showLunch: false, planView: 'list' });
+    expect(normalizeState({ ...createInitialState(WEDNESDAY), prefs: { planView: 'week' } }, WEDNESDAY).prefs.planView).toBe('week');
+    expect(normalizeState({ ...createInitialState(WEDNESDAY), prefs: { planView: 'mois' } }, WEDNESDAY).prefs.planView).toBe('list');
   });
 });
 
@@ -216,23 +221,18 @@ describe('pickNext', () => {
     expect(pickNext(context(recipes, { baseScores, shownIds: [1] }))?.id).toBe(3);
   });
 
-  it('avec « économe », favorise les recettes qui partagent des ingrédients avec celles de référence', () => {
+  it('évite aussi une recette qui partage un ingrédient avec les dernières montrées', () => {
     const recipes = [
-      recipe(1, { ingredientSlugs: ['courgette', 'feta'] }),
-      recipe(2, { ingredientSlugs: ['courgette', 'feta'] }),
+      recipe(1, { ingredientSlugs: ['courgette'] }),
+      recipe(2, { ingredientSlugs: ['courgette'] }),
       recipe(3, { ingredientSlugs: ['chocolat'] }),
     ];
     const baseScores = new Map([
-      [1, 0.5],
-      [2, 0.3],
-      [3, 0.6],
+      [1, 0.1],
+      [2, 0.8],
+      [3, 0.5],
     ]);
-    // La recette 1 est déjà prévue ou gardée : la 2 partage ses ingrédients
-    const withAnchor = context(recipes, { baseScores, anchorIds: [1], favoriteIds: new Set([1]) });
-    expect(pickNext(withAnchor)?.id).toBe(2);
-
-    const notEconomical = { ...withAnchor, state: setPrefs(withAnchor.state, { economical: false }) };
-    expect(pickNext(notEconomical)?.id).toBe(3);
+    expect(pickNext(context(recipes, { baseScores, shownIds: [1] }))?.id).toBe(3);
   });
 
   it('createBaseScores donne un score entre 0 et 1 à chaque recette', () => {

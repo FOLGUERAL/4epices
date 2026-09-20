@@ -37,10 +37,11 @@ export default async function CeSoirPage() {
 
   return (
     <main className="min-h-screen bg-orange-50/40">
-      <div className="mx-auto max-w-xl px-4 py-8 sm:py-12">
-        <header className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">Que manger ce soir ?</h1>
-          <p className="mt-3 text-gray-600">
+      <div className="mx-auto max-w-xl px-4 py-4 sm:py-8">
+        {/* En-tête minimal : la première carte doit être visible sans défiler */}
+        <header className="mb-3 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Que manger ce soir ?</h1>
+          <p className="sr-only">
             Faites défiler les idées et gardez celle qui vous donne envie. Le mode cuisine vous guide ensuite pas à
             pas.
           </p>
@@ -60,8 +61,8 @@ export default async function CeSoirPage() {
 
         <p className="mt-10 text-center text-sm text-gray-500">
           Envie de planifier plus large ?{' '}
-          <Link href="/menu-semaine" className="font-semibold text-orange-700 underline">
-            Choisissez vos recettes de la semaine
+          <Link href="/decouvrir" className="font-semibold text-orange-700 underline">
+            Découvrez de nouvelles recettes
           </Link>
           .
         </p>

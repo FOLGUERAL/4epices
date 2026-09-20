@@ -248,12 +248,12 @@ export default async function Home() {
             </AppTile>
 
             <AppTile
-              href="/menu-semaine"
+              href="/decouvrir"
               umamiEvent="menu-home-cta"
-              ariaLabel="Choisir mes recettes en swipant : elles rejoignent mes favoris"
+              ariaLabel="Découvrir des recettes en swipant : celles que je garde rejoignent mon carnet"
               overline="Découvrir"
-              title="Choisissez vos recettes"
-              description="Swipez les recettes : celles que vous gardez rejoignent vos favoris."
+              title="Découvrez des recettes"
+              description="Swipez : celles que vous gardez rejoignent votre carnet."
               tileClass="border-emerald-100 from-emerald-50 to-teal-100"
               overlineClass="text-emerald-700"
               buttonClass="bg-emerald-600"
