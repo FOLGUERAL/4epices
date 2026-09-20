@@ -9,12 +9,15 @@ import { addFavorite, getFavorites, removeFavorite, subscribeFavorites, type Fav
 import { getStrapiMediaUrl } from '@/lib/strapi';
 import {
   QUICK_MINUTES,
+  clearPassesForTonight,
   clearRefusals,
   createBaseScores,
   createInitialState,
   pickNext,
+  passForTonight,
   refuseRecipe,
   setPrefs,
+  undoPassForTonight,
   undoRefusal,
   type Decision,
   type SwipeMode,
@@ -42,7 +45,7 @@ const MILESTONE_HIDE_MS = 6000;
 const PULSE_MS = 250;
 // La carte s'adapte à la hauteur visible : les boutons restent accessibles sans défiler
 // La barre d'onglets du bas (mobile) réduit la hauteur disponible : --tabbar-h vaut 0 quand elle est absente
-const DECK_HEIGHT = 'clamp(18rem, calc(100dvh - 17rem - var(--tabbar-h, 0px)), 34rem)';
+const DECK_HEIGHT = 'clamp(18rem, calc(100dvh - 19rem - var(--tabbar-h, 0px)), 34rem)';
 
 const primaryButton =
   'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 font-bold text-white transition-colors hover:bg-orange-700';
@@ -136,7 +139,8 @@ export default function SwipeDeck({ recipes, mode }: SwipeDeckProps) {
     let addedFavorite = false;
 
     if (direction === 'pass') {
-      nextState = refuseRecipe(state, current);
+      // Découvrir : désintérêt (une semaine). Ce soir : « pas ce soir », valable aujourd'hui seulement
+      nextState = isWeek ? refuseRecipe(state, current) : passForTonight(state, current);
       commitState(nextState);
     } else if (isWeek) {
       // Garder = rejoindre les favoris
@@ -179,7 +183,7 @@ export default function SwipeDeck({ recipes, mode }: SwipeDeckProps) {
     if (!recipe) return;
 
     if (last.type === 'pass') {
-      commitState(undoRefusal(state, last.recipeId));
+      commitState(isWeek ? undoRefusal(state, last.recipeId) : undoPassForTonight(state, last.recipeId));
     } else if (last.addedFavorite) {
       removeFavorite(last.recipeId);
       sessionKept.current = sessionKept.current.filter((id) => id !== last.recipeId);
@@ -325,38 +329,53 @@ export default function SwipeDeck({ recipes, mode }: SwipeDeckProps) {
   }
 
   if (phase === 'exhausted') {
+    const kept = favorites.length;
+    // Découvrir avec des favoris : la suite logique est de les planifier, pas de repasser des refus
+    const planFirst = isWeek && kept > 0;
+    const quickOn = state.prefs.maxMinutes !== null;
+
     return (
       <section className="rounded-3xl bg-white p-6 text-center shadow-lg sm:p-8" aria-live="polite">
-        <h2 className="text-2xl font-bold text-gray-900">Vous avez tout vu !</h2>
+        <h2 className="text-2xl font-bold text-gray-900">
+          {planFirst ? 'Belle sélection !' : isWeek ? 'Vous avez tout vu !' : 'Vous avez tout vu pour ce soir !'}
+        </h2>
         <p className="mt-2 text-gray-600">
-          Il n&apos;y a plus de recette à vous proposer avec ces réglages. Vous pouvez remettre en jeu les recettes
-          refusées{state.prefs.maxMinutes !== null ? ' ou retirer le filtre « rapides »' : ''}.
+          {planFirst
+            ? `Vous avez gardé ${kept} ${kept === 1 ? 'recette' : 'recettes'}. Il n’y a rien de nouveau à vous proposer pour l’instant : placez-les dans votre semaine.`
+            : 'Il n’y a plus de recette à vous proposer avec ces réglages.'}
+          {quickOn ? ' Essayez sans le filtre « rapides ».' : ''}
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <button
-            type="button"
-            onClick={() => {
-              const cleared = clearRefusals(state);
-              commitState(cleared);
-              startSession(cleared);
-            }}
-            className={primaryButton}
-          >
-            Remettre les recettes refusées
-          </button>
-          {state.prefs.maxMinutes !== null && (
-            <button type="button" onClick={toggleQuick} className={secondaryButton}>
+          {planFirst && (
+            <Link href="/planning" className={primaryButton}>
+              Planifier ma semaine
+            </Link>
+          )}
+          {quickOn && (
+            <button type="button" onClick={toggleQuick} className={planFirst ? secondaryButton : primaryButton}>
               Toutes les durées
             </button>
           )}
-          {isWeek && (
+          <button
+            type="button"
+            onClick={() => {
+              const cleared = isWeek ? clearRefusals(state) : clearPassesForTonight(state);
+              commitState(cleared);
+              startSession(cleared);
+            }}
+            className={planFirst || quickOn ? secondaryButton : primaryButton}
+          >
+            {isWeek ? 'Revoir ce que j’ai passé' : 'Revoir les recettes passées'}
+          </button>
+          {planFirst ? (
             <Link href="/favoris" className={secondaryButton}>
-              Mes favoris
+              Voir mes favoris
+            </Link>
+          ) : (
+            <Link href="/recettes" className={secondaryButton}>
+              Toutes les recettes
             </Link>
           )}
-          <Link href="/recettes" className={secondaryButton}>
-            Toutes les recettes
-          </Link>
         </div>
       </section>
     );

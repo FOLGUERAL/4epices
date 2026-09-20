@@ -4,8 +4,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { CalendarCheck, CalendarPlus, Heart } from 'lucide-react';
 import OptimizedImage from '@/components/OptimizedImage';
-import { formatMinutes, getTotalMinutes } from '@/lib/recipeList';
-import type { Recette } from '@/lib/strapi';
+import { formatMinutes, type CardRecipe } from '@/lib/recipeList';
 
 const RatingDisplay = dynamic(() => import('./RatingDisplay'), {
   ssr: false,
@@ -22,7 +21,7 @@ export interface RecetteCardActions {
 }
 
 interface RecetteCardCompactProps {
-  recette: Recette;
+  recette: CardRecipe;
   actions?: RecetteCardActions;
 }
 
@@ -31,17 +30,18 @@ const actionButton =
 
 /** Carte de recette compacte : image, titre, durée et difficulté, note. Le titre couvre toute la carte. */
 export default function RecetteCardCompact({ recette, actions }: RecetteCardCompactProps) {
-  const { titre, slug, difficulte } = recette.attributes;
-  const image = recette.attributes.imagePrincipale?.data?.attributes;
-  const total = formatMinutes(getTotalMinutes(recette));
-  const details = [total, difficulte ? difficulte.charAt(0).toUpperCase() + difficulte.slice(1) : ''].filter(Boolean);
+  const { titre, slug, difficulte, note } = recette;
+  const details = [
+    formatMinutes(recette.totalMinutes),
+    difficulte ? difficulte.charAt(0).toUpperCase() + difficulte.slice(1) : '',
+  ].filter(Boolean);
 
   return (
     <article className="card-base card-hover group/card relative flex h-full flex-col">
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
         <OptimizedImage
-          src={image?.url || null}
-          alt={image?.alternativeText || titre}
+          src={recette.imageUrl}
+          alt={recette.imageAlt}
           fill
           disableAspectRatio
           className="object-cover transition-transform duration-500 group-hover/card:scale-105"
@@ -94,6 +94,7 @@ export default function RecetteCardCompact({ recette, actions }: RecetteCardComp
           </Link>
         </h3>
         {details.length > 0 && <p className="text-sm tabular-nums text-gray-600">{details.join(' · ')}</p>}
+        {note && <p className="text-xs font-medium text-amber-700">{note}</p>}
         <div className="mt-auto pt-1">
           <RatingDisplay recetteId={recette.id} size="sm" />
         </div>

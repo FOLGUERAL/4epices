@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MIN_ELIGIBLE,
   REFUSAL_COOLDOWN_DAYS,
+  clearPassesForTonight,
   clearRefusals,
   createBaseScores,
   createInitialState,
   getEligibleRecipes,
   getWindowStart,
   normalizeState,
+  passForTonight,
   pickNext,
   refuseRecipe,
   setPrefs,
+  undoPassForTonight,
   undoRefusal,
   type PickContext,
   type PlanEntry,
@@ -170,6 +174,49 @@ describe('refus', () => {
   });
 });
 
+describe('« pas ce soir »', () => {
+  const recipes = [recipe(1), recipe(2), recipe(3)];
+  const passed = () => passForTonight(createInitialState(WEDNESDAY), recipes[0], WEDNESDAY);
+
+  it('enregistre, annule et efface les passes du soir', () => {
+    let state = passForTonight(passed(), recipes[1], WEDNESDAY);
+    expect(state.passedTonight).toEqual({ '1': '2026-09-16', '2': '2026-09-16' });
+    state = undoPassForTonight(state, 1);
+    expect(Object.keys(state.passedTonight)).toEqual(['2']);
+    expect(clearPassesForTonight(state).passedTonight).toEqual({});
+  });
+
+  it('écarte la recette de « ce soir », mais pas de « découvrir »', () => {
+    const state = passed();
+    expect(getEligibleRecipes(context(recipes, { state, mode: 'tonight' })).map((r) => r.id)).toEqual([2, 3]);
+    expect(getEligibleRecipes(context(recipes, { state, mode: 'week' })).map((r) => r.id)).toEqual([1, 2, 3]);
+  });
+
+  it('n’ajoute rien aux refus : découvrir, favoris et suggestions du planning ne le voient pas', () => {
+    expect(passed().refused).toEqual({});
+  });
+
+  it('un refus fait dans « découvrir » écarte toujours la recette de « ce soir »', () => {
+    const state = refuseRecipe(createInitialState(WEDNESDAY), recipes[0], WEDNESDAY);
+    expect(getEligibleRecipes(context(recipes, { state, mode: 'tonight' })).map((r) => r.id)).toEqual([2, 3]);
+  });
+
+  it('ne dure que la journée : le lendemain, la recette redevient proposable', () => {
+    const stored = JSON.parse(JSON.stringify(passed()));
+    const sameDay = normalizeState(stored, new Date(2026, 8, 16, 22, 0, 0));
+    expect(sameDay.passedTonight).toEqual({ '1': '2026-09-16' });
+
+    const nextDay = normalizeState(stored, new Date(2026, 8, 17, 9, 0, 0));
+    expect(nextDay.passedTonight).toEqual({});
+    expect(getEligibleRecipes(context(recipes, { state: nextDay, mode: 'tonight' })).map((r) => r.id)).toEqual([1, 2, 3]);
+  });
+
+  it('accepte un ancien état enregistré sans ce champ', () => {
+    const { passedTonight: _ignored, ...legacy } = createInitialState(WEDNESDAY);
+    expect(normalizeState(legacy, WEDNESDAY).passedTonight).toEqual({});
+  });
+});
+
 describe('getEligibleRecipes', () => {
   const recipes = [recipe(1), recipe(2), recipe(3), recipe(4, { totalMinutes: 90 }), recipe(5, { totalMinutes: 0 })];
 
@@ -188,6 +235,61 @@ describe('getEligibleRecipes', () => {
     const state = setPrefs(createInitialState(WEDNESDAY), { maxMinutes: 30 });
     const eligible = getEligibleRecipes(context(recipes, { state }));
     expect(eligible.map((r) => r.id)).toEqual([1, 2, 3]);
+  });
+});
+
+describe('garde-fou : refus libérés quand il reste peu de recettes', () => {
+  const catalogue = Array.from({ length: 30 }, (_, index) => recipe(index + 1));
+  const ids = (list: SwipeRecipe[]) => list.map((item) => item.id);
+
+  /** Refuse les recettes données, la première en premier : la première est donc la plus ancienne. */
+  const refusedInOrder = (list: SwipeRecipe[]) => {
+    let state = createInitialState(WEDNESDAY);
+    list.forEach((item, index) => {
+      state = refuseRecipe(state, item, new Date(WEDNESDAY.getTime() - (list.length - index) * 60 * 1000));
+    });
+    return state;
+  };
+
+  it('ne libère rien tant qu’il reste assez de recettes hors refus', () => {
+    const state = refusedInOrder(catalogue.slice(0, 10)); // 20 recettes restent
+    const eligible = getEligibleRecipes(context(catalogue, { state }));
+    expect(ids(eligible)).toEqual(ids(catalogue.slice(10)));
+  });
+
+  it(`en dessous de ${MIN_ELIGIBLE} recettes hors refus, libère les refus les plus anciens pour y revenir`, () => {
+    const state = refusedInOrder(catalogue.slice(0, 25)); // 5 recettes restent
+    const eligible = getEligibleRecipes(context(catalogue, { state }));
+    expect(eligible).toHaveLength(MIN_ELIGIBLE);
+    // Les 5 non refusées + les 7 refus les plus anciens (1 à 7)
+    expect(ids(eligible).sort((a, b) => a - b)).toEqual([...[1, 2, 3, 4, 5, 6, 7], 26, 27, 28, 29, 30]);
+  });
+
+  it('s’applique aussi à « ce soir »', () => {
+    const state = refusedInOrder(catalogue.slice(0, 25));
+    expect(getEligibleRecipes(context(catalogue, { state, mode: 'tonight' }))).toHaveLength(MIN_ELIGIBLE);
+  });
+
+  it('ne libère pas une recette déjà vue pendant la partie', () => {
+    const state = refusedInOrder(catalogue.slice(0, 25));
+    const eligible = getEligibleRecipes(context(catalogue, { state, shownIds: [1, 2, 3] }));
+    expect(ids(eligible)).not.toContain(1);
+    expect(eligible).toHaveLength(MIN_ELIGIBLE);
+  });
+
+  it('ne libère jamais plus de la moitié des recettes en jeu (petit jeu : les refus restent efficaces)', () => {
+    const small = catalogue.slice(0, 6);
+    const state = refusedInOrder(small.slice(0, 5)); // 1 seule recette hors refus
+    const eligible = getEligibleRecipes(context(small, { state }));
+    expect(eligible).toHaveLength(3);
+    expect(ids(eligible)).toContain(6);
+  });
+
+  it('ne fait pas revenir une recette exclue pour une autre raison (durée, favori)', () => {
+    const list = [recipe(1, { totalMinutes: 90 }), ...catalogue.slice(1)];
+    let state = refusedInOrder(catalogue.slice(1, 26));
+    state = setPrefs(state, { maxMinutes: 30 });
+    expect(ids(getEligibleRecipes(context(list, { state })))).not.toContain(1);
   });
 });
 

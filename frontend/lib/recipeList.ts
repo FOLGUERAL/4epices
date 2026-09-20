@@ -49,6 +49,33 @@ export function getTotalMinutes(recette: Recette): number {
   return (recette.attributes.tempsPreparation || 0) + (recette.attributes.tempsCuisson || 0);
 }
 
+/** Ce qu'une carte de recette affiche : assez léger pour venir d'une recette complète comme d'un mélangeur. */
+export interface CardRecipe {
+  id: number;
+  slug: string;
+  titre: string;
+  /** Adresse brute de l'image (Strapi), résolue à l'affichage */
+  imageUrl: string | null;
+  imageAlt: string;
+  totalMinutes: number;
+  difficulte?: string;
+  /** Petite remarque sous la carte (« Il manque : tomates ») */
+  note?: string;
+}
+
+export function toCardRecipe(recette: Recette): CardRecipe {
+  const image = recette.attributes.imagePrincipale?.data?.attributes;
+  return {
+    id: recette.id,
+    slug: recette.attributes.slug,
+    titre: recette.attributes.titre,
+    imageUrl: image?.url ?? null,
+    imageAlt: image?.alternativeText || recette.attributes.titre,
+    totalMinutes: getTotalMinutes(recette),
+    difficulte: recette.attributes.difficulte,
+  };
+}
+
 function getCategorySlugs(recette: Recette): string[] {
   return (recette.attributes.categories?.data || []).map((category) => category.attributes.slug);
 }

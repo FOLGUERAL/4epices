@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getRecettes, Recette } from '@/lib/strapi';
 import CategoryRail from '@/components/CategoryRail';
+import IngredientEntry from '@/components/IngredientEntry';
 import RecipesFiltersClient from '@/components/RecipesFiltersClient';
 import { getCategoryOptions } from '@/lib/recipeList';
 import { SITE_NAME } from '@/lib/seo';
@@ -42,6 +43,8 @@ export default async function RecipesPage() {
       </header>
 
       <CategoryRail title="Catégories" options={getCategoryOptions(recettes)} />
+
+      <IngredientEntry />
 
       <RecipesFiltersClient recettes={recettes} showCategoryChips={false} />
     </div>

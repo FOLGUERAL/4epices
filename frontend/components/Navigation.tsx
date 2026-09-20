@@ -2,7 +2,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import NavTabs from './NavTabs';
 import SearchBar from './SearchBar';
-import WhiskIcon from './WhiskIcon';
 import { SITE_NAME } from '@/lib/seo';
 
 // Les catégories ne sont plus dans cette barre : elles sont sur la page Recettes et en pied de page
@@ -27,13 +26,6 @@ export default function Navigation() {
           <div className="flex items-center gap-2 sm:gap-5 lg:gap-8 flex-shrink-0">
             {/* Les mêmes onglets que la barre du bas : Recettes, Découvrir, Planning, Favoris */}
             <NavTabs />
-            <Link
-              href="/ingredients"
-              className="text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1.5 duration-200"
-            >
-              <WhiskIcon />
-              <span className="hidden sm:inline">Ingrédients</span>
-            </Link>
           </div>
         </div>
       </div>

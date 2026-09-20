@@ -6,6 +6,7 @@ import {
   getCategoryOptions,
   getTotalMinutes,
   hasActiveListFilters,
+  toCardRecipe,
 } from '../recipeList';
 import type { Recette } from '../strapi';
 
@@ -90,6 +91,27 @@ describe('hasActiveListFilters / getTotalMinutes', () => {
   it('additionne préparation et cuisson', () => {
     expect(getTotalMinutes(catalogue[0])).toBe(45);
     expect(getTotalMinutes(catalogue[1])).toBe(10);
+  });
+});
+
+describe('toCardRecipe', () => {
+  it('résume une recette complète pour une carte', () => {
+    const card = toCardRecipe(recette({ id: 40, titre: 'Pizza', prep: 20, cuisson: 15, difficulte: 'facile', image: '/uploads/pizza.jpg' }));
+    expect(card).toEqual({
+      id: 40,
+      slug: 'recette-40',
+      titre: 'Pizza',
+      imageUrl: '/uploads/pizza.jpg',
+      imageAlt: 'Pizza',
+      totalMinutes: 35,
+      difficulte: 'facile',
+    });
+  });
+
+  it('gère une recette sans image ni durée', () => {
+    const card = toCardRecipe(recette({ id: 41, titre: 'Sans rien' }));
+    expect(card.imageUrl).toBeNull();
+    expect(card.totalMinutes).toBe(0);
   });
 });
 

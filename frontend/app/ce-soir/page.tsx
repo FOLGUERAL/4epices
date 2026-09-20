@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import DiscoverModeTabs from '@/components/DiscoverModeTabs';
 import SwipeDeck from '@/components/SwipeDeck';
 import { getSwipeRecipes } from '@/lib/swipeRecipes';
 import type { SwipeRecipe } from '@/lib/swipeEngine';
@@ -38,14 +39,16 @@ export default async function CeSoirPage() {
   return (
     <main className="min-h-screen bg-orange-50/40">
       <div className="mx-auto max-w-xl px-4 py-4 sm:py-8">
-        {/* En-tête minimal : la première carte doit être visible sans défiler */}
-        <header className="mb-3 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Que manger ce soir ?</h1>
+        {/* En-tête minimal : la première carte doit être visible sans défiler (le titre ne s'affiche qu'au-delà du mobile) */}
+        <header className="text-center">
+          <h1 className="sr-only text-3xl font-bold text-gray-900 sm:not-sr-only sm:mb-3">Que manger ce soir ?</h1>
           <p className="sr-only">
             Faites défiler les idées et gardez celle qui vous donne envie. Le mode cuisine vous guide ensuite pas à
             pas.
           </p>
         </header>
+
+        <DiscoverModeTabs active="tonight" />
 
         <SwipeDeck recipes={recipes} mode="tonight" />
 
@@ -59,13 +62,6 @@ export default async function CeSoirPage() {
           </p>
         </noscript>
 
-        <p className="mt-10 text-center text-sm text-gray-500">
-          Envie de planifier plus large ?{' '}
-          <Link href="/decouvrir" className="font-semibold text-orange-700 underline">
-            Découvrez de nouvelles recettes
-          </Link>
-          .
-        </p>
       </div>
     </main>
   );

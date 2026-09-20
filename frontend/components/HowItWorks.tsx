@@ -56,9 +56,14 @@ export default function HowItWorks() {
             <p className="mx-auto max-w-sm text-sm leading-relaxed text-gray-600 sm:text-base">{text}</p>
             <div className="mt-3">
               {number === 1 && (
-                <Link href="/decouvrir" className={linkClass}>
-                  Découvrir des recettes
-                </Link>
+                <div className="flex flex-wrap justify-center gap-x-5">
+                  <Link href="/decouvrir" className={linkClass}>
+                    Découvrir des recettes
+                  </Link>
+                  <Link href="/ce-soir" data-umami-event="how-tonight" className={linkClass}>
+                    Que manger ce soir ?
+                  </Link>
+                </div>
               )}
               {number === 2 && (
                 <Link href="/planning" className={linkClass}>

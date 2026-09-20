@@ -7,7 +7,12 @@
  * (le stockage est dans lib/swipeStorage.ts), donc testable.
  */
 
-export const REFUSAL_COOLDOWN_DAYS = 28;
+/**
+ * Durée pendant laquelle une recette refusée dans Découvrir n'est pas reproposée. Courte à dessein : le jeu de swipe
+ * ne compte qu'environ 70 recettes (les « Bases de cuisine » en sont exclues), et 34 avec le filtre « rapides ».
+ * Avec un délai plus long, quelqu'un qui swipe chaque semaine viderait le jeu en quelques semaines.
+ */
+export const REFUSAL_COOLDOWN_DAYS = 7;
 export const QUICK_MINUTES = 30;
 /** Jours affichés à partir d'aujourd'hui : aujourd'hui et les 7 suivants */
 export const WINDOW_DAYS = 8;
@@ -65,8 +70,13 @@ export interface SwipeState {
   /** Premier jour de la fenêtre glissante : le jour courant (AAAA-MM-JJ, heure locale) */
   windowStart: string;
   plan: PlanEntry[];
-  /** id de recette → date ISO du refus */
+  /** id de recette → date ISO du refus (mode Découvrir, et aussi respecté par « Ce soir ») */
   refused: Record<string, string>;
+  /**
+   * id de recette → jour (AAAA-MM-JJ) où elle a été passée dans « Ce soir ». Ne vaut que ce jour-là et que pour
+   * « Ce soir » : « pas ce soir » ne veut pas dire « jamais ».
+   */
+  passedTonight: Record<string, string>;
   prefs: SwipePrefs;
 }
 
@@ -128,6 +138,7 @@ export function createInitialState(now: Date = new Date()): SwipeState {
     windowStart: getWindowStart(now),
     plan: [],
     refused: {},
+    passedTonight: {},
     prefs: { maxMinutes: null, showLunch: false, planView: 'list' },
   };
 }
@@ -186,6 +197,14 @@ export function normalizeState(raw: unknown, now: Date = new Date()): SwipeState
       ? pruneRefusals(data.refused as Record<string, string>, now)
       : {};
 
+  // « Pas ce soir » ne vaut que pour la journée en cours
+  const passedTonight: Record<string, string> = {};
+  if (data.passedTonight && typeof data.passedTonight === 'object' && !Array.isArray(data.passedTonight)) {
+    for (const [id, date] of Object.entries(data.passedTonight as Record<string, unknown>)) {
+      if (date === today) passedTonight[id] = today;
+    }
+  }
+
   const prefs: SwipePrefs = {
     maxMinutes:
       typeof data.prefs?.maxMinutes === 'number' && data.prefs.maxMinutes > 0 ? data.prefs.maxMinutes : null,
@@ -193,7 +212,7 @@ export function normalizeState(raw: unknown, now: Date = new Date()): SwipeState
     planView: data.prefs?.planView === 'week' ? 'week' : 'list',
   };
 
-  return { windowStart: today, plan, refused, prefs };
+  return { windowStart: today, plan, refused, passedTonight, prefs };
 }
 
 export function refuseRecipe(state: SwipeState, recipe: { id: number }, now: Date = new Date()): SwipeState {
@@ -209,6 +228,25 @@ export function undoRefusal(state: SwipeState, recipeId: number): SwipeState {
 
 export function clearRefusals(state: SwipeState): SwipeState {
   return { ...state, refused: {} };
+}
+
+/**
+ * « Pas ce soir » : la recette ne revient pas dans « Ce soir » jusqu'à demain. Elle reste proposable dans Découvrir,
+ * dans les suggestions du planning et un autre jour : dans « Ce soir », on est plus exigeant, et ça ne dit rien du goût.
+ */
+export function passForTonight(state: SwipeState, recipe: { id: number }, now: Date = new Date()): SwipeState {
+  return { ...state, passedTonight: { ...state.passedTonight, [String(recipe.id)]: formatLocalDate(now) } };
+}
+
+/** Annule un « pas ce soir » (bouton « annuler » du swipe). */
+export function undoPassForTonight(state: SwipeState, recipeId: number): SwipeState {
+  const passedTonight = { ...state.passedTonight };
+  delete passedTonight[String(recipeId)];
+  return { ...state, passedTonight };
+}
+
+export function clearPassesForTonight(state: SwipeState): SwipeState {
+  return { ...state, passedTonight: {} };
 }
 
 export function setPrefs(state: SwipeState, prefs: Partial<SwipePrefs>): SwipeState {
@@ -238,19 +276,37 @@ export interface PickContext {
   mode: SwipeMode;
 }
 
-/** Recettes encore proposables : ni refusées récemment, ni déjà vues, ni déjà en favoris (semaine), dans la durée voulue. */
+/** Sous ce nombre de recettes proposables, les refus les plus anciens sont libérés plutôt que d'épuiser le jeu */
+export const MIN_ELIGIBLE = 12;
+
+/**
+ * Recettes encore proposables : ni refusées récemment, ni déjà vues, ni déjà en favoris (semaine), dans la durée voulue.
+ * Un « pas ce soir » n'écarte la recette que de « Ce soir », et seulement le jour même.
+ *
+ * Garde-fou : quand il reste trop peu de recettes hors refus, on libère les refus les plus anciens (sans jamais
+ * dépasser la moitié des recettes en jeu) au lieu de dire « tout vu » à cause de refus datant de quelques jours.
+ */
 export function getEligibleRecipes(context: PickContext): SwipeRecipe[] {
   const { recipes, state, favoriteIds, shownIds, mode } = context;
   const shown = new Set(shownIds);
   const { maxMinutes } = state.prefs;
 
-  return recipes.filter((recipe) => {
+  const inPlay = recipes.filter((recipe) => {
     if (shown.has(recipe.id)) return false;
-    if (state.refused[String(recipe.id)]) return false;
+    if (mode === 'tonight' && state.passedTonight[String(recipe.id)]) return false;
     if (mode === 'week' && favoriteIds.has(recipe.id)) return false;
     if (maxMinutes !== null && !(recipe.totalMinutes > 0 && recipe.totalMinutes <= maxMinutes)) return false;
     return true;
   });
+
+  const notRefused = inPlay.filter((recipe) => !state.refused[String(recipe.id)]);
+  const minimum = Math.min(MIN_ELIGIBLE, Math.floor(inPlay.length / 2));
+  if (notRefused.length >= minimum) return notRefused;
+
+  const oldestRefused = inPlay
+    .filter((recipe) => state.refused[String(recipe.id)])
+    .sort((a, b) => state.refused[String(a.id)].localeCompare(state.refused[String(b.id)]));
+  return [...notRefused, ...oldestRefused.slice(0, minimum - notRefused.length)];
 }
 
 /** Choisit la prochaine carte : aléatoire, pondéré pour varier les catégories et les ingrédients proposés. */

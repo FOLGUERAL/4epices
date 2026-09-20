@@ -1,142 +1,106 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  filterRecipesByIngredientSlugs,
-  IngredientHub,
-  MixerRecipe,
-} from '@/lib/ingredients';
-import OptimizedImage from '@/components/OptimizedImage';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import RecipeCardGrid from '@/components/RecipeCardGrid';
 import WhiskIcon from '@/components/WhiskIcon';
+import { mixerToCardRecipe, rankRecipesByIngredientSlugs } from '@/lib/ingredientMix';
+import type { IngredientHub, MixerRecipe } from '@/lib/ingredients';
+import { normalizeSearchText } from '@/lib/recipeSearch';
 
 const MAX_SELECTION = 6;
-const MIX_DURATION_MS = 1400;
+/** Nombre d'ingrédients affichés avant « Voir les autres » (les plus utilisés d'abord) */
+const INITIAL_SHOWN = 18;
+const MAX_SEARCH_RESULTS = 30;
 
 interface IngredientMixerProps {
   ingredients: IngredientHub[];
   recipes: MixerRecipe[];
 }
 
-function parseSlugsFromSearchParams(searchParams: URLSearchParams): string[] {
-  const raw = searchParams.get('mix');
+function parseSlugs(raw: string | null): string[] {
   if (!raw) return [];
-  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+  return raw.split(',').map((slug) => slug.trim()).filter(Boolean);
 }
 
+/**
+ * Le « fouet magique » : on choisit ses ingrédients, les recettes apparaissent aussitôt.
+ * D'abord celles qui les contiennent tous, puis celles qui en contiennent une partie (avec ce qu'il manque).
+ * La sélection est dans l'adresse (?mix=…) : elle se partage.
+ */
 export default function IngredientMixer({ ingredients, recipes }: IngredientMixerProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const initialSlugs = useMemo(
-    () => parseSlugsFromSearchParams(searchParams),
-    [searchParams]
-  );
-
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>(() =>
-    initialSlugs.filter((slug) => ingredients.some((i) => i.slug === slug))
+    parseSlugs(searchParams.get('mix'))
+      .filter((slug) => ingredients.some((ingredient) => ingredient.slug === slug))
+      .slice(0, MAX_SELECTION)
   );
-  const [phase, setPhase] = useState<'idle' | 'mixing' | 'results'>(
-    initialSlugs.length > 0 ? 'results' : 'idle'
-  );
-  const [displayedResults, setDisplayedResults] = useState<MixerRecipe[]>(() =>
-    initialSlugs.length > 0
-      ? filterRecipesByIngredientSlugs(recipes, initialSlugs)
-      : []
-  );
+  const [query, setQuery] = useState('');
+  const [showAll, setShowAll] = useState(false);
 
+  // L'adresse suit la sélection, sans recharger la page
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (selectedSlugs.length > 0) params.set('mix', selectedSlugs.join(','));
+    else params.delete('mix');
+    const search = params.toString();
+    window.history.replaceState(null, '', search ? `${window.location.pathname}?${search}` : window.location.pathname);
+  }, [selectedSlugs]);
+
+  const nameBySlug = useMemo(() => new Map(ingredients.map((ingredient) => [ingredient.slug, ingredient.nom])), [ingredients]);
   const selectedIngredients = useMemo(
-    () => ingredients.filter((i) => selectedSlugs.includes(i.slug)),
+    () => selectedSlugs.map((slug) => ingredients.find((ingredient) => ingredient.slug === slug)).filter((item): item is IngredientHub => Boolean(item)),
     [ingredients, selectedSlugs]
   );
 
-  const previewCount = useMemo(
-    () => filterRecipesByIngredientSlugs(recipes, selectedSlugs).length,
-    [recipes, selectedSlugs]
+  const ranked = useMemo(() => rankRecipesByIngredientSlugs(recipes, selectedSlugs), [recipes, selectedSlugs]);
+  const allCards = useMemo(() => ranked.all.map((recipe) => mixerToCardRecipe(recipe)), [ranked]);
+  const partialCards = useMemo(
+    () =>
+      ranked.partial.map(({ recipe, missing }) =>
+        mixerToCardRecipe(recipe, `Il manque : ${missing.map((slug) => nameBySlug.get(slug) ?? slug).join(', ')}`)
+      ),
+    [ranked, nameBySlug]
   );
 
-  const updateUrl = useCallback(
-    (slugs: string[]) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (slugs.length > 0) {
-        params.set('mix', slugs.join(','));
-      } else {
-        params.delete('mix');
-      }
-      const query = params.toString();
-      router.replace(query ? `/ingredients?${query}` : '/ingredients', { scroll: false });
-    },
-    [router, searchParams]
-  );
-
-  const toggleIngredient = (slug: string) => {
-    setSelectedSlugs((current) => {
-      if (current.includes(slug)) {
-        return current.filter((s) => s !== slug);
-      }
-      if (current.length >= MAX_SELECTION) return current;
-      return [...current, slug];
-    });
-    setPhase('idle');
-    setDisplayedResults([]);
-  };
-
-  const clearSelection = () => {
-    setSelectedSlugs([]);
-    setPhase('idle');
-    setDisplayedResults([]);
-    updateUrl([]);
-  };
-
-  const handleMix = () => {
-    if (selectedSlugs.length === 0) return;
-
-    const reducedMotion =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    setPhase('mixing');
-
-    const showResults = () => {
-      const results = filterRecipesByIngredientSlugs(recipes, selectedSlugs);
-      setDisplayedResults(results);
-      setPhase('results');
-      updateUrl(selectedSlugs);
-    };
-
-    if (reducedMotion) {
-      showResults();
-      return;
+  const searching = query.trim().length > 0;
+  const visibleIngredients = useMemo(() => {
+    if (searching) {
+      const needle = normalizeSearchText(query);
+      return ingredients.filter((ingredient) => normalizeSearchText(ingredient.nom).includes(needle)).slice(0, MAX_SEARCH_RESULTS);
     }
+    return showAll ? ingredients : ingredients.slice(0, INITIAL_SHOWN);
+  }, [ingredients, query, searching, showAll]);
 
-    window.setTimeout(showResults, MIX_DURATION_MS);
-  };
+  const toggleIngredient = (slug: string) =>
+    setSelectedSlugs((current) => {
+      if (current.includes(slug)) return current.filter((item) => item !== slug);
+      return current.length >= MAX_SELECTION ? current : [...current, slug];
+    });
 
-  const canMix = selectedSlugs.length > 0 && phase !== 'mixing';
+  const full = selectedSlugs.length >= MAX_SELECTION;
+  const many = selectedSlugs.length > 1;
 
   return (
-    <section
-      className="mb-12 rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-amber-50 shadow-md overflow-hidden"
-      aria-labelledby="mixer-heading"
-    >
-      <div className="p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-          <div>
-            <h2 id="mixer-heading" className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              Le fouet magique
-            </h2>
-            <p className="text-gray-600 max-w-xl">
-              Sélectionnez plusieurs ingrédients : plus vous en ajoutez, plus le mélange est
-              sélectif. Le fouet vous sort les recettes qui contiennent{' '}
-              <strong>tous</strong> vos choix.
-            </p>
+    <section aria-labelledby="mixer-heading" className="mb-10">
+      <div className="rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-4 shadow-sm sm:p-6">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <WhiskIcon className="mt-1 h-7 w-7 flex-shrink-0 text-orange-600" strokeWidth={1.75} />
+            <div>
+              <h2 id="mixer-heading" className="text-2xl font-bold text-gray-900">
+                Le fouet magique
+              </h2>
+              <p className="mt-1 max-w-xl text-sm text-gray-600 sm:text-base">
+                Choisissez ce que vous avez, jusqu&apos;à {MAX_SELECTION} ingrédients : les recettes apparaissent aussitôt.
+              </p>
+            </div>
           </div>
-
           {selectedSlugs.length > 0 && (
             <button
               type="button"
-              onClick={clearSelection}
-              className="text-sm text-gray-500 hover:text-orange-600 transition-colors shrink-0"
+              onClick={() => setSelectedSlugs([])}
+              className="min-h-11 flex-shrink-0 rounded-xl px-3 text-sm font-semibold text-gray-600 transition-colors hover:bg-orange-100 hover:text-orange-700"
             >
               Tout effacer
             </button>
@@ -144,163 +108,112 @@ export default function IngredientMixer({ ingredients, recipes }: IngredientMixe
         </div>
 
         {selectedIngredients.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-5">
-            {selectedIngredients.map((ing) => (
-              <button
-                key={ing.slug}
-                type="button"
-                onClick={() => toggleIngredient(ing.slug)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-600 text-white text-sm font-medium hover:bg-orange-700 transition-colors capitalize"
-              >
-                {ing.nom}
-                <span aria-hidden="true">×</span>
-              </button>
+          <ul aria-label="Ingrédients choisis" className="mb-4 flex flex-wrap gap-2">
+            {selectedIngredients.map((ingredient) => (
+              <li key={ingredient.slug}>
+                <button
+                  type="button"
+                  onClick={() => toggleIngredient(ingredient.slug)}
+                  aria-label={`Retirer ${ingredient.nom}`}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-orange-600 px-4 text-sm font-semibold capitalize text-white transition-colors hover:bg-orange-700"
+                >
+                  {ingredient.nom}
+                  <span aria-hidden="true">×</span>
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
 
-        <div className="flex flex-wrap gap-2 mb-6 max-h-48 overflow-y-auto pr-1">
-          {ingredients.map((ing) => {
-            const isSelected = selectedSlugs.includes(ing.slug);
-            const disabled = !isSelected && selectedSlugs.length >= MAX_SELECTION;
+        <label htmlFor="mixer-search" className="sr-only">
+          Chercher un ingrédient
+        </label>
+        <input
+          id="mixer-search"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Chercher un ingrédient…"
+          autoComplete="off"
+          className="mb-3 min-h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-base !text-gray-900 placeholder:text-gray-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
+        />
 
-            return (
-              <button
-                key={ing.slug}
-                type="button"
-                onClick={() => toggleIngredient(ing.slug)}
-                disabled={disabled}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all capitalize ${
-                  isSelected
-                    ? 'border-orange-500 bg-orange-100 text-orange-800'
-                    : disabled
-                      ? 'border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-orange-300 hover:bg-orange-50'
-                }`}
-              >
-                {ing.nom}
-                <span className="text-gray-400 ml-1 text-xs">({ing.recetteCount})</span>
-              </button>
-            );
-          })}
-        </div>
+        {visibleIngredients.length === 0 ? (
+          <p className="py-2 text-sm text-gray-600">Aucun ingrédient ne correspond à cette recherche.</p>
+        ) : (
+          <ul aria-label="Ingrédients" className="flex flex-wrap gap-2">
+            {visibleIngredients.map((ingredient) => {
+              const isSelected = selectedSlugs.includes(ingredient.slug);
+              const disabled = !isSelected && full;
+              return (
+                <li key={ingredient.slug}>
+                  <button
+                    type="button"
+                    onClick={() => toggleIngredient(ingredient.slug)}
+                    disabled={disabled}
+                    aria-pressed={isSelected}
+                    className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-medium capitalize transition-colors ${
+                      isSelected
+                        ? 'border-orange-500 bg-orange-100 text-orange-800'
+                        : disabled
+                          ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-300'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-orange-300 hover:bg-orange-50'
+                    }`}
+                  >
+                    {ingredient.nom}
+                    <span className="text-xs tabular-nums text-gray-400">{ingredient.recetteCount}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
-        <div className="flex flex-col sm:flex-row items-center gap-6 mb-2">
-          <div
-            className={`relative flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-white border-2 border-orange-200 shadow-inner ${
-              phase === 'mixing' ? 'ingredient-mixer-bowl' : ''
-            }`}
-            aria-hidden="true"
+        {!searching && ingredients.length > INITIAL_SHOWN && (
+          <button
+            type="button"
+            onClick={() => setShowAll((value) => !value)}
+            className="mt-3 min-h-11 rounded-xl px-3 text-sm font-semibold text-orange-700 transition-colors hover:bg-orange-100"
           >
-            {selectedIngredients.slice(0, 4).map((ing, index) => (
-              <span
-                key={ing.slug}
-                className={`absolute text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 capitalize ingredient-mixer-chip ingredient-mixer-chip-${index} ${
-                  phase === 'mixing' ? 'ingredient-mixer-chip-active' : ''
-                }`}
-              >
-                {ing.nom}
-              </span>
-            ))}
-            <WhiskIcon
-              className={`w-12 h-12 sm:w-14 sm:h-14 text-orange-600 ${
-                phase === 'mixing' ? 'ingredient-mixer-whisk' : ''
-              }`}
-              strokeWidth={1.75}
-            />
-          </div>
+            {showAll ? 'Voir moins' : `Voir les ${ingredients.length - INITIAL_SHOWN} autres ingrédients`}
+          </button>
+        )}
 
-          <div className="flex-1 text-center sm:text-left">
-            {selectedSlugs.length === 0 ? (
-              <p className="text-gray-500">Choisissez au moins un ingrédient pour commencer.</p>
+        {full && <p className="mt-2 text-xs text-gray-500">Maximum {MAX_SELECTION} ingrédients : retirez-en un pour en ajouter.</p>}
+      </div>
+
+      <div className="mt-6" aria-live="polite">
+        {selectedSlugs.length === 0 ? (
+          <p className="text-gray-600">Choisissez au moins un ingrédient pour voir les recettes.</p>
+        ) : (
+          <>
+            {allCards.length > 0 ? (
+              <>
+                <h3 className="mb-4 text-xl font-bold text-gray-900">
+                  {allCards.length} {allCards.length === 1 ? 'recette contient' : 'recettes contiennent'}{' '}
+                  {many ? 'tous vos ingrédients' : 'cet ingrédient'}
+                </h3>
+                <RecipeCardGrid recipes={allCards} />
+              </>
             ) : (
-              <p className="text-gray-700 mb-3">
-                {previewCount === 0 ? (
-                  <span className="text-amber-700 font-medium">
-                    Aucune recette ne combine ces {selectedSlugs.length} ingrédients — essayez
-                    d&apos;en retirer un.
-                  </span>
-                ) : (
-                  <>
-                    <span className="font-semibold text-gray-900">{previewCount}</span>{' '}
-                    {previewCount === 1 ? 'recette correspond' : 'recettes correspondent'} à votre
-                    sélection.
-                  </>
-                )}
+              <p className="rounded-2xl bg-white p-5 text-gray-700 shadow-sm">
+                {partialCards.length > 0
+                  ? 'Aucune recette ne les combine tous. Voici celles qui s’en approchent :'
+                  : 'Aucune recette ne correspond. Essayez de retirer un ingrédient.'}
               </p>
             )}
 
-            <button
-              type="button"
-              onClick={handleMix}
-              disabled={!canMix}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
-            >
-              <WhiskIcon className="w-5 h-5" strokeWidth={2} />
-              {phase === 'mixing' ? 'Mélange en cours…' : 'Mélanger !'}
-            </button>
-
-            {selectedSlugs.length >= MAX_SELECTION && (
-              <p className="text-xs text-gray-400 mt-2">Maximum {MAX_SELECTION} ingrédients.</p>
+            {partialCards.length > 0 && (
+              <div className={allCards.length > 0 ? 'mt-10' : 'mt-6'}>
+                {allCards.length > 0 && (
+                  <h3 className="mb-4 text-xl font-bold text-gray-900">Avec une partie de vos ingrédients</h3>
+                )}
+                <RecipeCardGrid recipes={partialCards} />
+              </div>
             )}
-          </div>
-        </div>
+          </>
+        )}
       </div>
-
-      {phase === 'results' && (
-        <div className="border-t border-orange-100 bg-white/80 px-6 sm:px-8 py-8 ingredient-mixer-results">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">
-            {displayedResults.length > 0 ? (
-              <>
-                {displayedResults.length}{' '}
-                {displayedResults.length === 1 ? 'recette trouvée' : 'recettes trouvées'}
-              </>
-            ) : (
-              'Aucun mélange possible'
-            )}
-          </h3>
-
-          {displayedResults.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayedResults.map((recette) => (
-                <Link
-                  key={recette.id}
-                  href={`/recettes/${recette.slug}`}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow"
-                >
-                  <OptimizedImage
-                    src={recette.imageUrl}
-                    alt={recette.imageAlt}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                  <div className="p-6">
-                    <h4 className="text-xl font-semibold text-gray-900 mb-2">{recette.titre}</h4>
-                    <p className="text-gray-600 text-sm line-clamp-2 mb-4">{recette.description}</p>
-                    <div className="flex items-center gap-4 text-sm text-gray-700">
-                      {recette.tempsPreparation ? (
-                        <span className="font-medium">⏱️ {recette.tempsPreparation} min</span>
-                      ) : null}
-                      {recette.nombrePersonnes ? (
-                        <span className="font-medium">👥 {recette.nombrePersonnes} pers.</span>
-                      ) : null}
-                      {recette.difficulte ? (
-                        <span className="capitalize px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-medium">
-                          {recette.difficulte}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">
-              Retirez un ingrédient ou changez votre combinaison, puis relancez le fouet.
-            </p>
-          )}
-        </div>
-      )}
     </section>
   );
 }

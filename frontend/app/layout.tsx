@@ -116,6 +116,20 @@ export default function RootLayout({
               </p>
               <nav className="mt-4 md:mt-0 flex flex-col items-center gap-2 md:flex-row md:gap-6">
                 <Link
+                  href="/ce-soir"
+                  data-umami-event="tonight-entry-footer"
+                  className="text-gray-400 hover:text-white text-sm transition-colors"
+                >
+                  Que manger ce soir ?
+                </Link>
+                <Link
+                  href="/ingredients"
+                  data-umami-event="ingredients-entry-footer"
+                  className="text-gray-400 hover:text-white text-sm transition-colors"
+                >
+                  Recettes par ingrédient
+                </Link>
+                <Link
                   href="/politique-de-confidentialite"
                   className="text-gray-400 hover:text-white text-sm transition-colors"
                 >

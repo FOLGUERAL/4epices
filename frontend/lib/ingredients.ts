@@ -235,18 +235,6 @@ export async function getIngredientMixerData(): Promise<IngredientMixerData> {
   };
 }
 
-/** Filtre AND : la recette doit contenir tous les slugs sélectionnés. */
-export function filterRecipesByIngredientSlugs(
-  recipes: MixerRecipe[],
-  selectedSlugs: string[]
-): MixerRecipe[] {
-  if (selectedSlugs.length === 0) return [];
-
-  return recipes.filter((recipe) =>
-    selectedSlugs.every((slug) => recipe.ingredientSlugs.includes(slug))
-  );
-}
-
 // Mots en « h » aspiré : pas d'élision (« de haricots », mais « d'huile »)
 const ASPIRATED_H = ['haricot', 'homard', 'hareng', 'hachis', 'harissa', 'houmous'];
 

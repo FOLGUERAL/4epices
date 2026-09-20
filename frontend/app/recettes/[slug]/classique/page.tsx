@@ -24,6 +24,7 @@ import AdSlot from '@/components/AdSlot';
 import RecipeActionBar from '@/components/RecipeActionBar';
 import RecipeMeta from '@/components/RecipeMeta';
 import RecetteCardCompact from '@/components/RecetteCardCompact';
+import { toCardRecipe } from '@/lib/recipeList';
 
 const RatingDisplay = dynamic(() => import('@/components/RatingDisplay'), {
   ssr: false,
@@ -370,7 +371,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
             <h2 className="text-3xl font-bold text-gray-900 mb-8">Recettes similaires</h2>
             <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
               {recettesSimilaires.map((recetteSimilaire) => (
-                <RecetteCardCompact key={recetteSimilaire.id} recette={recetteSimilaire} />
+                <RecetteCardCompact key={recetteSimilaire.id} recette={toCardRecipe(recetteSimilaire)} />
               ))}
             </div>
           </div>
