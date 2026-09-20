@@ -3,6 +3,23 @@
  */
 
 const FAVORITES_KEY = '4epices_favorites';
+/** Émis à chaque changement pour que les composants de la même page restent synchronisés */
+export const FAVORITES_EVENT = '4epices:favorites-changed';
+
+function notifyFavoritesChanged(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(FAVORITES_EVENT));
+}
+
+/** Notifie quand les favoris changent : dans cette page (événement interne) ou dans un autre onglet. */
+export function subscribeFavorites(callback: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', callback);
+  window.addEventListener(FAVORITES_EVENT, callback);
+  return () => {
+    window.removeEventListener('storage', callback);
+    window.removeEventListener(FAVORITES_EVENT, callback);
+  };
+}
 
 export interface Favorite {
   id: number;
@@ -50,6 +67,7 @@ export function addFavorite(recette: {
     
     favorites.push(newFavorite);
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    notifyFavoritesChanged();
     return true;
   } catch (error) {
     console.error('Erreur lors de l\'ajout aux favoris:', error);
@@ -64,6 +82,7 @@ export function removeFavorite(recetteId: number): boolean {
     const favorites = getFavorites();
     const filtered = favorites.filter(fav => fav.id !== recetteId);
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(filtered));
+    notifyFavoritesChanged();
     return true;
   } catch (error) {
     console.error('Erreur lors de la suppression des favoris:', error);

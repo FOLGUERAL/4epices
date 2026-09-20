@@ -102,7 +102,7 @@ function addRecipeToHub(
 }
 
 /** Sources hub pour une recette : dictionnaire (titre + ingrédients) + ingredientPrincipal Groq. */
-function getRecipeHubSources(recette: Recette): Array<{ slug: string; nom: string }> {
+export function getRecipeHubSources(recette: Recette): Array<{ slug: string; nom: string }> {
   const sources = new Map<string, string>();
 
   for (const entry of matchDictionaryIngredients(recette)) {
@@ -120,7 +120,7 @@ function getRecipeHubSources(recette: Recette): Array<{ slug: string; nom: strin
   return Array.from(sources.entries()).map(([slug, nom]) => ({ slug, nom }));
 }
 
-async function fetchAllPublishedRecettes(): Promise<Recette[]> {
+export async function fetchAllPublishedRecettes(): Promise<Recette[]> {
   const all: Recette[] = [];
   let page = 1;
   const pageSize = 100;

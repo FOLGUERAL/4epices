@@ -492,6 +492,37 @@ function scoreRecetteForSearch(recette: Recette, tokens: string[]): number {
   return total;
 }
 
+/**
+ * Charge plusieurs recettes par slug en quelques requêtes (par lots de 40), dans l'ordre demandé.
+ * Les slugs introuvables sont ignorés.
+ */
+export async function getRecettesBySlugs(slugs: string[]): Promise<Recette[]> {
+  const unique = Array.from(new Set(slugs.filter(Boolean)));
+  if (unique.length === 0) return [];
+
+  const chunkSize = 40;
+  const chunks: string[][] = [];
+  for (let index = 0; index < unique.length; index += chunkSize) {
+    chunks.push(unique.slice(index, index + chunkSize));
+  }
+
+  const responses = await Promise.all(
+    chunks.map((chunk) => {
+      const queryParams = new URLSearchParams();
+      chunk.forEach((slug, index) => queryParams.append(`filters[slug][$in][${index}]`, slug));
+      queryParams.append('pagination[pageSize]', String(chunk.length));
+      queryParams.append('populate', 'imagePrincipale,categories,tags');
+      return fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+    })
+  );
+
+  const bySlug = new Map<string, Recette>();
+  for (const response of responses) {
+    for (const recette of response.data || []) bySlug.set(recette.attributes.slug, recette);
+  }
+  return unique.map((slug) => bySlug.get(slug)).filter((recette): recette is Recette => Boolean(recette));
+}
+
 export function getStrapiMediaUrl(url: string): string {
   if (url.startsWith('http')) {
     return url;

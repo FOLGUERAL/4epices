@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getFavorites, Favorite } from '@/lib/favorites';
-import { getRecetteBySlug, Recette, getStrapiMediaUrl } from '@/lib/strapi';
+import { getRecettesBySlugs, Recette, getStrapiMediaUrl } from '@/lib/strapi';
 import OptimizedImage from '@/components/OptimizedImage';
 import FavoriteButton from '@/components/FavoriteButton';
+import PlanSummary from '@/components/PlanSummary';
+import PlanFavoriteButton from '@/components/PlanFavoriteButton';
 
 export default function FavorisPage() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
@@ -17,17 +19,12 @@ export default function FavorisPage() {
       const favs = getFavorites();
       setFavorites(favs);
 
-      // Charger les recettes complètes
-      const recettesData: Recette[] = [];
-      for (const fav of favs) {
-        try {
-          const response = await getRecetteBySlug(fav.slug);
-          if (response.data) {
-            recettesData.push(response.data);
-          }
-        } catch (error) {
-          console.error(`Erreur lors du chargement de ${fav.slug}:`, error);
-        }
+      // Charger les recettes complètes en quelques requêtes groupées (la pile de favoris peut être longue)
+      let recettesData: Recette[] = [];
+      try {
+        recettesData = await getRecettesBySlugs(favs.map((fav) => fav.slug));
+      } catch (error) {
+        console.error('Erreur lors du chargement des favoris:', error);
       }
       setRecettes(recettesData);
       setLoading(false);
@@ -61,7 +58,7 @@ export default function FavorisPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement de vos favoris...</p>
+            <p className="mt-4 text-gray-600">Chargement de votre carnet...</p>
           </div>
         </div>
       </div>
@@ -75,8 +72,10 @@ export default function FavorisPage() {
           <nav className="text-sm text-gray-500 mb-6">
             <Link href="/" className="hover:text-gray-700">Accueil</Link>
             <span className="mx-2">/</span>
-            <span className="text-gray-900">Mes favoris</span>
+            <span className="text-gray-900">Mon carnet</span>
           </nav>
+
+          <PlanSummary />
 
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <svg
@@ -114,16 +113,19 @@ export default function FavorisPage() {
         <nav className="text-sm text-gray-500 mb-6">
           <Link href="/" className="hover:text-gray-700">Accueil</Link>
           <span className="mx-2">/</span>
-          <span className="text-gray-900">Mes favoris</span>
+          <span className="text-gray-900">Mon carnet</span>
         </nav>
 
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Mes favoris</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Mon carnet</h1>
           <p className="text-gray-600">
             {favorites.length} {favorites.length === 1 ? 'recette sauvegardée' : 'recettes sauvegardées'}
           </p>
         </div>
 
+        <PlanSummary />
+
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Mes favoris</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {recettes.map((recette) => {
             const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url || null;
@@ -176,6 +178,16 @@ export default function FavorisPage() {
                     </div>
                   </div>
                 </Link>
+                <div className="px-6 pb-5">
+                  <PlanFavoriteButton
+                    recette={{
+                      id: recette.id,
+                      slug: recette.attributes.slug,
+                      titre: recette.attributes.titre,
+                      imageUrl: imageUrlForFavorite,
+                    }}
+                  />
+                </div>
                 <div className="absolute top-4 right-4 z-10">
                   <FavoriteButton
                     recette={{

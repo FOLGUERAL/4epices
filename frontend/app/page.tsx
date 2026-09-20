@@ -26,6 +26,69 @@ function formatTime(minutes: number): string {
   return `${hours}h ${mins}min`;
 }
 
+function SwipeIllustration({ emoji }: { emoji: string }) {
+  return (
+    <div className="relative h-full max-h-40 w-3/5 min-w-[3rem]" aria-hidden="true">
+      <div className="absolute inset-0 rotate-[-8deg] rounded-2xl bg-white/70 shadow" />
+      <div className="absolute inset-0 rotate-[6deg] rounded-2xl bg-white/85 shadow" />
+      <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white shadow-md">
+        <span className="text-3xl sm:text-5xl">{emoji}</span>
+      </div>
+    </div>
+  );
+}
+
+interface AppTileProps {
+  href: string;
+  umamiEvent: string;
+  ariaLabel: string;
+  overline: string;
+  title: string;
+  description: string;
+  tileClass: string;
+  overlineClass: string;
+  buttonClass: string;
+  children: React.ReactNode;
+}
+
+/** Panneau carré façon « mini-application » : toute la surface est cliquable. */
+function AppTile({
+  href,
+  umamiEvent,
+  ariaLabel,
+  overline,
+  title,
+  description,
+  tileClass,
+  overlineClass,
+  buttonClass,
+  children,
+}: AppTileProps) {
+  return (
+    <div
+      className={`relative aspect-square overflow-hidden rounded-2xl border bg-gradient-to-br shadow-md transition-transform hover:-translate-y-1 hover:shadow-xl sm:rounded-3xl ${tileClass}`}
+    >
+      <Link
+        href={href}
+        data-umami-event={umamiEvent}
+        aria-label={ariaLabel}
+        className="absolute inset-0 z-10 rounded-2xl focus-ring sm:rounded-3xl"
+      />
+      <div className="flex h-full flex-col p-3 sm:p-6">
+        <p className={`text-[10px] font-bold uppercase tracking-wide sm:text-xs ${overlineClass}`}>{overline}</p>
+        <div className="my-1 flex min-h-0 flex-1 items-center justify-center">{children}</div>
+        <h2 className="text-sm font-bold leading-tight text-gray-900 sm:text-2xl">{title}</h2>
+        <p className="mt-1 hidden text-sm text-gray-700 sm:block">{description}</p>
+        <span
+          className={`mt-2 hidden min-h-11 items-center justify-center rounded-lg px-3 text-sm font-bold text-white sm:inline-flex ${buttonClass}`}
+        >
+          Ouvrir
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default async function Home() {
   let recettesRecent: Recette[] = [];
   let categories: Categorie[] = [];
@@ -160,45 +223,71 @@ export default async function Home() {
           />
         )}
 
-        <section
-          className="my-12 overflow-hidden rounded-3xl border border-orange-100 bg-gradient-to-br from-orange-50 to-amber-50"
-          aria-labelledby="nonna-heading"
-        >
-          <div className="grid items-center gap-6 p-6 sm:p-10 md:grid-cols-[220px_1fr]">
-            <div className="relative mx-auto h-48 w-48 md:h-56 md:w-56">
-              <Image
-                src="/images/nonna-speaking.webp"
-                alt="La Nonna, votre guide de cuisine"
-                fill
-                sizes="224px"
-                className="object-contain"
-              />
-            </div>
-            <div>
-              <p className="text-sm font-bold uppercase tracking-wide text-orange-700">Mode Cuisine</p>
-              <h2 id="nonna-heading" className="mt-1 text-3xl font-bold text-gray-900 sm:text-4xl">
-                Cuisinez avec la Nonna
-              </h2>
-              <p className="mt-3 max-w-2xl text-lg leading-relaxed text-gray-700">
-                Elle vous guide étape par étape et vous lit la recette à voix haute : vous gardez les mains
-                dans la farine, sans toucher l&apos;écran.
-              </p>
-              <ul className="mt-4 space-y-1 text-gray-700">
-                <li>✓ Étapes guidées, une à la fois</li>
-                <li>✓ Commandes vocales mains libres</li>
-                <li>✓ Minuteurs intégrés</li>
-              </ul>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href={derniereRecette ? `/recettes/${derniereRecette.attributes.slug}/cuisine` : '/recettes'}
-                  data-umami-event="nonna-home-cta"
-                  className="inline-flex min-h-12 items-center justify-center rounded-lg bg-orange-600 px-5 py-3 font-bold text-white shadow-sm transition-colors hover:bg-orange-700 focus-ring"
-                >
-                  {derniereRecette ? 'Essayer avec la dernière recette' : 'Trouver une recette'}
-                </Link>
-                <KitchenModeHelp triggerLabel="Comment ça marche ?" />
+        <section aria-label="Vos assistants de cuisine" className="my-12">
+          <div className="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:gap-6">
+            <AppTile
+              href={derniereRecette ? `/recettes/${derniereRecette.attributes.slug}/cuisine` : '/mode-cuisine'}
+              umamiEvent="nonna-home-cta"
+              ariaLabel="Cuisinez avec la Nonna : lancer le Mode Cuisine"
+              overline="Mode Cuisine"
+              title="Cuisinez avec la Nonna"
+              description="Étapes guidées, lecture à voix haute, minuteurs intégrés."
+              tileClass="border-orange-100 from-orange-50 to-amber-100"
+              overlineClass="text-orange-700"
+              buttonClass="bg-orange-600"
+            >
+              <div className="relative h-full w-full">
+                <Image
+                  src="/images/nonna-speaking.webp"
+                  alt=""
+                  fill
+                  sizes="(max-width: 768px) 45vw, 380px"
+                  className="object-contain"
+                />
               </div>
-            </div>
+            </AppTile>
+
+            <AppTile
+              href="/menu-semaine"
+              umamiEvent="menu-home-cta"
+              ariaLabel="Choisir mes recettes en swipant : elles rejoignent mes favoris"
+              overline="Découvrir"
+              title="Choisissez vos recettes"
+              description="Swipez les recettes : celles que vous gardez rejoignent vos favoris."
+              tileClass="border-emerald-100 from-emerald-50 to-teal-100"
+              overlineClass="text-emerald-700"
+              buttonClass="bg-emerald-600"
+            >
+              <SwipeIllustration emoji="🍲" />
+            </AppTile>
+
+            <AppTile
+              href="/ce-soir"
+              umamiEvent="tonight-home-cta"
+              ariaLabel="Que manger ce soir ? Trouver un dîner en quelques swipes"
+              overline="Ce soir"
+              title="Que manger ce soir ?"
+              description="Un dîner trouvé en quelques swipes, puis on cuisine."
+              tileClass="border-indigo-100 from-sky-50 to-indigo-100"
+              overlineClass="text-indigo-700"
+              buttonClass="bg-indigo-600"
+            >
+              <SwipeIllustration emoji="🌙" />
+            </AppTile>
+
+            <AppTile
+              href="/planning"
+              umamiEvent="plan-home-cta"
+              ariaLabel="Planning : placer mes favoris dans un calendrier"
+              overline="Planning"
+              title="Planifiez votre semaine"
+              description="Placez vos recettes dans un calendrier et ajoutez-les à votre agenda."
+              tileClass="border-rose-100 from-rose-50 to-pink-100"
+              overlineClass="text-rose-700"
+              buttonClass="bg-rose-600"
+            >
+              <SwipeIllustration emoji="📅" />
+            </AppTile>
           </div>
         </section>
 
