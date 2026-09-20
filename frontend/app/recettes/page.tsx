@@ -36,7 +36,7 @@ export default async function RecipesPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <header className="mb-8">
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Toutes les recettes</h1>
-        <p className="text-gray-600 mt-2">Filtrez par temps de préparation, difficulté ou régime.</p>
+        <p className="text-gray-600 mt-2">Cherchez par nom ou par ingrédient, ou filtrez par durée, difficulté et cuisine.</p>
       </header>
 
       <RecipesFiltersClient recettes={recettes} />

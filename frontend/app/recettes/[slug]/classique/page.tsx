@@ -16,29 +16,14 @@ import RecipeEnrichedSections from '@/components/RecipeEnrichedSections';
 import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
 import ShareRecipe from '@/components/ShareRecipe';
-import FavoriteButton from '@/components/FavoriteButton';
-import AddToShoppingListButton from '@/components/AddToShoppingListButton';
 import RatingForm from '@/components/RatingForm';
 import RatingList from '@/components/RatingList';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import ShareToPinterestButton from '@/components/ShareToPinterestButton';
 import AdSlot from '@/components/AdSlot';
-import RecipeKitchenModeActions from '@/components/RecipeKitchenModeActions';
-
-function formatTime(minutes: number): string {
-  if (minutes <= 0) {
-    return '';
-  }
-  if (minutes < 60) {
-    return `${minutes} min`;
-  }
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (mins === 0) {
-    return `${hours}h`;
-  }
-  return `${hours}h ${mins}min`;
-}
+import RecipeActionBar from '@/components/RecipeActionBar';
+import RecipeMeta from '@/components/RecipeMeta';
+import RecetteCardCompact from '@/components/RecetteCardCompact';
 
 const RatingDisplay = dynamic(() => import('@/components/RatingDisplay'), {
   ssr: false,
@@ -164,7 +149,6 @@ export default async function RecettePage({ params }: { params: { slug: string }
 
   const tempsPrep = recette.attributes.tempsPreparation || 0;
   const tempsCuisson = recette.attributes.tempsCuisson || 0;
-  const tempsTotal = tempsPrep + tempsCuisson;
   
   const siteUrl = getSiteUrl();
   const recetteUrl = `${siteUrl}/recettes/${recette.attributes.slug}`;
@@ -219,7 +203,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
         />
       )}
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Le bas de page laisse la place à la barre d'actions fixe sur mobile */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-28 sm:pb-12">
         {/* Breadcrumbs */}
         {(() => {
           const crumbs: { label: string; href?: string }[] = [
@@ -251,14 +236,6 @@ export default async function RecettePage({ params }: { params: { slug: string }
                 {recette.attributes.titre}
               </h1>
               <div className="flex flex-wrap items-center gap-2">
-                <FavoriteButton
-                  recette={{
-                    id: recette.id,
-                    slug: recette.attributes.slug,
-                    titre: recette.attributes.titre,
-                    imageUrl: imageUrlForShare,
-                  }}
-                />
                 <ShareRecipe
                   title={recette.attributes.titre}
                   url={recetteUrl}
@@ -279,62 +256,18 @@ export default async function RecettePage({ params }: { params: { slug: string }
               {recette.attributes.description}
             </p>
 
-            <RecipeKitchenModeActions recette={recette} />
+            <RecipeActionBar recette={recette} imageUrl={imageUrlForShare} ingredients={rawIngredients} />
 
-            <div className="flex flex-wrap gap-4 mb-8 pb-8 border-b">
-              {tempsPrep > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">⏱️</span>
-                  <div>
-                    <div className="text-sm text-gray-700 font-medium">Préparation</div>
-                    <div className="font-semibold text-gray-900">{formatTime(tempsPrep)}</div>
-                  </div>
-                </div>
-              )}
-              {tempsCuisson > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">🔥</span>
-                  <div>
-                    <div className="text-sm text-gray-700 font-medium">Cuisson</div>
-                    <div className="font-semibold text-gray-900">{formatTime(tempsCuisson)}</div>
-                  </div>
-                </div>
-              )}
-              {tempsTotal > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">⏰</span>
-                  <div>
-                    <div className="text-sm text-gray-700 font-medium">Total</div>
-                    <div className="font-semibold text-gray-900">{formatTime(tempsTotal)}</div>
-                  </div>
-                </div>
-              )}
-              {recette.attributes.nombrePersonnes && (
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">👥</span>
-                  <div>
-                    <div className="text-sm text-gray-700 font-medium">Portions</div>
-                    <div className="font-semibold text-gray-900">{recette.attributes.nombrePersonnes}</div>
-                  </div>
-                </div>
-              )}
-              {recette.attributes.difficulte && (
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">📊</span>
-                  <div>
-                    <div className="text-sm text-gray-700 font-medium">Difficulté</div>
-                    <div className="font-semibold text-gray-900 capitalize">{recette.attributes.difficulte}</div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <RecipeMeta
+              prepMinutes={tempsPrep}
+              cookMinutes={tempsCuisson}
+              portions={recette.attributes.nombrePersonnes}
+              difficulty={recette.attributes.difficulte}
+            />
 
             {rawIngredients.length > 0 && (
               <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-gray-900">Ingrédients</h2>
-                  <AddToShoppingListButton ingredients={rawIngredients} recipeId={recette.id} />
-                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Ingrédients</h2>
                 <IngredientsAdjuster
                   ingredients={rawIngredients}
                   basePortions={recette.attributes.nombrePersonnes || 4}
@@ -435,38 +368,10 @@ export default async function RecettePage({ params }: { params: { slug: string }
         {recettesSimilaires.length > 0 && (
           <div className="mt-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-8">Recettes similaires</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {recettesSimilaires.map((recetteSimilaire) => {
-                const imageUrlSimilaire = recetteSimilaire.attributes.imagePrincipale?.data?.attributes?.url || null;
-
-                return (
-                  <Link
-                    key={recetteSimilaire.id}
-                    href={`/recettes/${recetteSimilaire.attributes.slug}`}
-                    className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow"
-                  >
-                    <OptimizedImage
-                      src={imageUrlSimilaire}
-                      alt={recetteSimilaire.attributes.imagePrincipale?.data?.attributes?.alternativeText || recetteSimilaire.attributes.titre}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                    />
-                    <div className="p-4">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-                        {recetteSimilaire.attributes.titre}
-                      </h3>
-                      <div className="flex items-center gap-3 text-sm text-gray-700">
-                        {recetteSimilaire.attributes.tempsPreparation && (
-                          <span className="font-medium">⏱️ {recetteSimilaire.attributes.tempsPreparation} min</span>
-                        )}
-                        {recetteSimilaire.attributes.nombrePersonnes && (
-                          <span className="font-medium">👥 {recetteSimilaire.attributes.nombrePersonnes}</span>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
+              {recettesSimilaires.map((recetteSimilaire) => (
+                <RecetteCardCompact key={recetteSimilaire.id} recette={recetteSimilaire} />
+              ))}
             </div>
           </div>
         )}

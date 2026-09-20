@@ -12,6 +12,23 @@ export interface ShoppingListItem {
 const SHOPPING_LIST_KEY = '4epices_shopping_list';
 const SHOPPING_LIST_RECIPES_KEY = '4epices_shopping_list_recipes';
 
+export const SHOPPING_LIST_EVENT = '4epices:shopping-list-changed';
+
+function notifyShoppingListChanged(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(SHOPPING_LIST_EVENT));
+}
+
+/** Notifie quand la liste de courses change : dans cette page (événement interne) ou dans un autre onglet. */
+export function subscribeShoppingList(callback: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', callback);
+  window.addEventListener(SHOPPING_LIST_EVENT, callback);
+  return () => {
+    window.removeEventListener('storage', callback);
+    window.removeEventListener(SHOPPING_LIST_EVENT, callback);
+  };
+}
+
 export function getShoppingList(): ShoppingListItem[] {
   if (typeof window === 'undefined') return [];
   
@@ -29,6 +46,7 @@ export function saveShoppingList(items: ShoppingListItem[]): void {
   
   try {
     localStorage.setItem(SHOPPING_LIST_KEY, JSON.stringify(items));
+    notifyShoppingListChanged();
   } catch (error) {
     console.error('Erreur lors de la sauvegarde de la liste de courses:', error);
   }
@@ -55,6 +73,7 @@ function saveShoppingListRecipes(recipeIds: number[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(SHOPPING_LIST_RECIPES_KEY, JSON.stringify(recipeIds));
+    notifyShoppingListChanged();
   } catch (error) {
     console.error('Erreur lors de la sauvegarde des recettes de la liste:', error);
   }

@@ -29,6 +29,10 @@ describe('normalizeSearchText', () => {
   it('retire accents, casse et ponctuation', () => {
     expect(normalizeSearchText('Crème  BRÛLÉE, à la vanille !')).toBe('creme brulee a la vanille');
   });
+
+  it('remplace les ligatures : bœuf et œufs se tapent boeuf et oeufs', () => {
+    expect(normalizeSearchText('Bœuf, ŒUFS et cæcum')).toBe('boeuf oeufs et caecum');
+  });
 });
 
 describe('searchRecipes', () => {

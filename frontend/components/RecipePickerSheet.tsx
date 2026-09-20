@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Heart, Shuffle, SkipForward, Zap } from 'lucide-react';
+import FilterChip from '@/components/FilterChip';
 import OptimizedImage from '@/components/OptimizedImage';
 import PlanSheet from '@/components/PlanSheet';
 import { formatSlotLabel, type PlanSlot } from '@/lib/planning';
@@ -72,23 +73,6 @@ const IDEAS_COUNT = 8;
 const IDEAS_COUNT_FILTERED = 20;
 /** « Surprends-moi » tire au hasard parmi les meilleures suggestions */
 const SURPRISE_POOL = 15;
-
-function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`inline-flex min-h-11 flex-shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors ${
-        active
-          ? 'border-orange-600 bg-orange-600 text-white'
-          : 'border-gray-200 bg-white text-gray-700 hover:border-orange-300 hover:bg-orange-50'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
 
 /**
  * Choix d'une recette pour un créneau. Champ vide : les favoris à planifier, puis des idées adaptées au créneau.
