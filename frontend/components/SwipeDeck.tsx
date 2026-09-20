@@ -41,7 +41,8 @@ const COACH_AUTO_HIDE_MS = 9000;
 const MILESTONE_HIDE_MS = 6000;
 const PULSE_MS = 250;
 // La carte s'adapte à la hauteur visible : les boutons restent accessibles sans défiler
-const DECK_HEIGHT = 'clamp(18rem, calc(100dvh - 17rem), 34rem)';
+// La barre d'onglets du bas (mobile) réduit la hauteur disponible : --tabbar-h vaut 0 quand elle est absente
+const DECK_HEIGHT = 'clamp(18rem, calc(100dvh - 17rem - var(--tabbar-h, 0px)), 34rem)';
 
 const primaryButton =
   'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 font-bold text-white transition-colors hover:bg-orange-700';

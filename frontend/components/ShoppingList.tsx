@@ -121,7 +121,8 @@ export default function ShoppingList() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
+    // Au-dessus de la barre d'onglets du bas quand elle est affichée (mobile)
+    <div className="fixed bottom-[calc(1rem+var(--tabbar-h,0px))] right-4 z-50 sm:right-6 md:bottom-6">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="group relative flex h-12 min-h-12 w-12 min-w-[3rem] items-center justify-center rounded-full bg-orange-600 text-white shadow-lg shadow-orange-900/20 transition-all duration-300 hover:scale-110 hover:bg-orange-700 hover:shadow-2xl"

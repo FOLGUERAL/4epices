@@ -59,7 +59,10 @@ export default function KitchenModeHelp({
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/30 px-5 py-3 font-bold text-white transition-colors hover:bg-white/10 focus-ring ${triggerClassName}`}
+          className={
+            triggerClassName ||
+            'inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/30 px-5 py-3 font-bold text-white transition-colors hover:bg-white/10 focus-ring'
+          }
         >
           <HelpCircle className="h-5 w-5" aria-hidden="true" />
           {triggerLabel}

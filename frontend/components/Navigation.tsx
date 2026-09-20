@@ -34,9 +34,9 @@ export default async function Navigation() {
           <SearchBar />
 
           <div className="flex items-center gap-2 sm:gap-5 lg:gap-8 flex-shrink-0">
-            <Link 
-              href="/recettes" 
-              className="text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1.5 duration-200"
+            <Link
+              href="/recettes"
+              className="hide-with-tabbar text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1.5 duration-200"
             >
               <ChefHat className="w-5 h-5" aria-hidden="true" />
               <span className="hidden sm:inline">Recettes</span>
@@ -48,9 +48,9 @@ export default async function Navigation() {
               <WhiskIcon />
               <span className="hidden sm:inline">Ingrédients</span>
             </Link>
-            <Link 
-              href="/favoris" 
-              className="text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1.5 duration-200"
+            <Link
+              href="/favoris"
+              className="hide-with-tabbar text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1.5 duration-200"
             >
               <BookHeart className="w-5 h-5" aria-hidden="true" />
               <span className="hidden sm:inline">Mon carnet</span>

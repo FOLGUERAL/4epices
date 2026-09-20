@@ -7,6 +7,7 @@ import ConsentSettingsButton from "@/components/ConsentSettingsButton";
 import UmamiAnalytics from "@/components/UmamiAnalytics";
 import EzoicScript from "@/components/EzoicScript";
 import AdBlockNotice from "@/components/AdBlockNotice";
+import BottomTabBar from "@/components/BottomTabBar";
 import PWARegister from "@/components/PWARegister";
 import ShoppingList from "@/components/ShoppingList";
 import ToastContainer from "@/components/Toast";
@@ -103,6 +104,7 @@ export default function RootLayout({
         <Navigation />
         {children}
         <ShoppingList />
+        <BottomTabBar />
         <ToastContainer />
         <footer className="bg-gray-800 text-white mt-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

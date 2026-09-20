@@ -4,11 +4,18 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: '4epices',
     short_name: '4epices',
-    description: 'Votre assistant de cuisine intelligent',
+    description: 'Swipez, planifiez, cuisinez : l’app qui s’occupe du dîner.',
     start_url: '/',
     display: 'standalone',
     background_color: '#fff7ed',
     theme_color: '#ea580c',
+    // Appui long sur l'icône de l'app installée : accès direct aux sous-applications
+    shortcuts: [
+      { name: 'Planning', short_name: 'Planning', url: '/planning' },
+      { name: 'Découvrir des recettes', short_name: 'Découvrir', url: '/decouvrir' },
+      { name: 'Que manger ce soir ?', short_name: 'Ce soir', url: '/ce-soir' },
+      { name: 'Mon carnet', short_name: 'Carnet', url: '/favoris' },
+    ],
     icons: [
       {
         src: '/icons/icon-192.png',

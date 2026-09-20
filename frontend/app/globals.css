@@ -393,3 +393,26 @@ select option {
     animation: none;
   }
 }
+
+/*
+ * Barre d'onglets du bas (mobile) : BottomTabBar pose data-tabbar="on" sur <html> quand elle s'affiche.
+ * --tabbar-h est la place qu'elle prend ; elle vaut 0 sur grand écran et là où la barre est masquée.
+ */
+:root {
+  --tabbar-h: 0px;
+}
+
+@media (max-width: 767px) {
+  html[data-tabbar='on'] {
+    --tabbar-h: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  body {
+    padding-bottom: var(--tabbar-h);
+  }
+
+  /* Ces liens de la barre du haut sont repris par la barre du bas */
+  html[data-tabbar='on'] .hide-with-tabbar {
+    display: none;
+  }
+}
