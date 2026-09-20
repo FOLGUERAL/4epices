@@ -7,7 +7,7 @@ describe('getActiveTab', () => {
     expect(getActiveTab('/recettes')).toBe('recettes');
     expect(getActiveTab('/decouvrir')).toBe('decouvrir');
     expect(getActiveTab('/planning')).toBe('planning');
-    expect(getActiveTab('/favoris')).toBe('carnet');
+    expect(getActiveTab('/favoris')).toBe('favoris');
   });
 
   it('rattache les pages liées au bon onglet', () => {

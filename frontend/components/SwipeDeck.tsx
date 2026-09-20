@@ -351,7 +351,7 @@ export default function SwipeDeck({ recipes, mode }: SwipeDeckProps) {
           )}
           {isWeek && (
             <Link href="/favoris" className={secondaryButton}>
-              Mon carnet
+              Mes favoris
             </Link>
           )}
           <Link href="/recettes" className={secondaryButton}>
@@ -393,8 +393,8 @@ export default function SwipeDeck({ recipes, mode }: SwipeDeckProps) {
         {isWeek && (
           <Link
             href="/favoris"
-            onClick={() => trackEvent('swipe-to-carnet', { favorites: favorites.length })}
-            aria-label={`Mon carnet : ${favorites.length} ${favorites.length === 1 ? 'favori' : 'favoris'}`}
+            onClick={() => trackEvent('swipe-to-favoris', { favorites: favorites.length })}
+            aria-label={`Mes favoris : ${favorites.length} ${favorites.length === 1 ? 'favori' : 'favoris'}`}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-bold text-gray-800 shadow-sm ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
           >
             <Heart
@@ -418,7 +418,7 @@ export default function SwipeDeck({ recipes, mode }: SwipeDeckProps) {
           </p>
           <span className="flex flex-shrink-0 items-center gap-1">
             <Link href="/favoris" className="font-bold underline">
-              Voir mon carnet
+              Voir mes favoris
             </Link>
             <button
               type="button"

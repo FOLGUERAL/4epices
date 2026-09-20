@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { BookHeart, CalendarDays, ChefHat, ChevronRight, Compass, Moon } from 'lucide-react';
+import { CalendarDays, ChefHat, ChevronRight, Compass, Heart, Moon } from 'lucide-react';
 import OptimizedImage from '@/components/OptimizedImage';
 import { getFavorites, subscribeFavorites } from '@/lib/favorites';
 import { formatMealWhen, getNextMeal, getUpcomingEntries } from '@/lib/planning';
@@ -70,9 +70,9 @@ export default function HomeHub() {
     },
     {
       href: '/favoris',
-      event: 'carnet-home-cta',
-      label: 'Mon carnet',
-      Icon: BookHeart,
+      event: 'favoris-home-cta',
+      label: 'Favoris',
+      Icon: Heart,
       badge: favoritesCount,
       className: 'border-amber-100 from-amber-50 to-yellow-100 text-amber-700',
     },

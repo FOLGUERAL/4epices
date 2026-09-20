@@ -17,7 +17,7 @@ const STEPS: Step[] = [
     number: 1,
     Icon: Compass,
     title: 'Swipez',
-    text: 'Faites défiler les recettes et gardez celles qui vous donnent envie : elles rejoignent votre carnet, sans limite.',
+    text: 'Faites défiler les recettes et gardez celles qui vous donnent envie : elles rejoignent vos favoris, sans limite.',
   },
   {
     number: 2,

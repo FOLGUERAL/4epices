@@ -11,7 +11,7 @@ export const fetchCache = 'default-cache';
 
 const TITLE = 'Découvrir des recettes en un swipe';
 const DESCRIPTION =
-  'Faites défiler les recettes et gardez celles qui vous plaisent : elles rejoignent votre carnet, prêtes à être placées dans votre calendrier.';
+  'Faites défiler les recettes et gardez celles qui vous plaisent : elles rejoignent vos favoris, prêtes à être placées dans votre calendrier.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -59,7 +59,7 @@ export default async function DecouvrirPage() {
         <p className="mt-6 text-center text-sm text-gray-500">
           Les recettes gardées sont enregistrées sur cet appareil, dans{' '}
           <Link href="/favoris" className="font-semibold text-orange-700 underline">
-            votre carnet
+            vos favoris
           </Link>
           . Pas envie de swiper ?{' '}
           <Link href="/ce-soir" className="font-semibold text-orange-700 underline">

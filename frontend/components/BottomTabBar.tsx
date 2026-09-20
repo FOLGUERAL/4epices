@@ -3,16 +3,8 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookHeart, CalendarDays, ChefHat, Compass, Home, type LucideIcon } from 'lucide-react';
-import { TABS, getActiveTab, isTabBarVisible, type TabKey } from '@/lib/tabs';
-
-const ICONS: Record<TabKey, LucideIcon> = {
-  accueil: Home,
-  recettes: ChefHat,
-  decouvrir: Compass,
-  planning: CalendarDays,
-  carnet: BookHeart,
-};
+import { TAB_ICONS } from '@/lib/tabIcons';
+import { TABS, getActiveTab, isTabBarVisible } from '@/lib/tabs';
 
 /**
  * Barre d'onglets du bas, sur mobile seulement : les sous-applications à portée de pouce.
@@ -41,7 +33,7 @@ export default function BottomTabBar() {
     >
       <ul className="flex h-16">
         {TABS.map(({ key, href, label }) => {
-          const Icon = ICONS[key];
+          const Icon = TAB_ICONS[key];
           const isActive = key === active;
           return (
             <li key={key} className="flex-1">

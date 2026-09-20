@@ -8,6 +8,7 @@ import UmamiAnalytics from "@/components/UmamiAnalytics";
 import EzoicScript from "@/components/EzoicScript";
 import AdBlockNotice from "@/components/AdBlockNotice";
 import BottomTabBar from "@/components/BottomTabBar";
+import FooterCategories from "@/components/FooterCategories";
 import PWARegister from "@/components/PWARegister";
 import ShoppingList from "@/components/ShoppingList";
 import ToastContainer from "@/components/Toast";
@@ -108,6 +109,7 @@ export default function RootLayout({
         <ToastContainer />
         <footer className="bg-gray-800 text-white mt-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <FooterCategories />
             <div className="flex flex-col md:flex-row justify-between items-center">
               <p className="text-gray-400 text-sm">
                 © {new Date().getFullYear()} {SITE_NAME}. Tous droits réservés.

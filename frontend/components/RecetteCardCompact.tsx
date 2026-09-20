@@ -17,7 +17,8 @@ export interface RecetteCardActions {
   /** Créneau où la recette est déjà planifiée (« jeu. 18 · soir »), s'il y en a un */
   plannedLabel?: string;
   onToggleFavorite: () => void;
-  onPlan: () => void;
+  /** Sans cette action, la carte n'affiche pas le bouton de planification (page des favoris) */
+  onPlan?: () => void;
 }
 
 interface RecetteCardCompactProps {
@@ -50,22 +51,24 @@ export default function RecetteCardCompact({ recette, actions }: RecetteCardComp
 
       {actions && (
         <div className="absolute right-2 top-2 z-10 flex gap-1.5">
-          <button
-            type="button"
-            onClick={actions.onPlan}
-            aria-label={
-              actions.plannedLabel ? `${titre} : planifiée ${actions.plannedLabel}, modifier` : `Planifier ${titre}`
-            }
-            className={`${actionButton} ${
-              actions.plannedLabel ? 'text-emerald-700 hover:bg-emerald-50' : 'text-gray-700 hover:bg-white'
-            }`}
-          >
-            {actions.plannedLabel ? (
-              <CalendarCheck className="h-5 w-5" aria-hidden="true" />
-            ) : (
-              <CalendarPlus className="h-5 w-5" aria-hidden="true" />
-            )}
-          </button>
+          {actions.onPlan && (
+            <button
+              type="button"
+              onClick={actions.onPlan}
+              aria-label={
+                actions.plannedLabel ? `${titre} : planifiée ${actions.plannedLabel}, modifier` : `Planifier ${titre}`
+              }
+              className={`${actionButton} ${
+                actions.plannedLabel ? 'text-emerald-700 hover:bg-emerald-50' : 'text-gray-700 hover:bg-white'
+              }`}
+            >
+              {actions.plannedLabel ? (
+                <CalendarCheck className="h-5 w-5" aria-hidden="true" />
+              ) : (
+                <CalendarPlus className="h-5 w-5" aria-hidden="true" />
+              )}
+            </button>
+          )}
           <button
             type="button"
             onClick={actions.onToggleFavorite}

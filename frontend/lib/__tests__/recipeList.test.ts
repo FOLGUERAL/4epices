@@ -18,6 +18,7 @@ interface Sample {
   categories?: Array<[string, string]>;
   tags?: string[];
   ingredients?: unknown[];
+  image?: string;
 }
 
 function recette(sample: Sample): Recette {
@@ -30,6 +31,7 @@ function recette(sample: Sample): Recette {
       tempsCuisson: sample.cuisson,
       difficulte: sample.difficulte,
       ingredients: sample.ingredients,
+      imagePrincipale: sample.image ? { data: { attributes: { url: sample.image } } } : { data: null },
       categories: {
         data: (sample.categories || []).map(([slug, nom], index) => ({ id: index, attributes: { slug, nom } })),
       },
@@ -94,10 +96,28 @@ describe('hasActiveListFilters / getTotalMinutes', () => {
 describe('getCategoryOptions', () => {
   it('compte les recettes par catégorie, les plus fournies d’abord', () => {
     expect(getCategoryOptions(catalogue)).toEqual([
-      { slug: 'francais', nom: 'Français', count: 2 },
-      { slug: 'healthy', nom: 'Healthy', count: 1 },
-      { slug: 'oriental', nom: 'Oriental', count: 1 },
+      { slug: 'francais', nom: 'Français', count: 2, imageUrl: null },
+      { slug: 'healthy', nom: 'Healthy', count: 1, imageUrl: null },
+      { slug: 'oriental', nom: 'Oriental', count: 1, imageUrl: null },
     ]);
+  });
+
+  it('met « Bases de cuisine » en dernier, même si elle est la plus fournie', () => {
+    const list = [
+      recette({ id: 20, titre: 'Béchamel', categories: [['bases-de-cuisine', 'Bases de cuisine']] }),
+      recette({ id: 21, titre: 'Pâte brisée', categories: [['bases-de-cuisine', 'Bases de cuisine']] }),
+      recette({ id: 22, titre: 'Tiramisu', categories: [['italien', 'Italien']] }),
+    ];
+    expect(getCategoryOptions(list).map((option) => option.slug)).toEqual(['italien', 'bases-de-cuisine']);
+  });
+
+  it('retient l’image de la première recette illustrée de chaque catégorie', () => {
+    const list = [
+      recette({ id: 30, titre: 'Sans image', categories: [['italien', 'Italien']] }),
+      recette({ id: 31, titre: 'Pizza', categories: [['italien', 'Italien']], image: '/uploads/pizza.jpg' }),
+      recette({ id: 32, titre: 'Pâtes', categories: [['italien', 'Italien']], image: '/uploads/pates.jpg' }),
+    ];
+    expect(getCategoryOptions(list)[0].imageUrl).toBe('/uploads/pizza.jpg');
   });
 });
 

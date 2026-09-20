@@ -21,10 +21,15 @@ export interface ListFilters {
 
 export const NO_LIST_FILTERS: ListFilters = { query: '', quick: false, easy: false, category: null };
 
+/** « Bases de cuisine » (sauces, fonds…) n'est pas une idée de repas : elle passe toujours en dernier. */
+export const BASES_CATEGORY_SLUG = 'bases-de-cuisine';
+
 export interface CategoryOption {
   slug: string;
   nom: string;
   count: number;
+  /** Image de la première recette illustrée de la catégorie (la plus récente si les recettes sont triées ainsi) */
+  imageUrl: string | null;
 }
 
 export function hasActiveListFilters(filters: ListFilters): boolean {
@@ -61,18 +66,27 @@ function getIngredientTexts(recette: Recette): string[] {
     .filter(Boolean);
 }
 
-/** Les catégories présentes dans les recettes, les plus fournies d'abord. */
+/** Les catégories présentes dans les recettes, les plus fournies d'abord, « Bases de cuisine » en dernier. */
 export function getCategoryOptions(recettes: Recette[]): CategoryOption[] {
   const options = new Map<string, CategoryOption>();
   for (const recette of recettes) {
+    const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url ?? null;
     for (const category of recette.attributes.categories?.data || []) {
       const { slug, nom } = category.attributes;
       const current = options.get(slug);
-      if (current) current.count += 1;
-      else options.set(slug, { slug, nom, count: 1 });
+      if (current) {
+        current.count += 1;
+        if (!current.imageUrl) current.imageUrl = imageUrl;
+      } else {
+        options.set(slug, { slug, nom, count: 1, imageUrl });
+      }
     }
   }
-  return [...options.values()].sort((a, b) => b.count - a.count || a.nom.localeCompare(b.nom, 'fr'));
+
+  const isBases = (option: CategoryOption) => (option.slug === BASES_CATEGORY_SLUG ? 1 : 0);
+  return [...options.values()].sort(
+    (a, b) => isBases(a) - isBases(b) || b.count - a.count || a.nom.localeCompare(b.nom, 'fr')
+  );
 }
 
 /** Applique les puces, puis la recherche (les résultats sont alors classés par pertinence). */

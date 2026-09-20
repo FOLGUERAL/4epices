@@ -14,7 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { name: 'Planning', short_name: 'Planning', url: '/planning' },
       { name: 'Découvrir des recettes', short_name: 'Découvrir', url: '/decouvrir' },
       { name: 'Que manger ce soir ?', short_name: 'Ce soir', url: '/ce-soir' },
-      { name: 'Mon carnet', short_name: 'Carnet', url: '/favoris' },
+      { name: 'Mes favoris', short_name: 'Favoris', url: '/favoris' },
     ],
     icons: [
       {

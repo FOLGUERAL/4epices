@@ -1,103 +1,86 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getFavorites, Favorite } from '@/lib/favorites';
-import { getRecettesBySlugs, Recette, getStrapiMediaUrl } from '@/lib/strapi';
-import OptimizedImage from '@/components/OptimizedImage';
-import FavoriteButton from '@/components/FavoriteButton';
-import PlanSummary from '@/components/PlanSummary';
-import PlanFavoriteButton from '@/components/PlanFavoriteButton';
+import { Heart } from 'lucide-react';
+import RecipesFiltersClient from '@/components/RecipesFiltersClient';
+import { getFavorites } from '@/lib/favorites';
+import { getRecettesBySlugs, type Recette } from '@/lib/strapi';
 
 export default function FavorisPage() {
-  const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [recettes, setRecettes] = useState<Recette[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     const loadFavorites = async () => {
-      const favs = getFavorites();
-      setFavorites(favs);
+      const favorites = getFavorites();
+      if (favorites.length === 0) {
+        setLoading(false);
+        return;
+      }
 
-      // Charger les recettes complètes en quelques requêtes groupées (la pile de favoris peut être longue)
-      let recettesData: Recette[] = [];
       try {
-        recettesData = await getRecettesBySlugs(favs.map((fav) => fav.slug));
+        // Quelques requêtes groupées : la liste de favoris peut être longue
+        const data = await getRecettesBySlugs(favorites.map((favorite) => favorite.slug));
+        const addedAt = new Map(favorites.map((favorite) => [favorite.slug, favorite.addedAt ?? '']));
+        // Les derniers ajoutés d'abord
+        setRecettes(
+          [...data].sort((a, b) =>
+            (addedAt.get(b.attributes.slug) ?? '').localeCompare(addedAt.get(a.attributes.slug) ?? '')
+          )
+        );
       } catch (error) {
         console.error('Erreur lors du chargement des favoris:', error);
+        setFailed(true);
       }
-      setRecettes(recettesData);
       setLoading(false);
     };
 
     loadFavorites();
+  }, []);
 
-    // Écouter les changements de localStorage
-    const handleStorageChange = () => {
-      loadFavorites();
-    };
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Écouter les changements dans le même onglet
-    const interval = setInterval(() => {
-      const currentFavs = getFavorites();
-      if (currentFavs.length !== favorites.length) {
-        loadFavorites();
-      }
-    }, 1000);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, [favorites.length]);
+  const breadcrumb = (
+    <nav className="mb-6 text-sm text-gray-500">
+      <Link href="/" className="hover:text-gray-700">
+        Accueil
+      </Link>
+      <span className="mx-2">/</span>
+      <span className="text-gray-900">Favoris</span>
+    </nav>
+  );
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement de votre carnet...</p>
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-orange-600"></div>
+            <p className="mt-4 text-gray-600">Chargement de vos favoris…</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (favorites.length === 0) {
+  if (failed || recettes.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <nav className="text-sm text-gray-500 mb-6">
-            <Link href="/" className="hover:text-gray-700">Accueil</Link>
-            <span className="mx-2">/</span>
-            <span className="text-gray-900">Mon carnet</span>
-          </nav>
-
-          <PlanSummary />
-
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <svg
-              className="w-24 h-24 text-gray-300 mx-auto mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              />
-            </svg>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Aucun favori</h2>
-            <p className="text-gray-600 mb-6">
-              Vous n&apos;avez pas encore ajouté de recettes à vos favoris.
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+          {breadcrumb}
+          <div className="rounded-2xl bg-white p-8 text-center shadow-md sm:p-12">
+            <Heart className="mx-auto mb-4 h-16 w-16 text-gray-300" aria-hidden="true" />
+            <h1 className="mb-2 text-2xl font-bold text-gray-900">
+              {failed ? 'Impossible de charger vos favoris' : 'Aucun favori'}
+            </h1>
+            <p className="mb-6 text-gray-600">
+              {failed
+                ? 'Vérifiez votre connexion puis rechargez la page.'
+                : 'Gardez des recettes en swipant, ou touchez le cœur sur une recette : elles apparaîtront ici.'}
             </p>
             <Link
-              href="/"
-              className="inline-block bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors font-medium"
+              href="/decouvrir"
+              className="inline-flex min-h-12 items-center justify-center rounded-xl bg-orange-600 px-6 font-bold text-white transition-colors hover:bg-orange-700"
             >
               Découvrir des recettes
             </Link>
@@ -109,101 +92,16 @@ export default function FavorisPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <nav className="text-sm text-gray-500 mb-6">
-          <Link href="/" className="hover:text-gray-700">Accueil</Link>
-          <span className="mx-2">/</span>
-          <span className="text-gray-900">Mon carnet</span>
-        </nav>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+        {breadcrumb}
 
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Mon carnet</h1>
-          <p className="text-gray-600">
-            {favorites.length} {favorites.length === 1 ? 'recette sauvegardée' : 'recettes sauvegardées'}
-          </p>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">Mes favoris</h1>
+          <p className="mt-1 text-gray-600">Les recettes que vous avez gardées, sur cet appareil.</p>
         </div>
 
-        <PlanSummary />
-
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Mes favoris</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recettes.map((recette) => {
-            const imageUrl = recette.attributes.imagePrincipale?.data?.attributes?.url || null;
-            const imageUrlForFavorite = imageUrl ? getStrapiMediaUrl(imageUrl) : undefined;
-
-            return (
-              <div
-                key={recette.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow group relative"
-              >
-                <Link
-                  href={`/recettes/${recette.attributes.slug}`}
-                  className="block"
-                >
-                  <div className="relative overflow-hidden" style={{ aspectRatio: '4/3' }}>
-                    <OptimizedImage
-                      src={imageUrl}
-                      alt={recette.attributes.imagePrincipale?.data?.attributes?.alternativeText || recette.attributes.titre}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      aspectRatio="4/3"
-                    />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-gray-700 transition-colors">
-                      {recette.attributes.titre}
-                    </h3>
-                    <p className="text-gray-600 text-sm line-clamp-2 mb-4">
-                      {recette.attributes.description}
-                    </p>
-                    <div className="flex items-center gap-4 text-sm text-gray-700">
-                      {recette.attributes.tempsPreparation && (
-                        <span className="flex items-center gap-1 font-medium">
-                          <span>⏱️</span>
-                          <span>{recette.attributes.tempsPreparation} min</span>
-                        </span>
-                      )}
-                      {recette.attributes.nombrePersonnes && (
-                        <span className="flex items-center gap-1 font-medium">
-                          <span>👥</span>
-                          <span>{recette.attributes.nombrePersonnes} pers.</span>
-                        </span>
-                      )}
-                      {recette.attributes.difficulte && (
-                        <span className="capitalize px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-medium">
-                          {recette.attributes.difficulte}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-                <div className="px-6 pb-5">
-                  <PlanFavoriteButton
-                    recette={{
-                      id: recette.id,
-                      slug: recette.attributes.slug,
-                      titre: recette.attributes.titre,
-                      imageUrl: imageUrlForFavorite,
-                    }}
-                  />
-                </div>
-                <div className="absolute top-4 right-4 z-10">
-                  <FavoriteButton
-                    recette={{
-                      id: recette.id,
-                      slug: recette.attributes.slug,
-                      titre: recette.attributes.titre,
-                      imageUrl: imageUrlForFavorite,
-                    }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <RecipesFiltersClient recettes={recettes} withPlanning={false} />
       </div>
     </div>
   );
 }
-

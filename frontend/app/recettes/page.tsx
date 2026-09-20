@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { getRecettes, Recette } from '@/lib/strapi';
+import CategoryRail from '@/components/CategoryRail';
 import RecipesFiltersClient from '@/components/RecipesFiltersClient';
+import { getCategoryOptions } from '@/lib/recipeList';
 import { SITE_NAME } from '@/lib/seo';
 
 // Rendu à chaque requête, mais les appels Strapi sont mis en cache (revalidation 5 min dans fetchAPI)
@@ -36,10 +38,12 @@ export default async function RecipesPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <header className="mb-8">
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Toutes les recettes</h1>
-        <p className="text-gray-600 mt-2">Cherchez par nom ou par ingrédient, ou filtrez par durée, difficulté et cuisine.</p>
+        <p className="text-gray-600 mt-2">Parcourez les catégories, cherchez par nom ou par ingrédient, ou filtrez par durée et difficulté.</p>
       </header>
 
-      <RecipesFiltersClient recettes={recettes} />
+      <CategoryRail title="Catégories" options={getCategoryOptions(recettes)} />
+
+      <RecipesFiltersClient recettes={recettes} showCategoryChips={false} />
     </div>
   );
 }

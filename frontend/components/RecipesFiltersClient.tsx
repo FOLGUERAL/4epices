@@ -29,6 +29,10 @@ import { trackEvent } from '@/lib/track';
 
 interface Props {
   recettes: Recette[];
+  /** false : cartes sans bouton de planification (page des favoris, qui ne planifie pas) */
+  withPlanning?: boolean;
+  /** false : pas de puces de catégorie (la page les présente elle-même, en liens) */
+  showCategoryChips?: boolean;
 }
 
 function toPlannable(recette: Recette): PlannableRecipe {
@@ -41,7 +45,7 @@ function toPlannable(recette: Recette): PlannableRecipe {
   };
 }
 
-export default function RecipesFiltersClient({ recettes }: Props) {
+export default function RecipesFiltersClient({ recettes, withPlanning = true, showCategoryChips = true }: Props) {
   const [filters, setFilters] = useState<ListFilters>(NO_LIST_FILTERS);
   const [favoriteIds, setFavoriteIds] = useState<Set<number> | null>(null);
   const [swipeState, setSwipeState] = useState<SwipeState | null>(null);
@@ -129,7 +133,7 @@ export default function RecipesFiltersClient({ recettes }: Props) {
               Facile
             </FilterChip>
           </li>
-          {categories.map((category) => (
+          {showCategoryChips && categories.map((category) => (
             <li key={category.slug} className="flex-shrink-0">
               <FilterChip
                 active={filters.category === category.slug}
@@ -182,7 +186,7 @@ export default function RecipesFiltersClient({ recettes }: Props) {
                       isFavorite: favoriteIds.has(recette.id),
                       plannedLabel: plannedLabels.get(recette.id),
                       onToggleFavorite: () => handleToggleFavorite(recette),
-                      onPlan: () => setPlanTarget(toPlannable(recette)),
+                      onPlan: withPlanning ? () => setPlanTarget(toPlannable(recette)) : undefined,
                     }
                   : undefined
               }
@@ -191,7 +195,7 @@ export default function RecipesFiltersClient({ recettes }: Props) {
         </div>
       )}
 
-      {swipeState && (
+      {withPlanning && swipeState && (
         <DayMealPicker recipe={planTarget} state={swipeState} onPick={handlePick} onClose={() => setPlanTarget(null)} />
       )}
     </div>

@@ -1,21 +1,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { BookHeart, ChefHat } from 'lucide-react';
-import { getCategories, Categorie } from '@/lib/strapi';
+import NavTabs from './NavTabs';
 import SearchBar from './SearchBar';
 import WhiskIcon from './WhiskIcon';
-import CategoriesDropdown from './CategoriesDropdown';
 import { SITE_NAME } from '@/lib/seo';
 
-export default async function Navigation() {
-  let categories: Categorie[] = [];
-  try {
-    const response = await getCategories();
-    categories = response.data || [];
-  } catch (error) {
-    console.error('Erreur lors de la récupération des catégories:', error);
-  }
-
+// Les catégories ne sont plus dans cette barre : elles sont sur la page Recettes et en pied de page
+export default function Navigation() {
   return (
     <nav className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40 backdrop-blur-sm bg-white/95">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
@@ -34,13 +25,8 @@ export default async function Navigation() {
           <SearchBar />
 
           <div className="flex items-center gap-2 sm:gap-5 lg:gap-8 flex-shrink-0">
-            <Link
-              href="/recettes"
-              className="hide-with-tabbar text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1.5 duration-200"
-            >
-              <ChefHat className="w-5 h-5" aria-hidden="true" />
-              <span className="hidden sm:inline">Recettes</span>
-            </Link>
+            {/* Les mêmes onglets que la barre du bas : Recettes, Découvrir, Planning, Favoris */}
+            <NavTabs />
             <Link
               href="/ingredients"
               className="text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1.5 duration-200"
@@ -48,17 +34,6 @@ export default async function Navigation() {
               <WhiskIcon />
               <span className="hidden sm:inline">Ingrédients</span>
             </Link>
-            <Link
-              href="/favoris"
-              className="hide-with-tabbar text-gray-700 hover:text-orange-600 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex items-center gap-1.5 duration-200"
-            >
-              <BookHeart className="w-5 h-5" aria-hidden="true" />
-              <span className="hidden sm:inline">Mon carnet</span>
-            </Link>
-            
-            {categories.length > 0 && (
-              <CategoriesDropdown categories={categories} />
-            )}
           </div>
         </div>
       </div>
