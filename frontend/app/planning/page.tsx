@@ -36,13 +36,8 @@ export default async function PlanningPage() {
 
   return (
     <main className="min-h-screen bg-rose-50/40">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-        <header className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">Planning des prochains jours</h1>
-          <p className="mx-auto mt-3 max-w-2xl text-gray-600">
-            Placez vos favoris sur aujourd&apos;hui et les 7 jours suivants, puis ajoutez-les à votre agenda et à votre liste de courses. Les 7 jours précédents restent consultables.
-          </p>
-        </header>
+      <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 sm:py-8">
+        <h1 className="sr-only">Planning des repas des prochains jours</h1>
 
         <WeekCalendar recipes={recipes} />
 

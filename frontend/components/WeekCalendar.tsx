@@ -2,30 +2,33 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChefHat, Download, History, Pencil, Plus, RotateCcw, ShoppingBasket, Sparkles } from 'lucide-react';
-import DayMealPicker from '@/components/DayMealPicker';
-import OptimizedImage from '@/components/OptimizedImage';
-import PlanSlotPicker, { type PickerItem } from '@/components/PlanSlotPicker';
+import { History, Sparkles } from 'lucide-react';
+import AddBar from '@/components/AddBar';
+import EntryActionSheet from '@/components/EntryActionSheet';
+import PlanMenu from '@/components/PlanMenu';
+import { PlanList, PlanWeek } from '@/components/PlanViews';
+import RecipePickerSheet, { type PickerRecipe } from '@/components/RecipePickerSheet';
 import { toast } from '@/components/Toast';
-import { getFavorites, subscribeFavorites, type Favorite } from '@/lib/favorites';
+import { addFavorite, getFavorites, removeFavorite, subscribeFavorites, type Favorite } from '@/lib/favorites';
 import { buildIcs } from '@/lib/ics';
 import {
-  MEAL_LABELS,
   autoPlan,
   countFreeSlots,
   formatDayLabel,
+  formatMealCount,
   formatSlotLabel,
   getHistoryPlanDays,
+  getNextFreeSlot,
   getPile,
   getPlanDays,
   getPlanEvents,
   getShoppingEntries,
   getSlotOccupant,
   getUpcomingEntries,
+  MEAL_LABELS,
   planRecipe,
   toggleCookedAt,
   unplanSlot,
-  type PileRecipe,
   type PlanDay,
   type PlanSlot,
 } from '@/lib/planning';
@@ -36,24 +39,30 @@ import { loadSwipeState, saveSwipeState, subscribeSwipeState } from '@/lib/swipe
 import { trackEvent } from '@/lib/track';
 
 interface WeekCalendarProps {
-  /** Recettes publiées : servent à connaître les durées (répartition automatique, durée des événements) */
+  /** Recettes publiées : catalogue de recherche, et durées (répartition automatique, durée des événements) */
   recipes: SwipeRecipe[];
 }
 
-const TRAY_LIMIT = 12;
+const ALL_MEALS: PlanMeal[] = ['midi', 'soir'];
 
-const secondaryButton =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-orange-200 bg-white px-4 py-2 font-semibold text-orange-700 transition-colors hover:bg-orange-50';
+const viewButton = (active: boolean) =>
+  `min-h-11 px-4 text-sm font-semibold transition-colors ${
+    active ? 'bg-orange-600 text-white' : 'bg-white text-gray-700 hover:bg-orange-50'
+  }`;
 
 export default function WeekCalendar({ recipes }: WeekCalendarProps) {
   const [state, setState] = useState<SwipeState | null>(null);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
-  const [picker, setPicker] = useState<PlanSlot | null>(null);
-  const [recipePicker, setRecipePicker] = useState<PileRecipe | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
-  const [showWholePile, setShowWholePile] = useState(false);
-  const [shopping, setShopping] = useState(false);
   const [todayKey, setTodayKey] = useState('');
+  /** Recette en attente : le prochain créneau touché la reçoit */
+  const [armed, setArmed] = useState<PickerRecipe | null>(null);
+  /** Créneau pour lequel la fenêtre de choix d'une recette est ouverte */
+  const [sheetSlot, setSheetSlot] = useState<PlanSlot | null>(null);
+  /** Créneau occupé dont la fenêtre d'actions est ouverte */
+  const [entrySlot, setEntrySlot] = useState<PlanSlot | null>(null);
+  const [chain, setChain] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [shopping, setShopping] = useState(false);
 
   const durations = useMemo(
     () => new Map(recipes.filter((item) => item.totalMinutes > 0).map((item) => [item.id, item.totalMinutes])),
@@ -78,6 +87,16 @@ export default function WeekCalendar({ recipes }: WeekCalendarProps) {
     };
   }, []);
 
+  // Échap annule le placement en cours
+  useEffect(() => {
+    if (!armed) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setArmed(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [armed]);
+
   // Le planning vit dans le localStorage : rien à afficher avant le montage côté client
   if (!state) {
     return <div className="h-64 animate-pulse rounded-3xl bg-gray-200" aria-hidden="true" />;
@@ -88,60 +107,37 @@ export default function WeekCalendar({ recipes }: WeekCalendarProps) {
     saveSwipeState(next);
   };
 
-  if (favorites.length === 0 && state.plan.length === 0) {
-    return (
-      <section aria-labelledby="planning-empty-title" className="rounded-3xl bg-white p-6 text-center shadow-lg sm:p-8">
-        <h2 id="planning-empty-title" className="text-2xl font-bold text-gray-900">
-          Commencez par choisir des recettes
-        </h2>
-        <p className="mx-auto mt-2 max-w-md text-gray-600">
-          Le calendrier se remplit avec vos favoris. Gardez des recettes en swipant, ou ajoutez-en depuis la liste des
-          recettes.
-        </p>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link
-            href="/menu-semaine"
-            className="inline-flex min-h-12 items-center justify-center rounded-xl bg-orange-600 px-5 py-3 font-bold text-white transition-colors hover:bg-orange-700"
-          >
-            Choisir mes recettes
-          </Link>
-          <Link href="/recettes" className={secondaryButton}>
-            Parcourir les recettes
-          </Link>
-        </div>
-      </section>
-    );
-  }
-
   const days = getPlanDays(state);
-  const historyDays = getHistoryPlanDays(state);
-  const historyRecipeCount = historyDays.reduce(
-    (total, day) => total + (day.slots.midi ? 1 : 0) + (day.slots.soir ? 1 : 0),
-    0
-  );
+  const historyDays = getHistoryPlanDays(state).filter((day) => day.slots.midi || day.slots.soir);
   const pile = getPile(favorites, state);
-  const shownPile = showWholePile ? pile : pile.slice(0, TRAY_LIMIT);
   const upcoming = getUpcomingEntries(state);
   const freeSlots = countFreeSlots(state);
-  const meals: PlanMeal[] = state.prefs.showLunch ? ['midi', 'soir'] : ['soir'];
-  const pickerOccupant = picker ? getSlotOccupant(state, picker) : undefined;
+  const favoriteIds = new Set(favorites.map((favorite) => favorite.id));
+  const sheetOccupant = sheetSlot ? getSlotOccupant(state, sheetSlot) : undefined;
+  const entry = entrySlot ? getSlotOccupant(state, entrySlot) : undefined;
 
-  const pickerPile: PickerItem[] = pile.map((item) => ({
+  // Un repas du midi déjà planifié reste visible même si l'affichage du midi est désactivé
+  const hasLunchEntry = (list: PlanDay[]) => list.some((day) => day.slots.midi);
+  const meals: PlanMeal[] = state.prefs.showLunch || hasLunchEntry(days) ? ALL_MEALS : ['soir'];
+  const historyMeals: PlanMeal[] = state.prefs.showLunch || hasLunchEntry(historyDays) ? ALL_MEALS : ['soir'];
+
+  const pileRecipes: PickerRecipe[] = pile.map((item) => ({
     id: item.id,
     slug: item.slug,
     titre: item.titre,
-    imageUrl: item.imageUrl,
-    note: item.lastCookedDate ? `Cuisinée le ${formatDayLabel(item.lastCookedDate, 'short')}` : undefined,
+    imageUrl: item.imageUrl ?? null,
+    totalMinutes: durations.get(item.id),
   }));
-  const pickerElsewhere: PickerItem[] = upcoming
-    .filter((entry) => !(pickerOccupant && entry.date === pickerOccupant.date && entry.meal === pickerOccupant.meal))
-    .map((entry) => ({
-      id: entry.recipeId,
-      slug: entry.slug,
-      titre: entry.titre,
-      imageUrl: entry.imageUrl,
-      note: formatSlotLabel({ date: entry.date, meal: entry.meal }),
-    }));
+
+  const plannedLabels = new Map<number, string>();
+  for (const planned of upcoming) {
+    if (sheetOccupant && planned.date === sheetOccupant.date && planned.meal === sheetOccupant.meal) continue;
+    plannedLabels.set(planned.recipeId, `${formatDayLabel(planned.date, 'short')} · ${MEAL_LABELS[planned.meal].toLowerCase()}`);
+  }
+
+  const View = state.prefs.planView === 'week' ? PlanWeek : PlanList;
+  const firstDay = days[0]?.date;
+  const lastDay = days[days.length - 1]?.date;
 
   const handleAutoPlan = () => {
     const next = autoPlan(state, pile, new Date(), durations);
@@ -192,7 +188,7 @@ export default function WeekCalendar({ recipes }: WeekCalendarProps) {
       toast.info('Tous vos repas à venir sont déjà cuisinés : rien à ajouter');
       return;
     }
-    const toAdd = uniqueEntries.filter((entry) => !isRecipeInShoppingList(entry.recipeId));
+    const toAdd = uniqueEntries.filter((item) => !isRecipeInShoppingList(item.recipeId));
     if (toAdd.length === 0) {
       toast.info('Toutes ces recettes sont déjà dans votre liste de courses');
       return;
@@ -200,14 +196,14 @@ export default function WeekCalendar({ recipes }: WeekCalendarProps) {
 
     setShopping(true);
     try {
-      const recettes = await getRecettesBySlugs(toAdd.map((entry) => entry.slug));
+      const recettes = await getRecettesBySlugs(toAdd.map((item) => item.slug));
       const bySlug = new Map(recettes.map((recette) => [recette.attributes.slug, recette]));
 
       let added = 0;
-      for (const entry of toAdd) {
-        const ingredients = bySlug.get(entry.slug)?.attributes.ingredients;
+      for (const item of toAdd) {
+        const ingredients = bySlug.get(item.slug)?.attributes.ingredients;
         if (Array.isArray(ingredients)) {
-          addIngredientsToShoppingList(ingredients, entry.recipeId);
+          addIngredientsToShoppingList(ingredients, item.recipeId);
           added += 1;
         }
       }
@@ -232,278 +228,209 @@ export default function WeekCalendar({ recipes }: WeekCalendarProps) {
     }
   };
 
-  const handlePickFromSlot = (item: PickerItem) => {
-    if (!picker) return;
-    commit(planRecipe(state, item, picker));
-    trackEvent('plan-assign', { meal: picker.meal, source: 'creneau' });
-    setPicker(null);
+  // Un créneau est touché : il reçoit la recette en attente, ou ouvre le choix / les actions
+  const handleSlot = (slot: PlanSlot) => {
+    const occupant = getSlotOccupant(state, slot);
+    const isPast = slot.date < todayKey;
+
+    if (isPast) {
+      if (occupant) setEntrySlot(slot);
+      return;
+    }
+    if (armed) {
+      commit(planRecipe(state, armed, slot));
+      trackEvent('plan-assign', { meal: slot.meal, source: 'arme' });
+      toast.success(`${armed.titre} : ${formatSlotLabel(slot)}`);
+      setArmed(null);
+      return;
+    }
+    if (occupant) setEntrySlot(slot);
+    else setSheetSlot(slot);
   };
 
-  const handlePickFromRecipe = (slot: PlanSlot) => {
-    if (!recipePicker) return;
-    commit(planRecipe(state, recipePicker, slot));
-    trackEvent('plan-assign', { meal: slot.meal, source: 'pile' });
-    setRecipePicker(null);
+  const handlePick = (item: PickerRecipe) => {
+    if (!sheetSlot) return;
+    const next = planRecipe(state, item, sheetSlot);
+    commit(next);
+    trackEvent('plan-assign', { meal: sheetSlot.meal, source: 'creneau' });
+
+    if (chain) {
+      const following = getNextFreeSlot(next, sheetSlot, new Date());
+      if (following) {
+        setSheetSlot(following);
+        return;
+      }
+      toast.info('Plus de créneau libre : le planning est complet');
+    }
+    setSheetSlot(null);
+  };
+
+  const handleSkip = () => {
+    if (!sheetSlot) return;
+    setSheetSlot(getNextFreeSlot(state, sheetSlot, new Date()));
   };
 
   const handleClear = () => {
-    if (picker) commit(unplanSlot(state, picker));
-    setPicker(null);
+    if (sheetSlot) commit(unplanSlot(state, sheetSlot));
+    setSheetSlot(null);
   };
 
-  // Un repas prévu un jour passé mais pas cuisiné retourne dans la pile
-  const handleReplan = (slot: PlanSlot, titre: string) => {
-    commit(unplanSlot(state, slot));
+  // Ajout aux favoris uniquement sur demande : placer une recette dans le planning ne la met jamais en favoris
+  const handleToggleFavorite = (recipe: PickerRecipe) => {
+    if (favoriteIds.has(recipe.id)) {
+      removeFavorite(recipe.id);
+    } else {
+      addFavorite({ id: recipe.id, slug: recipe.slug, titre: recipe.titre, imageUrl: recipe.imageUrl ?? undefined });
+    }
+  };
+
+  const handleReplan = () => {
+    if (!entry) return;
+    // La recette est armée : à son placement, l'ancien repas non cuisiné est déplacé
+    setArmed({ id: entry.recipeId, slug: entry.slug, titre: entry.titre, imageUrl: entry.imageUrl });
     trackEvent('plan-replan');
-    toast.info(`${titre} est de retour dans « À planifier » : choisissez-lui un nouveau jour`);
+    setEntrySlot(null);
+    toast.info('Touchez un créneau libre pour la replanifier');
   };
 
-  const renderDay = (day: PlanDay) => {
-    const isToday = day.date === todayKey;
-    const isPast = todayKey !== '' && day.date < todayKey;
-    const isFuture = todayKey !== '' && day.date > todayKey;
+  const handleRemove = () => {
+    if (!entrySlot || !entry) return;
+    commit(unplanSlot(state, entrySlot));
+    toast.info(`${entry.titre} retirée du planning`);
+    setEntrySlot(null);
+  };
 
-    return (
-      <li
-        key={day.date}
-        aria-current={isToday ? 'date' : undefined}
-        className={`rounded-2xl bg-white p-3 shadow-sm ${isToday ? 'ring-2 ring-orange-400' : ''} ${isPast ? 'opacity-80' : ''}`}
-      >
-        <h3 className="flex items-center justify-between gap-2 text-sm font-bold capitalize text-gray-900">
-          <span>{formatDayLabel(day.date)}</span>
-          {isToday && (
-            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold normal-case text-orange-700">
-              Aujourd&apos;hui
-            </span>
-          )}
-        </h3>
-
-        <div className="mt-2 space-y-2">
-          {meals.map((meal) => {
-            const occupant = day.slots[meal];
-            const slot: PlanSlot = { date: day.date, meal };
-            return (
-              <div key={meal}>
-                <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-gray-500">{MEAL_LABELS[meal]}</p>
-                {occupant ? (
-                  <div
-                    className={`rounded-xl border p-2 ${
-                      occupant.cooked ? 'border-emerald-200 bg-emerald-50' : 'border-gray-100 bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
-                        <OptimizedImage
-                          src={occupant.imageUrl}
-                          alt=""
-                          fill
-                          disableAspectRatio
-                          sizes="40px"
-                          className="object-cover"
-                        />
-                      </span>
-                      <Link
-                        href={`/recettes/${occupant.slug}`}
-                        className={`line-clamp-2 min-w-0 flex-1 text-sm font-semibold hover:text-orange-700 ${
-                          occupant.cooked ? 'text-gray-500 line-through' : 'text-gray-900'
-                        }`}
-                      >
-                        {occupant.titre}
-                      </Link>
-                    </div>
-                    {isPast && !occupant.cooked && (
-                      <p className="mt-1 text-xs font-medium text-amber-700">Pas encore cuisinée</p>
-                    )}
-                    <div className="mt-2 flex items-center justify-between gap-1">
-                      {isFuture ? (
-                        // Un repas à venir ne peut pas encore avoir été cuisiné
-                        <span aria-hidden="true" />
-                      ) : (
-                        <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-gray-600">
-                          <input
-                            type="checkbox"
-                            checked={occupant.cooked}
-                            onChange={() => commit(toggleCookedAt(state, slot))}
-                            className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-                          />
-                          Cuisinée
-                        </label>
-                      )}
-                      <span className="flex gap-1">
-                        <Link
-                          href={`/recettes/${occupant.slug}/cuisine`}
-                          onClick={() => trackEvent('plan-cook', { recipe: occupant.slug })}
-                          aria-label={`Cuisiner ${occupant.titre} avec la Nonna`}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-700 transition-colors hover:bg-orange-200"
-                        >
-                          <ChefHat className="h-4 w-4" aria-hidden="true" />
-                        </Link>
-                        {isPast ? (
-                          !occupant.cooked && (
-                            <button
-                              type="button"
-                              onClick={() => handleReplan(slot, occupant.titre)}
-                              aria-label={`Replanifier ${occupant.titre}`}
-                              className="inline-flex h-8 items-center gap-1 rounded-full px-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100"
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                              Replanifier
-                            </button>
-                          )
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setPicker(slot)}
-                            aria-label={`Modifier ${MEAL_LABELS[meal].toLowerCase()} du ${formatDayLabel(day.date)}`}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-200"
-                          >
-                            <Pencil className="h-4 w-4" aria-hidden="true" />
-                          </button>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                ) : isPast ? (
-                  <p
-                    className="flex min-h-[3.5rem] items-center justify-center rounded-xl bg-gray-50 text-sm text-gray-400"
-                    aria-label={`${formatDayLabel(day.date)}, ${MEAL_LABELS[meal].toLowerCase()} : aucune recette`}
-                  >
-                    —
-                  </p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setPicker(slot)}
-                    aria-label={`${formatDayLabel(day.date)}, ${MEAL_LABELS[meal].toLowerCase()} : libre, choisir une recette`}
-                    className="flex min-h-[3.5rem] w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-semibold text-gray-500 transition-colors hover:border-orange-300 hover:text-orange-700"
-                  >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    Choisir
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </li>
-    );
+  const handleReplace = () => {
+    if (!entrySlot) return;
+    setSheetSlot(entrySlot);
+    setEntrySlot(null);
   };
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-gray-900">Planning</h2>
+          <p className="text-xs tabular-nums text-gray-600">
+            {firstDay && lastDay && `${formatDayLabel(firstDay, 'short')} – ${formatDayLabel(lastDay, 'short')}`}
+            {upcoming.length > 0 && (
+              <>
+                {' · '}
+                {upcoming.length} {upcoming.length === 1 ? 'repas prévu' : 'repas prévus'}
+                {freeSlots > 0 && <> · {formatMealCount(freeSlots, state.prefs.showLunch)} à pourvoir</>}
+              </>
+            )}
+          </p>
+        </div>
+        <PlanMenu
+          hasMeals={upcoming.length > 0}
+          shopping={shopping}
+          showLunch={state.prefs.showLunch}
+          onExport={handleExport}
+          onShopping={handleShopping}
+          onShowLunchChange={(value) => commit(setPrefs(state, { showLunch: value }))}
+        />
+      </div>
+
+      <AddBar pile={pileRecipes} recipes={recipes} armed={armed} onArm={setArmed} onDisarm={() => setArmed(null)} />
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div role="group" aria-label="Affichage" className="inline-flex overflow-hidden rounded-xl border border-orange-200">
+          <button
+            type="button"
+            aria-pressed={state.prefs.planView === 'list'}
+            onClick={() => commit(setPrefs(state, { planView: 'list' }))}
+            className={viewButton(state.prefs.planView === 'list')}
+          >
+            Liste
+          </button>
+          <button
+            type="button"
+            aria-pressed={state.prefs.planView === 'week'}
+            onClick={() => commit(setPrefs(state, { planView: 'week' }))}
+            className={viewButton(state.prefs.planView === 'week')}
+          >
+            Semaine
+          </button>
+        </div>
         {pile.length > 0 && freeSlots > 0 && (
-          <button type="button" onClick={handleAutoPlan} className={secondaryButton}>
-            <Sparkles className="h-5 w-5" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={handleAutoPlan}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-orange-600 px-4 text-sm font-bold text-white transition-colors hover:bg-orange-700"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
             Planifier pour moi
           </button>
         )}
-        <button type="button" onClick={handleExport} disabled={upcoming.length === 0} className={`${secondaryButton} disabled:opacity-50`}>
-          <Download className="h-5 w-5" aria-hidden="true" />
-          Ajouter à mon agenda
-        </button>
-        <button
-          type="button"
-          onClick={handleShopping}
-          disabled={upcoming.length === 0 || shopping}
-          className={`${secondaryButton} disabled:opacity-50`}
-        >
-          <ShoppingBasket className="h-5 w-5" aria-hidden="true" />
-          {shopping ? 'Ajout en cours…' : 'Ajouter les courses'}
-        </button>
-        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl px-2 text-sm font-semibold text-gray-700">
-          <input
-            type="checkbox"
-            checked={state.prefs.showLunch}
-            onChange={(event) => commit(setPrefs(state, { showLunch: event.target.checked }))}
-            className="h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-          />
-          Afficher le midi
-        </label>
-        <Link href="/menu-semaine" className="ml-auto text-sm font-semibold text-orange-700 underline">
-          Choisir de nouvelles recettes
-        </Link>
       </div>
 
-      <section aria-label="Favoris à planifier" className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-        <h2 className="text-sm font-bold text-amber-900">
-          {pile.length === 0
-            ? 'Tous vos favoris sont planifiés'
-            : `${pile.length} ${pile.length === 1 ? 'favori à planifier' : 'favoris à planifier'}`}
-        </h2>
-        {pile.length > 0 && (
-          <>
-            <ul className="mt-2 flex flex-wrap gap-2">
-              {shownPile.map((item) => (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => setRecipePicker(item)}
-                    aria-label={`Planifier ${item.titre}`}
-                    className="rounded-full bg-white px-3 py-1 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-orange-50 hover:text-orange-700"
-                  >
-                    {item.titre}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {pile.length > TRAY_LIMIT && (
-              <button
-                type="button"
-                onClick={() => setShowWholePile((value) => !value)}
-                className="mt-2 text-xs font-semibold text-amber-900 underline"
-              >
-                {showWholePile ? 'Réduire' : `Voir les ${pile.length - TRAY_LIMIT} autres`}
-              </button>
-            )}
-            <p className="mt-2 text-xs text-amber-800">
-              Touchez une recette pour choisir son jour, ou un créneau libre du calendrier pour la choisir.
-            </p>
-          </>
-        )}
-      </section>
-
-      <div className="mb-4">
-        <button
-          type="button"
-          onClick={() => setShowHistory((value) => !value)}
-          aria-expanded={showHistory}
-          className={secondaryButton}
-        >
-          <History className="h-5 w-5" aria-hidden="true" />
-          {showHistory ? 'Masquer les 7 jours précédents' : 'Voir les 7 jours précédents'}
-          {!showHistory && historyRecipeCount > 0 && (
-            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs">{historyRecipeCount}</span>
-          )}
-        </button>
-      </div>
-
-      {showHistory && (
-        <section aria-label="Jours précédents" className="mb-6">
-          <p className="mb-3 text-sm text-gray-600">
-            Cochez « cuisinée » ou replanifiez les recettes que vous n&apos;avez pas encore faites. On ne planifie plus
-            sur un jour passé, et après 7 jours un créneau passé disparaît (la recette reste dans vos favoris).
-          </p>
-          <ol className="grid grid-cols-1 gap-3 lg:grid-cols-4">{historyDays.map(renderDay)}</ol>
-        </section>
+      {upcoming.length === 0 && (
+        <p className="text-sm text-gray-600">
+          Rien de prévu. Touchez un jour pour ajouter une recette, ou{' '}
+          <Link href="/decouvrir" className="font-semibold text-orange-700 underline">
+            découvrez-en de nouvelles
+          </Link>
+          .
+        </p>
       )}
 
-      <ol className="grid grid-cols-1 gap-3 lg:grid-cols-4">{days.map(renderDay)}</ol>
+      {historyDays.length > 0 && (
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setShowHistory((value) => !value)}
+            aria-expanded={showHistory}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-orange-50"
+          >
+            <History className="h-4 w-4" aria-hidden="true" />
+            {showHistory ? 'Masquer les jours passés' : 'Jours passés'}
+            {!showHistory && (
+              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs tabular-nums text-orange-700">
+                {historyDays.length}
+              </span>
+            )}
+          </button>
+          {showHistory && (
+            <View days={historyDays} meals={historyMeals} todayKey={todayKey} armed={armed !== null} onSlot={handleSlot} />
+          )}
+        </div>
+      )}
 
-      <p className="mt-6 text-center text-sm text-gray-500">
-        Votre planning et vos favoris sont enregistrés sur cet appareil. La fenêtre avance chaque jour.
-      </p>
+      <View days={days} meals={meals} todayKey={todayKey} armed={armed !== null} onSlot={handleSlot} />
 
-      <PlanSlotPicker
-        slot={picker}
-        occupant={pickerOccupant}
-        pile={pickerPile}
-        elsewhere={pickerElsewhere}
-        onPick={handlePickFromSlot}
+      <RecipePickerSheet
+        slot={sheetSlot}
+        occupant={sheetOccupant}
+        state={state}
+        pile={pileRecipes}
+        recipes={recipes}
+        favoriteIds={favoriteIds}
+        plannedLabels={plannedLabels}
+        chain={chain}
+        hasNextFree={sheetSlot ? getNextFreeSlot(state, sheetSlot, new Date()) !== null : false}
+        onChainChange={setChain}
+        onPick={handlePick}
+        onToggleFavorite={handleToggleFavorite}
         onClear={handleClear}
-        onClose={() => setPicker(null)}
+        onSkip={handleSkip}
+        onClose={() => setSheetSlot(null)}
       />
-      <DayMealPicker recipe={recipePicker} state={state} onPick={handlePickFromRecipe} onClose={() => setRecipePicker(null)} />
+      <EntryActionSheet
+        entry={entry ?? null}
+        isPast={entry ? entry.date < todayKey : false}
+        canMarkCooked={entry ? entry.date <= todayKey : false}
+        isFavorite={entry ? favoriteIds.has(entry.recipeId) : false}
+        onToggleCooked={() => entrySlot && commit(toggleCookedAt(state, entrySlot))}
+        onReplace={handleReplace}
+        onRemove={handleRemove}
+        onReplan={handleReplan}
+        onToggleFavorite={() =>
+          entry &&
+          handleToggleFavorite({ id: entry.recipeId, slug: entry.slug, titre: entry.titre, imageUrl: entry.imageUrl })
+        }
+        onClose={() => setEntrySlot(null)}
+      />
     </div>
   );
 }

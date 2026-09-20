@@ -6,6 +6,7 @@ import {
   formatDayLabel,
   formatSlotLabel,
   getHistoryPlanDays,
+  getNextFreeSlot,
   getPile,
   getPlanDays,
   getPlanEvents,
@@ -378,6 +379,51 @@ describe('autoPlan avec le midi', () => {
     state = planRecipe(state, recipe(1), { date: '2026-09-17', meal: 'soir' });
     state = planRecipe(state, recipe(2), { date: '2026-09-17', meal: 'midi' });
     expect(countFreeSlots(state)).toBe(14);
+  });
+});
+
+describe('getNextFreeSlot (enchaîner les ajouts)', () => {
+  const lunchState = (): SwipeState => {
+    const base = createInitialState(WEDNESDAY);
+    return { ...base, prefs: { ...base.prefs, showLunch: true } };
+  };
+
+  it('sans point de départ, renvoie le premier dîner libre', () => {
+    expect(getNextFreeSlot(stateWith(), null, WEDNESDAY)).toEqual({ date: TODAY_KEY, meal: 'soir' });
+  });
+
+  it('saute les créneaux occupés', () => {
+    const state = planRecipe(stateWith(), recipe(1), { date: TODAY_KEY, meal: 'soir' });
+    expect(getNextFreeSlot(state, null, WEDNESDAY)).toEqual({ date: '2026-09-17', meal: 'soir' });
+  });
+
+  it('renvoie le créneau libre qui suit strictement celui donné', () => {
+    expect(getNextFreeSlot(stateWith(), { date: TODAY_KEY, meal: 'soir' }, WEDNESDAY)).toEqual({
+      date: '2026-09-17',
+      meal: 'soir',
+    });
+  });
+
+  it('avec le midi affiché, le midi passe avant le soir du même jour', () => {
+    expect(getNextFreeSlot(lunchState(), null, WEDNESDAY)).toEqual({ date: TODAY_KEY, meal: 'midi' });
+    expect(getNextFreeSlot(lunchState(), { date: TODAY_KEY, meal: 'midi' }, WEDNESDAY)).toEqual({
+      date: TODAY_KEY,
+      meal: 'soir',
+    });
+  });
+
+  it('ignore le déjeuner d’aujourd’hui l’après-midi', () => {
+    const evening = new Date(2026, 8, 16, 20, 0, 0);
+    expect(getNextFreeSlot(lunchState(), null, evening)).toEqual({ date: TODAY_KEY, meal: 'soir' });
+  });
+
+  it('renvoie null quand il ne reste plus de créneau libre', () => {
+    let state = stateWith();
+    getWindowDays(state.windowStart).forEach((date, index) => {
+      state = planRecipe(state, recipe(index + 1), { date, meal: 'soir' });
+    });
+    expect(getNextFreeSlot(state, null, WEDNESDAY)).toBeNull();
+    expect(getNextFreeSlot(stateWith(), { date: '2026-09-23', meal: 'soir' }, WEDNESDAY)).toBeNull();
   });
 });
 

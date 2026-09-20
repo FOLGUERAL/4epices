@@ -261,6 +261,22 @@ function getFreeSlots(state: SwipeState, today: Date): { dinners: PlanSlot[]; lu
 }
 
 /**
+ * Le premier créneau libre strictement après `after` (ou le tout premier si `after` est null), dans l'ordre du
+ * calendrier : par jour, le midi avant le soir. Sert à enchaîner les ajouts. null quand il n'y en a plus.
+ */
+export function getNextFreeSlot(state: SwipeState, after: PlanSlot | null, today: Date): PlanSlot | null {
+  const { dinners, lunches } = getFreeSlots(state, today);
+  const order = (slot: PlanSlot) => `${slot.date}|${PLAN_MEALS.indexOf(slot.meal)}`;
+  const afterKey = after ? order(after) : null;
+
+  return (
+    [...dinners, ...lunches]
+      .sort((a, b) => order(a).localeCompare(order(b)))
+      .find((slot) => afterKey === null || order(slot) > afterKey) ?? null
+  );
+}
+
+/**
  * Répartit des recettes de la pile sur les créneaux libres, à partir d'aujourd'hui : les dîners d'abord, puis, si le
  * midi est affiché, les déjeuners avec les recettes restantes. Ne touche pas aux repas déjà planifiés.
  */
