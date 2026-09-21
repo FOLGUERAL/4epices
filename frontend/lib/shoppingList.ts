@@ -1,16 +1,26 @@
-﻿/**
- * Gestion de la liste de courses
+/**
+ * Liste de courses, enregistrée dans le navigateur (localStorage).
+ *
+ * On enregistre les lignes brutes des recettes avec leur origine ; la liste fusionnée (oignon : 3, ail : 2 gousses…)
+ * est calculée à l'affichage par lib/shoppingMerge.ts. Retirer une recette retire donc ses lignes, et toute
+ * amélioration de la fusion s'applique aussi à ce qui est déjà enregistré.
  */
 
-export interface ShoppingListItem {
-  id: string;
-  ingredient: string;
-  checked: boolean;
-  quantity?: string;
-}
+import {
+  getRecipesInLines,
+  mergeShoppingLines,
+  migrateLegacyList,
+  parseShoppingText,
+  portionsScale,
+  type ShoppingItem,
+  type ShoppingLine,
+  type StoredShopping,
+} from '@/lib/shoppingMerge';
 
-const SHOPPING_LIST_KEY = '4epices_shopping_list';
-const SHOPPING_LIST_RECIPES_KEY = '4epices_shopping_list_recipes';
+const STORAGE_KEY = '4epices_shopping_v2';
+// Anciennes clés : liste déjà fusionnée, et identifiants de recettes
+const LEGACY_LIST_KEY = '4epices_shopping_list';
+const LEGACY_RECIPES_KEY = '4epices_shopping_list_recipes';
 
 export const SHOPPING_LIST_EVENT = '4epices:shopping-list-changed';
 
@@ -29,387 +39,191 @@ export function subscribeShoppingList(callback: () => void): () => void {
   };
 }
 
-export function getShoppingList(): ShoppingListItem[] {
-  if (typeof window === 'undefined') return [];
-  
-  try {
-    const stored = localStorage.getItem(SHOPPING_LIST_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch (error) {
-    console.error('Erreur lors de la récupération de la liste de courses:', error);
-    return [];
-  }
+export type ShoppingItemView = ShoppingItem & { checked: boolean };
+
+const emptyState = (): StoredShopping => ({ lines: [], checked: [], legacyRecipeIds: [] });
+
+function sanitize(raw: unknown): StoredShopping {
+  if (!raw || typeof raw !== 'object') return emptyState();
+  const data = raw as Partial<StoredShopping>;
+  return {
+    lines: Array.isArray(data.lines)
+      ? data.lines.filter((line): line is ShoppingLine => Boolean(line) && typeof line.id === 'string' && typeof line.text === 'string')
+      : [],
+    checked: Array.isArray(data.checked) ? data.checked.filter((key): key is string => typeof key === 'string') : [],
+    legacyRecipeIds: Array.isArray(data.legacyRecipeIds)
+      ? data.legacyRecipeIds.filter((id): id is number => typeof id === 'number')
+      : [],
+  };
 }
 
-export function saveShoppingList(items: ShoppingListItem[]): void {
-  if (typeof window === 'undefined') return;
-  
+function readJson(key: string): unknown {
+  const stored = localStorage.getItem(key);
+  return stored ? JSON.parse(stored) : null;
+}
+
+function persist(state: StoredShopping, notify = true): void {
   try {
-    localStorage.setItem(SHOPPING_LIST_KEY, JSON.stringify(items));
-    notifyShoppingListChanged();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (notify) notifyShoppingListChanged();
   } catch (error) {
     console.error('Erreur lors de la sauvegarde de la liste de courses:', error);
   }
 }
 
-/**
- * Récupère la liste des IDs de recettes ajoutées à la liste de courses
- */
-function getShoppingListRecipes(): number[] {
-  if (typeof window === 'undefined') return [];
+function load(): StoredShopping {
+  if (typeof window === 'undefined') return emptyState();
+
   try {
-    const stored = localStorage.getItem(SHOPPING_LIST_RECIPES_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const stored = readJson(STORAGE_KEY);
+    if (stored) return sanitize(stored);
+
+    // Première lecture après la refonte : on reprend l'ancienne liste, puis on la supprime
+    const legacyItems = readJson(LEGACY_LIST_KEY);
+    const legacyRecipes = readJson(LEGACY_RECIPES_KEY);
+    if (legacyItems || legacyRecipes) {
+      const migrated = migrateLegacyList(
+        Array.isArray(legacyItems) ? legacyItems : [],
+        Array.isArray(legacyRecipes) ? legacyRecipes.filter((id): id is number => typeof id === 'number') : []
+      );
+      persist(migrated, false);
+      localStorage.removeItem(LEGACY_LIST_KEY);
+      localStorage.removeItem(LEGACY_RECIPES_KEY);
+      return migrated;
+    }
   } catch (error) {
-    console.error('Erreur lors de la récupération des recettes de la liste:', error);
-    return [];
+    console.error('Erreur lors de la lecture de la liste de courses:', error);
+  }
+  return emptyState();
+}
+
+let lineCounter = 0;
+const newLineId = () => `${Date.now().toString(36)}-${(lineCounter += 1)}-${Math.random().toString(36).slice(2, 6)}`;
+
+/** Une ligne d'ingrédient de recette : un texte, ou un objet { quantite, ingredient }. */
+export function ingredientToText(ingredient: unknown): string {
+  if (typeof ingredient === 'string') return ingredient.trim();
+  if (ingredient && typeof ingredient === 'object') {
+    const { quantite, ingredient: name } = ingredient as { quantite?: unknown; ingredient?: unknown };
+    return `${typeof quantite === 'string' ? quantite : ''} ${typeof name === 'string' ? name : ''}`.trim();
+  }
+  return String(ingredient ?? '').trim();
+}
+
+/** Le multiplicateur de portions choisi sur la page de la recette (« pour 6 personnes »), s'il y en a un. */
+export function getPortionsScale(slug: string, basePortions: number): number {
+  if (typeof window === 'undefined') return 1;
+  try {
+    const saved = localStorage.getItem(`recipe_portions_${slug}`);
+    return portionsScale(saved === null ? null : parseInt(saved, 10), basePortions);
+  } catch {
+    return 1;
   }
 }
 
-/**
- * Sauvegarde la liste des IDs de recettes
- */
-function saveShoppingListRecipes(recipeIds: number[]): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(SHOPPING_LIST_RECIPES_KEY, JSON.stringify(recipeIds));
-    notifyShoppingListChanged();
-  } catch (error) {
-    console.error('Erreur lors de la sauvegarde des recettes de la liste:', error);
-  }
+/** Les articles fusionnés, avec leur état coché. */
+export function getShoppingItems(): ShoppingItemView[] {
+  const state = load();
+  const checked = new Set(state.checked);
+  return mergeShoppingLines(state.lines).map((item) => ({ ...item, checked: checked.has(item.key) }));
 }
 
-/**
- * Vérifie si une recette est déjà dans la liste de courses
- */
+/** Le nombre d'articles restant à acheter (le placard n'est pas compté). */
+export function getShoppingCount(): number {
+  return getShoppingItems().filter((item) => !item.pantry && !item.checked).length;
+}
+
+export function getShoppingRecipes(): Array<{ recipeId: number; title: string }> {
+  return getRecipesInLines(load().lines);
+}
+
+/** Vérifie si une recette est déjà dans la liste de courses. */
 export function isRecipeInShoppingList(recipeId: number): boolean {
-  const recipeIds = getShoppingListRecipes();
-  return recipeIds.includes(recipeId);
+  const state = load();
+  return state.lines.some((line) => line.recipeId === recipeId) || state.legacyRecipeIds.includes(recipeId);
 }
 
-/**
- * Normalise le nom d'un ingrédient pour la comparaison (enlève pluriels, accents, etc.)
- */
-function normalizeIngredientName(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    // Enlever les pluriels courants
-    .replace(/s$/, '')
-    .replace(/x$/, '')
-    // Normaliser les accents
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+interface AddOptions {
+  recipeTitle?: string;
+  /** Multiplicateur de portions (6 personnes pour une recette de 4 : 1,5) */
+  scale?: number;
 }
 
-/**
- * Parse une quantité et retourne sa valeur numérique (si possible)
- */
-function parseQuantity(quantity: string): { value: number | null; unit: string; original: string } {
-  if (!quantity) {
-    return { value: null, unit: '', original: '' };
-  }
+/** Ajoute les ingrédients d'une recette. Une recette déjà présente est remplacée (nouvelles portions, par exemple). */
+export function addIngredientsToShoppingList(ingredients: unknown[], recipeId?: number, options: AddOptions = {}): void {
+  const state = load();
+  const base = recipeId === undefined ? state.lines : state.lines.filter((line) => line.recipeId !== recipeId);
 
-  const trimmed = quantity.trim();
-  
-  // Gérer les fractions simples (1/2, 1/4, 3/4, etc.)
-  const fractionMatch = trimmed.match(/^(\d+)\/(\d+)$/);
-  if (fractionMatch) {
-    const num = parseFloat(fractionMatch[1]);
-    const den = parseFloat(fractionMatch[2]);
-    return { value: num / den, unit: '', original: trimmed };
-  }
+  const added: ShoppingLine[] = ingredients
+    .map(ingredientToText)
+    .filter(Boolean)
+    .map((text) => ({
+      id: newLineId(),
+      text,
+      recipeId,
+      recipeTitle: options.recipeTitle,
+      ...(options.scale && options.scale !== 1 ? { scale: options.scale } : {}),
+    }));
 
-  // Gérer les nombres avec unités (2 cuillères, 3 gousses, etc.)
-  const numberMatch = trimmed.match(/^([\d\.,]+)\s*(.*)$/);
-  if (numberMatch) {
-    const numStr = numberMatch[1].replace(',', '.');
-    const num = parseFloat(numStr);
-    const unit = numberMatch[2] || '';
-    return { value: isNaN(num) ? null : num, unit: unit.trim(), original: trimmed };
-  }
-
-  // Gérer les nombres simples
-  const simpleNumber = parseFloat(trimmed.replace(',', '.'));
-  if (!isNaN(simpleNumber)) {
-    return { value: simpleNumber, unit: '', original: trimmed };
-  }
-
-  return { value: null, unit: '', original: trimmed };
-}
-
-/**
- * Formate une quantité pour l'affichage
- */
-function formatQuantity(value: number | null, unit: string, original: string): string {
-  if (value === null) {
-    return original || '';
-  }
-
-  // Si c'est une fraction simple, garder le format original
-  if (original.includes('/')) {
-    return original;
-  }
-
-  // Si la valeur est un entier, l'afficher sans décimales
-  if (Number.isInteger(value)) {
-    return unit ? `${value} ${unit}` : `${value}`;
-  }
-
-  // Sinon, garder 1-2 décimales
-  const rounded = Math.round(value * 100) / 100;
-  return unit ? `${rounded} ${unit}` : `${rounded}`;
-}
-
-/**
- * Additionne deux quantités
- */
-function addQuantities(qty1: string | undefined, qty2: string): string {
-  if (!qty1) return qty2;
-
-  const parsed1 = parseQuantity(qty1);
-  const parsed2 = parseQuantity(qty2);
-
-  // Si les deux ont des valeurs numériques et la même unité (ou pas d'unité)
-  if (parsed1.value !== null && parsed2.value !== null) {
-    // Vérifier que les unités sont compatibles (même unité ou aucune unité)
-    const unit1 = parsed1.unit.toLowerCase();
-    const unit2 = parsed2.unit.toLowerCase();
-    
-    if (unit1 === unit2 || (unit1 === '' && unit2 === '')) {
-      const sum = parsed1.value + parsed2.value;
-      return formatQuantity(sum, parsed1.unit || parsed2.unit, '');
-    }
-  }
-
-  // Si on ne peut pas additionner, concaténer avec un +
-  return `${qty1} + ${qty2}`;
-}
-
-export function addIngredientsToShoppingList(ingredients: any[], recipeId?: number): ShoppingListItem[] {
-  const currentList = getShoppingList();
-  const updatedList = [...currentList];
-
-  ingredients.forEach((ing) => {
-    let ingredientText = '';
-    let quantity = '';
-
-    if (typeof ing === 'string') {
-      ingredientText = ing;
-    } else if (typeof ing === 'object' && ing !== null) {
-      quantity = ing.quantite || '';
-      const ingredient = ing.ingredient || '';
-      ingredientText = quantity ? `${quantity} ${ingredient}`.trim() : ingredient;
-    } else {
-      ingredientText = String(ing);
-    }
-
-    // Extraire la quantité et l'ingrédient
-    const match = ingredientText.match(/^([\d\s\/\.]+[a-z]*)\s+(.+)$/i);
-    if (match) {
-      quantity = match[1].trim();
-      ingredientText = match[2].trim();
-    }
-
-    // Normaliser le nom pour la comparaison
-    const normalizedName = normalizeIngredientName(ingredientText);
-
-    // Chercher un ingrédient similaire dans la liste
-    const existingItemIndex = updatedList.findIndex(
-      item => normalizeIngredientName(item.ingredient) === normalizedName
-    );
-
-    if (existingItemIndex >= 0) {
-      // L'ingrédient existe déjà, additionner les quantités
-      const existingItem = updatedList[existingItemIndex];
-      const newQuantity = addQuantities(existingItem.quantity, quantity);
-      
-      updatedList[existingItemIndex] = {
-        ...existingItem,
-        quantity: newQuantity || undefined,
-      };
-    } else {
-      // Nouvel ingrédient, l'ajouter
-      updatedList.push({
-        id: `${Date.now()}-${Math.random()}`,
-        ingredient: ingredientText,
-        quantity: quantity || undefined,
-        checked: false,
-      });
-    }
+  persist({
+    ...state,
+    lines: [...base, ...added],
+    legacyRecipeIds: recipeId === undefined ? state.legacyRecipeIds : state.legacyRecipeIds.filter((id) => id !== recipeId),
   });
-
-  saveShoppingList(updatedList);
-  
-  // Si un ID de recette est fourni, l'ajouter à la liste des recettes
-  if (recipeId) {
-    const recipeIds = getShoppingListRecipes();
-    if (!recipeIds.includes(recipeId)) {
-      recipeIds.push(recipeId);
-      saveShoppingListRecipes(recipeIds);
-    }
-  }
-  
-  return updatedList;
 }
 
-export function toggleShoppingListItem(id: string): ShoppingListItem[] {
-  const list = getShoppingList();
-  const updated = list.map(item =>
-    item.id === id ? { ...item, checked: !item.checked } : item
-  );
-  saveShoppingList(updated);
-  return updated;
+/** Ajoute un article saisi à la main (« lait », « 2 yaourts »). */
+export function addCustomItem(text: string): boolean {
+  const clean = text.trim();
+  if (!clean || parseShoppingText(clean).length === 0) return false;
+  const state = load();
+  persist({ ...state, lines: [...state.lines, { id: newLineId(), text: clean }] });
+  return true;
 }
 
-export function removeShoppingListItem(id: string): ShoppingListItem[] {
-  const list = getShoppingList();
-  const updated = list.filter(item => item.id !== id);
-  saveShoppingList(updated);
-  return updated;
+export function toggleItemChecked(key: string): void {
+  const state = load();
+  const checked = state.checked.includes(key) ? state.checked.filter((item) => item !== key) : [...state.checked, key];
+  persist({ ...state, checked });
+}
+
+/** Retire un article : toutes les lignes qui le composent. */
+export function removeItem(key: string): void {
+  const state = load();
+  persist({
+    ...state,
+    lines: state.lines.filter((line) => !parseShoppingText(line.text).some((parsed) => parsed.key === key)),
+    checked: state.checked.filter((item) => item !== key),
+  });
+}
+
+/** Retire une recette de la liste : ses lignes disparaissent, les autres restent. */
+export function removeRecipeFromShoppingList(recipeId: number): void {
+  const state = load();
+  const lines = state.lines.filter((line) => line.recipeId !== recipeId);
+  const remaining = new Set(mergeShoppingLines(lines).map((item) => item.key));
+  persist({
+    lines,
+    checked: state.checked.filter((key) => remaining.has(key)),
+    legacyRecipeIds: state.legacyRecipeIds.filter((id) => id !== recipeId),
+  });
+}
+
+/** « Vider les cochés » : retire de la liste ce qui est dans le panier. */
+export function clearCheckedItems(): void {
+  const state = load();
+  const checked = new Set(state.checked);
+  persist({
+    ...state,
+    lines: state.lines.filter((line) => {
+      const keys = parseShoppingText(line.text).map((parsed) => parsed.key);
+      return keys.length === 0 || !keys.every((key) => checked.has(key));
+    }),
+    checked: [],
+  });
 }
 
 export function clearShoppingList(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(SHOPPING_LIST_KEY);
-  localStorage.removeItem(SHOPPING_LIST_RECIPES_KEY);
+  persist(emptyState());
 }
-
-/**
- * Vérifie si tous les ingrédients d'une recette sont présents dans la liste
- */
-export function areIngredientsInList(ingredients: any[]): boolean {
-  const currentList = getShoppingList();
-  if (currentList.length === 0) return false;
-
-  let allPresent = true;
-
-  ingredients.forEach((ing) => {
-    let ingredientText = '';
-    let quantity = '';
-
-    if (typeof ing === 'string') {
-      ingredientText = ing;
-    } else if (typeof ing === 'object' && ing !== null) {
-      quantity = ing.quantite || '';
-      const ingredient = ing.ingredient || '';
-      ingredientText = quantity ? `${quantity} ${ingredient}`.trim() : ingredient;
-    } else {
-      ingredientText = String(ing);
-    }
-
-    // Extraire la quantité et l'ingrédient
-    const match = ingredientText.match(/^([\d\s\/\.]+[a-z]*)\s+(.+)$/i);
-    if (match) {
-      quantity = match[1].trim();
-      ingredientText = match[2].trim();
-    }
-
-    const normalizedName = normalizeIngredientName(ingredientText);
-    const exists = currentList.some(
-      item => normalizeIngredientName(item.ingredient) === normalizedName
-    );
-
-    if (!exists) {
-      allPresent = false;
-    }
-  });
-
-  return allPresent;
-}
-
-/**
- * Soustrait une quantité d'une autre
- */
-function subtractQuantities(qty1: string | undefined, qty2: string): string | null {
-  if (!qty1) return null; // Si pas de quantité existante, on ne peut pas soustraire
-
-  const parsed1 = parseQuantity(qty1);
-  const parsed2 = parseQuantity(qty2);
-
-  // Si les deux ont des valeurs numériques et la même unité
-  if (parsed1.value !== null && parsed2.value !== null) {
-    const unit1 = parsed1.unit.toLowerCase();
-    const unit2 = parsed2.unit.toLowerCase();
-    
-    if (unit1 === unit2 || (unit1 === '' && unit2 === '')) {
-      const diff = parsed1.value - parsed2.value;
-      
-      // Si le résultat est négatif ou zéro, retourner null pour supprimer l'ingrédient
-      if (diff <= 0) {
-        return null;
-      }
-      
-      return formatQuantity(diff, parsed1.unit || parsed2.unit, '');
-    }
-  }
-
-  // Si on ne peut pas soustraire proprement, retourner null pour supprimer
-  return null;
-}
-
-/**
- * Retire les ingrédients d'une recette de la liste de courses
- */
-export function removeIngredientsFromShoppingList(ingredients: any[], recipeId?: number): ShoppingListItem[] {
-  const currentList = getShoppingList();
-  const updatedList = [...currentList];
-
-  ingredients.forEach((ing) => {
-    let ingredientText = '';
-    let quantity = '';
-
-    if (typeof ing === 'string') {
-      ingredientText = ing;
-    } else if (typeof ing === 'object' && ing !== null) {
-      quantity = ing.quantite || '';
-      const ingredient = ing.ingredient || '';
-      ingredientText = quantity ? `${quantity} ${ingredient}`.trim() : ingredient;
-    } else {
-      ingredientText = String(ing);
-    }
-
-    // Extraire la quantité et l'ingrédient
-    const match = ingredientText.match(/^([\d\s\/\.]+[a-z]*)\s+(.+)$/i);
-    if (match) {
-      quantity = match[1].trim();
-      ingredientText = match[2].trim();
-    }
-
-    // Normaliser le nom pour la comparaison
-    const normalizedName = normalizeIngredientName(ingredientText);
-
-    // Chercher l'ingrédient dans la liste
-    const existingItemIndex = updatedList.findIndex(
-      item => normalizeIngredientName(item.ingredient) === normalizedName
-    );
-
-    if (existingItemIndex >= 0) {
-      const existingItem = updatedList[existingItemIndex];
-      const newQuantity = subtractQuantities(existingItem.quantity, quantity);
-
-      if (newQuantity === null) {
-        // Supprimer l'ingrédient si la quantité devient 0 ou négative
-        updatedList.splice(existingItemIndex, 1);
-      } else {
-        // Mettre à jour la quantité
-        updatedList[existingItemIndex] = {
-          ...existingItem,
-          quantity: newQuantity || undefined,
-        };
-      }
-    }
-  });
-
-  saveShoppingList(updatedList);
-  
-  // Si un ID de recette est fourni, le retirer de la liste des recettes
-  if (recipeId) {
-    const recipeIds = getShoppingListRecipes();
-    const filteredIds = recipeIds.filter(id => id !== recipeId);
-    saveShoppingListRecipes(filteredIds);
-  }
-  
-  return updatedList;
-}
-

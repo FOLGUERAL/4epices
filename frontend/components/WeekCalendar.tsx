@@ -22,7 +22,6 @@ import {
   getPile,
   getPlanDays,
   getPlanEvents,
-  getShoppingEntries,
   getSlotOccupant,
   getUpcomingEntries,
   MEAL_LABELS,
@@ -32,8 +31,7 @@ import {
   type PlanDay,
   type PlanSlot,
 } from '@/lib/planning';
-import { addIngredientsToShoppingList, isRecipeInShoppingList } from '@/lib/shoppingList';
-import { getRecettesBySlugs } from '@/lib/strapi';
+import { addPlanToShoppingList, describePlanShopping } from '@/lib/shoppingFromPlan';
 import { formatLocalDate, setPrefs, type PlanMeal, type SwipeRecipe, type SwipeState } from '@/lib/swipeEngine';
 import { loadSwipeState, saveSwipeState, subscribeSwipeState } from '@/lib/swipeStorage';
 import { trackEvent } from '@/lib/track';
@@ -179,47 +177,11 @@ export default function WeekCalendar({ recipes }: WeekCalendarProps) {
   // Ajoute à la liste de courses les ingrédients des repas à venir non cuisinés
   // (une recette déjà présente dans la liste n'est pas ré-ajoutée)
   const handleShopping = async () => {
-    if (upcoming.length === 0) {
-      toast.info('Planifiez d’abord des repas');
-      return;
-    }
-    const uniqueEntries = getShoppingEntries(state);
-    if (uniqueEntries.length === 0) {
-      toast.info('Tous vos repas à venir sont déjà cuisinés : rien à ajouter');
-      return;
-    }
-    const toAdd = uniqueEntries.filter((item) => !isRecipeInShoppingList(item.recipeId));
-    if (toAdd.length === 0) {
-      toast.info('Toutes ces recettes sont déjà dans votre liste de courses');
-      return;
-    }
-
     setShopping(true);
     try {
-      const recettes = await getRecettesBySlugs(toAdd.map((item) => item.slug));
-      const bySlug = new Map(recettes.map((recette) => [recette.attributes.slug, recette]));
-
-      let added = 0;
-      for (const item of toAdd) {
-        const ingredients = bySlug.get(item.slug)?.attributes.ingredients;
-        if (Array.isArray(ingredients)) {
-          addIngredientsToShoppingList(ingredients, item.recipeId);
-          added += 1;
-        }
-      }
-      const failed = toAdd.length - added;
-      trackEvent('plan-shopping', { recipes: added });
-
-      if (added > 0) {
-        const already = uniqueEntries.length - toAdd.length;
-        toast.success(
-          `${added} ${added === 1 ? 'recette ajoutée' : 'recettes ajoutées'} à la liste de courses` +
-            (already > 0 ? ` (${already} déjà présente${already > 1 ? 's' : ''})` : '')
-        );
-      }
-      if (failed > 0) {
-        toast.error(`${failed} ${failed === 1 ? "recette n'a" : "recettes n'ont"} pas pu être ajoutée${failed > 1 ? 's' : ''}`);
-      }
+      const result = await addPlanToShoppingList(state);
+      if (result.status === 'done') trackEvent('plan-shopping', { recipes: result.added });
+      for (const message of describePlanShopping(result)) toast[message.level](message.text);
     } catch (error) {
       console.error('Erreur lors de l\'ajout à la liste de courses:', error);
       toast.error('Impossible de récupérer les ingrédients pour le moment');

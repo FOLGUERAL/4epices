@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { Check, ShoppingBasket } from 'lucide-react';
 import {
   addIngredientsToShoppingList,
-  removeIngredientsFromShoppingList,
+  getPortionsScale,
   isRecipeInShoppingList,
+  removeRecipeFromShoppingList,
   subscribeShoppingList,
 } from '@/lib/shoppingList';
 import { toast } from './Toast';
@@ -13,10 +14,20 @@ import { toast } from './Toast';
 interface AddToShoppingListButtonProps {
   ingredients: unknown[];
   recipeId?: number;
+  recipeTitle?: string;
+  /** Sert à retrouver le nombre de personnes choisi sur la page (« pour 6 personnes ») */
+  slug?: string;
+  basePortions?: number;
 }
 
 /** Bouton de la barre d'actions de la recette : icône seule sur mobile, avec texte à partir de sm. */
-export default function AddToShoppingListButton({ ingredients, recipeId }: AddToShoppingListButtonProps) {
+export default function AddToShoppingListButton({
+  ingredients,
+  recipeId,
+  recipeTitle,
+  slug,
+  basePortions = 4,
+}: AddToShoppingListButtonProps) {
   const [isInList, setIsInList] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -35,14 +46,20 @@ export default function AddToShoppingListButton({ ingredients, recipeId }: AddTo
   const handleToggle = () => {
     setIsProcessing(true);
 
-    if (isInList) {
-      removeIngredientsFromShoppingList(ingredients as any[], recipeId);
+    if (isInList && recipeId) {
+      removeRecipeFromShoppingList(recipeId);
       setIsInList(false);
       toast.success('Ingrédients retirés de la liste de courses');
     } else {
-      addIngredientsToShoppingList(ingredients as any[], recipeId);
+      // Les quantités suivent le nombre de personnes choisi sur la page de la recette
+      const scale = slug ? getPortionsScale(slug, basePortions) : 1;
+      addIngredientsToShoppingList(ingredients, recipeId, { recipeTitle, scale });
       setIsInList(true);
-      toast.success('Ingrédients ajoutés à la liste de courses');
+      toast.success(
+        scale !== 1
+          ? `Ingrédients ajoutés à la liste de courses, pour ${Math.round(basePortions * scale)} personnes`
+          : 'Ingrédients ajoutés à la liste de courses'
+      );
     }
 
     setTimeout(() => setIsProcessing(false), 500);

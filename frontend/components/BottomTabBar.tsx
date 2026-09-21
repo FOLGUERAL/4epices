@@ -3,18 +3,21 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import TabBadge from '@/components/TabBadge';
+import { useShoppingCount } from '@/hooks/useShoppingCount';
 import { TAB_ICONS } from '@/lib/tabIcons';
 import { TABS, getActiveTab, isTabBarVisible } from '@/lib/tabs';
 
 /**
  * Barre d'onglets du bas, sur mobile seulement : les sous-applications à portée de pouce.
  * Quand elle s'affiche, elle pose `data-tabbar` sur <html> : le CSS réserve alors sa hauteur en bas de page
- * et les autres éléments fixes (liste de courses, swipe) s'en écartent.
+ * et le swipe s'en écarte. L'onglet « Courses » porte la pastille du nombre d'articles à acheter.
  */
 export default function BottomTabBar() {
   const pathname = usePathname() || '/';
   const visible = isTabBarVisible(pathname);
   const active = getActiveTab(pathname);
+  const shoppingCount = useShoppingCount();
 
   useEffect(() => {
     if (!visible) return;
@@ -45,7 +48,10 @@ export default function BottomTabBar() {
                   isActive ? 'text-orange-600' : 'text-gray-600 hover:text-orange-600'
                 }`}
               >
-                <Icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} aria-hidden="true" />
+                <span className="relative">
+                  <Icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} aria-hidden="true" />
+                  {key === 'courses' && <TabBadge count={shoppingCount} />}
+                </span>
                 {label}
               </Link>
             </li>

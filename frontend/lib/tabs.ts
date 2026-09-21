@@ -3,7 +3,7 @@
  * Module pur, comme lib/planning.ts.
  */
 
-export type TabKey = 'accueil' | 'recettes' | 'decouvrir' | 'planning' | 'favoris';
+export type TabKey = 'accueil' | 'recettes' | 'decouvrir' | 'planning' | 'courses' | 'favoris';
 
 export interface TabDef {
   key: TabKey;
@@ -16,6 +16,7 @@ export const TABS: readonly TabDef[] = [
   { key: 'recettes', href: '/recettes', label: 'Recettes' },
   { key: 'decouvrir', href: '/decouvrir', label: 'Découvrir' },
   { key: 'planning', href: '/planning', label: 'Planning' },
+  { key: 'courses', href: '/courses', label: 'Courses' },
   { key: 'favoris', href: '/favoris', label: 'Favoris' },
 ];
 
@@ -34,6 +35,7 @@ export function getActiveTab(pathname: string): TabKey | null {
   }
   if (isSection(pathname, '/decouvrir') || isSection(pathname, '/ce-soir')) return 'decouvrir';
   if (isSection(pathname, '/planning')) return 'planning';
+  if (isSection(pathname, '/courses')) return 'courses';
   if (isSection(pathname, '/favoris')) return 'favoris';
   return null;
 }

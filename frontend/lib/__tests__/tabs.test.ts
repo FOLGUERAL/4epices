@@ -7,6 +7,7 @@ describe('getActiveTab', () => {
     expect(getActiveTab('/recettes')).toBe('recettes');
     expect(getActiveTab('/decouvrir')).toBe('decouvrir');
     expect(getActiveTab('/planning')).toBe('planning');
+    expect(getActiveTab('/courses')).toBe('courses');
     expect(getActiveTab('/favoris')).toBe('favoris');
   });
 
@@ -34,7 +35,7 @@ describe('getActiveTab', () => {
 
 describe('isTabBarVisible', () => {
   it('s’affiche sur les pages principales et les listes', () => {
-    for (const path of ['/', '/recettes', '/decouvrir', '/ce-soir', '/planning', '/favoris', '/categories/italien', '/ingredients']) {
+    for (const path of ['/', '/recettes', '/decouvrir', '/ce-soir', '/planning', '/courses', '/favoris', '/categories/italien', '/ingredients']) {
       expect(isTabBarVisible(path)).toBe(true);
     }
   });

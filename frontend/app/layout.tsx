@@ -10,7 +10,6 @@ import AdBlockNotice from "@/components/AdBlockNotice";
 import BottomTabBar from "@/components/BottomTabBar";
 import FooterCategories from "@/components/FooterCategories";
 import PWARegister from "@/components/PWARegister";
-import ShoppingList from "@/components/ShoppingList";
 import ToastContainer from "@/components/Toast";
 import {
   buildOrganizationJsonLd,
@@ -104,7 +103,6 @@ export default function RootLayout({
         <PWARegister />
         <Navigation />
         {children}
-        <ShoppingList />
         <BottomTabBar />
         <ToastContainer />
         <footer className="bg-gray-800 text-white mt-12">

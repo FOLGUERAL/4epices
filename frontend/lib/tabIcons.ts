@@ -1,4 +1,4 @@
-import { CalendarDays, ChefHat, Compass, Heart, Home, type LucideIcon } from 'lucide-react';
+import { CalendarDays, ChefHat, Compass, Heart, Home, ShoppingBasket, type LucideIcon } from 'lucide-react';
 import type { TabKey } from '@/lib/tabs';
 
 /** Les icônes des onglets, partagées par la barre du bas (mobile) et la barre du haut (PC). */
@@ -7,5 +7,6 @@ export const TAB_ICONS: Record<TabKey, LucideIcon> = {
   recettes: ChefHat,
   decouvrir: Compass,
   planning: CalendarDays,
+  courses: ShoppingBasket,
   favoris: Heart,
 };

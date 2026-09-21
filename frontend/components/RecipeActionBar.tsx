@@ -51,7 +51,13 @@ export default function RecipeActionBar({ recette, imageUrl, ingredients }: Reci
         />
         <PlanFavoriteButton recette={summary} className="flex-shrink-0" iconOnlyOnMobile />
         <FavoriteButton recette={summary} className="flex-shrink-0" />
-        <AddToShoppingListButton ingredients={ingredients} recipeId={recette.id} />
+        <AddToShoppingListButton
+          ingredients={ingredients}
+          recipeId={recette.id}
+          recipeTitle={recette.attributes.titre}
+          slug={recette.attributes.slug}
+          basePortions={recette.attributes.nombrePersonnes || 4}
+        />
       </div>
 
       {isStandalone && (
