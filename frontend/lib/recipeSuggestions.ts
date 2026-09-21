@@ -22,13 +22,15 @@ export interface RecipeFilters {
 export const NO_FILTERS: RecipeFilters = { quick: false, easy: false, category: null };
 
 const SWEET_CATEGORIES = ['patisserie'];
-const SNACK_CATEGORIES = ['categorie', 'brunch-and-apero'];
+// « categorie » est l'ancien slug de Snacking (valeur par défaut de Strapi) ; les deux sont reconnus le temps de la migration
+const SNACK_CATEGORIES = ['snacking', 'categorie', 'brunch-and-apero'];
 
 const CATEGORY_LABELS: Record<string, string> = {
   'brunch-and-apero': 'Brunch & apéro',
   italien: 'Italien',
   patisserie: 'Pâtisserie',
-  categorie: 'Snaking',
+  snacking: 'Snacking',
+  categorie: 'Snacking',
   healthy: 'Healthy',
   oriental: 'Oriental',
   'cuisine-du-monde': 'Cuisine du monde',

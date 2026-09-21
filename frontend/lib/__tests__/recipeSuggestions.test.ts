@@ -73,6 +73,8 @@ describe('getAvailableCategories / categoryLabel', () => {
 
   it('donne un libellé lisible, même pour une catégorie inconnue', () => {
     expect(categoryLabel('patisserie')).toBe('Pâtisserie');
+    expect(categoryLabel('snacking')).toBe('Snacking');
+    expect(categoryLabel('categorie')).toBe('Snacking');
     expect(categoryLabel('cuisine-vegetarienne')).toBe('Cuisine vegetarienne');
   });
 });
@@ -116,6 +118,13 @@ describe('suggestForSlot', () => {
   it('ne met pas la pâtisserie en tête pour un repas', () => {
     const catalogue = [recipe(1, { totalMinutes: 20, categorySlugs: ['patisserie'] }), recipe(2, { totalMinutes: 20 })];
     expect(ids(suggestForSlot(catalogue, WEDNESDAY_DINNER, empty()))[0]).toBe(2);
+  });
+
+  it('traite le snacking comme un en-cas, sous son ancien comme sous son nouveau slug', () => {
+    for (const slug of ['snacking', 'categorie']) {
+      const catalogue = [recipe(1, { totalMinutes: 20, categorySlugs: [slug] }), recipe(2, { totalMinutes: 20 })];
+      expect(ids(suggestForSlot(catalogue, WEDNESDAY_DINNER, empty()))[0]).toBe(2);
+    }
   });
 
   it('évite le même ingrédient ou la même cuisine que la veille et le lendemain', () => {
