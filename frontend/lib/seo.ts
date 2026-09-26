@@ -9,6 +9,13 @@ export function getSiteUrl(): string {
   return url.replace(/\/$/, '');
 }
 
+/** Comptes officiels de la marque : aide Google à relier 4 épices à ces profils (panneau de connaissance). */
+const SOCIAL_PROFILES = [
+  'https://fr.pinterest.com/4epicesfr/',
+  'https://www.instagram.com/4epices.fr/',
+  'https://www.facebook.com/4epices.fr/',
+];
+
 /** JSON-LD Organization — signal de marque pour Google. */
 export function buildOrganizationJsonLd(): Record<string, unknown> {
   const siteUrl = getSiteUrl();
@@ -19,10 +26,11 @@ export function buildOrganizationJsonLd(): Record<string, unknown> {
     alternateName: ['4épices', '4epices'],
     url: siteUrl,
     logo: `${siteUrl}/logo.png`,
+    sameAs: SOCIAL_PROFILES,
   };
 }
 
-/** JSON-LD WebSite — nom de site dans les résultats Google. */
+/** JSON-LD WebSite — nom de site dans les résultats Google, avec case de recherche (sitelinks search box). */
 export function buildWebSiteJsonLd(): Record<string, unknown> {
   const siteUrl = getSiteUrl();
   return {
@@ -35,6 +43,14 @@ export function buildWebSiteJsonLd(): Record<string, unknown> {
       '@type': 'Organization',
       name: SITE_NAME,
       url: siteUrl,
+    },
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${siteUrl}/recherche?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
     },
   };
 }
