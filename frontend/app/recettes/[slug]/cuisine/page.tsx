@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
+import { useWakeLock } from '@/hooks/useWakeLock';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, CircleHelp, Mic, Play, Pointer, Share2, Volume2, VolumeX, X } from 'lucide-react';
 import { getRecetteBySlug, Recette } from '@/lib/strapi';
@@ -282,6 +283,9 @@ export default function CuisineModePage() {
   const [isSwipeCoachVisible, setIsSwipeCoachVisible] = useState(false);
   const stepBlockRef = useRef<HTMLDivElement | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  // L'écran reste allumé et déverrouillé tant que la recette est affichée (pas pendant le chargement ni sur une erreur)
+  useWakeLock(recette !== null && !loading);
 
   const getSavedPortions = useCallback((recipeSlug: string, basePortions: number): number => {
     if (typeof window === 'undefined') return basePortions;
