@@ -19,7 +19,7 @@ const ADSENSE_SLOT_ENV: Record<RecipeAdPlacement, string | undefined> = {
 };
 
 /** À partir de ce nombre d'étapes, la recette est assez longue pour une annonce au milieu (avant, ça alourdit pour rien) */
-export const MID_STEPS_AD_THRESHOLD = 6;
+export const MID_STEPS_AD_THRESHOLD = 4;
 
 export function getAdSenseSlotId(placement: RecipeAdPlacement): string {
   return (
