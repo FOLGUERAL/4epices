@@ -127,6 +127,11 @@
       "relation": "oneToMany",
       "target": "api::avis.avis",
       "mappedBy": "recette"
+    },
+    "recettesLiees": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::recette.recette"
     }
   }
 }

@@ -2,11 +2,12 @@ export const ADSENSE_CLIENT = 'ca-pub-9219883229313117';
 
 export type AdProvider = 'adsense' | 'ezoic' | 'none';
 
-export type RecipeAdPlacement = 'recipe-after-ingredients' | 'recipe-after-preparation';
+export type RecipeAdPlacement = 'recipe-after-ingredients' | 'recipe-after-preparation' | 'recipe-mid-steps';
 
 const EZOIC_PLACEHOLDER_ENV: Record<RecipeAdPlacement, string | undefined> = {
   'recipe-after-ingredients': process.env.NEXT_PUBLIC_EZOIC_PLACEHOLDER_RECIPE_AFTER_INGREDIENTS,
   'recipe-after-preparation': process.env.NEXT_PUBLIC_EZOIC_PLACEHOLDER_RECIPE_AFTER_PREPARATION,
+  'recipe-mid-steps': process.env.NEXT_PUBLIC_EZOIC_PLACEHOLDER_RECIPE_MID_STEPS,
 };
 
 // Un identifiant de slot par emplacement pour mesurer chacun séparément dans AdSense.
@@ -14,7 +15,11 @@ const EZOIC_PLACEHOLDER_ENV: Record<RecipeAdPlacement, string | undefined> = {
 const ADSENSE_SLOT_ENV: Record<RecipeAdPlacement, string | undefined> = {
   'recipe-after-ingredients': process.env.NEXT_PUBLIC_GOOGLE_ADS_SLOT_RECIPE_AFTER_INGREDIENTS,
   'recipe-after-preparation': process.env.NEXT_PUBLIC_GOOGLE_ADS_SLOT_RECIPE_AFTER_PREPARATION,
+  'recipe-mid-steps': process.env.NEXT_PUBLIC_GOOGLE_ADS_SLOT_RECIPE_MID_STEPS,
 };
+
+/** À partir de ce nombre d'étapes, la recette est assez longue pour une annonce au milieu (avant, ça alourdit pour rien) */
+export const MID_STEPS_AD_THRESHOLD = 6;
 
 export function getAdSenseSlotId(placement: RecipeAdPlacement): string {
   return (

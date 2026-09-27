@@ -23,13 +23,15 @@ export interface RecetteCardActions {
 interface RecetteCardCompactProps {
   recette: CardRecipe;
   actions?: RecetteCardActions;
+  /** Nom de l'événement Umami posé sur le lien de la carte (ex. « reco-click »), sans effet si absent */
+  umamiEvent?: string;
 }
 
 const actionButton =
   'inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur transition-colors';
 
 /** Carte de recette compacte : image, titre, durée et difficulté, note. Le titre couvre toute la carte. */
-export default function RecetteCardCompact({ recette, actions }: RecetteCardCompactProps) {
+export default function RecetteCardCompact({ recette, actions, umamiEvent }: RecetteCardCompactProps) {
   const { titre, slug, difficulte, note } = recette;
   const details = [
     formatMinutes(recette.totalMinutes),
@@ -88,6 +90,7 @@ export default function RecetteCardCompact({ recette, actions }: RecetteCardComp
         <h3 className="line-clamp-2 text-base font-bold leading-snug text-gray-900 [text-wrap:balance] sm:text-lg">
           <Link
             href={`/recettes/${slug}`}
+            {...(umamiEvent ? { 'data-umami-event': umamiEvent, 'data-umami-event-target': slug } : {})}
             className="transition-colors after:absolute after:inset-0 hover:text-orange-600 focus-visible:outline-none focus-visible:after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-orange-500"
           >
             {titre}

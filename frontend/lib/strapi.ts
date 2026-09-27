@@ -87,6 +87,22 @@ export interface Recette {
     instagramPostId?: string;
     instagramPosts?: Record<string, any>;
     instagramAutoPublish?: boolean;
+    /** Recettes choisies à la main dans l'admin (prioritaires sur les suggestions automatiques) */
+    recettesLiees?: {
+      data: Array<{
+        id: number;
+        attributes: {
+          titre: string;
+          slug: string;
+          tempsPreparation?: number;
+          tempsCuisson?: number;
+          difficulte?: 'facile' | 'moyen' | 'difficile';
+          imagePrincipale?: {
+            data: { attributes: { url: string; alternativeText?: string } } | null;
+          };
+        };
+      }>;
+    };
   };
 }
 
@@ -166,8 +182,11 @@ export async function getRecettes(params?: {
 export async function getRecetteBySlug(slug: string): Promise<StrapiResponse<Recette | null>> {
   const queryParams = new URLSearchParams();
   queryParams.append('filters[slug][$eq]', slug);
-  queryParams.append('populate', 'imagePrincipale,categories,tags');
-  
+  queryParams.append('populate[imagePrincipale]', '*');
+  queryParams.append('populate[categories]', '*');
+  queryParams.append('populate[tags]', '*');
+  queryParams.append('populate[recettesLiees][populate]', 'imagePrincipale');
+
   const response = await fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
   
   return {
@@ -316,6 +335,24 @@ async function getRecettesRecentesExcluding(recetteId: number, limit: number): P
 
   const response = await fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
   return response.data ?? [];
+}
+
+/** Slug de la catégorie qui regroupe les sauces, pâtes et autres recettes de base (pas des idées de repas) */
+export const BASE_RECIPE_CATEGORY_SLUG = 'bases-de-cuisine';
+
+/**
+ * Titre et slug de toutes les recettes « bases-de-cuisine » publiées : sert à repérer leurs mentions dans le
+ * texte des étapes d'une autre recette (lib/recipeLinks.ts). Léger : pas d'image, pas d'ingrédients.
+ */
+export async function getBaseRecipes(): Promise<Array<{ slug: string; titre: string }>> {
+  const queryParams = new URLSearchParams();
+  queryParams.append('filters[categories][slug][$eq]', BASE_RECIPE_CATEGORY_SLUG);
+  queryParams.append('fields[0]', 'titre');
+  queryParams.append('fields[1]', 'slug');
+  queryParams.append('pagination[pageSize]', '100');
+
+  const response = await fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
+  return (response.data ?? []).map((recette) => ({ slug: recette.attributes.slug, titre: recette.attributes.titre }));
 }
 
 /**

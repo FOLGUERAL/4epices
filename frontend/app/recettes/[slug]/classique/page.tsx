@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
+  getBaseRecipes,
   getRecetteBySlug,
   getStrapiMediaUrl,
   getRecettesSimilairesWithFallback,
@@ -12,6 +13,8 @@ import {
 } from '@/lib/strapi';
 import { resolveIngredientSlugAndNom } from '@/lib/ingredientDictionary';
 import { buildRecipeJsonLd, buildFaqJsonLd, getSiteUrl, parseSeoEnrichi, SITE_NAME } from '@/lib/seo';
+import { MID_STEPS_AD_THRESHOLD } from '@/lib/ads';
+import { linkifyBaseRecipes, splitStepsHtml } from '@/lib/recipeLinks';
 import RecipeEnrichedSections from '@/components/RecipeEnrichedSections';
 import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
@@ -23,8 +26,7 @@ import ShareToPinterestButton from '@/components/ShareToPinterestButton';
 import AdSlot from '@/components/AdSlot';
 import RecipeActionBar from '@/components/RecipeActionBar';
 import RecipeMeta from '@/components/RecipeMeta';
-import RecetteCardCompact from '@/components/RecetteCardCompact';
-import { toCardRecipe } from '@/lib/recipeList';
+import RelatedRecipes from '@/components/RelatedRecipes';
 
 const RatingDisplay = dynamic(() => import('@/components/RatingDisplay'), {
   ssr: false,
@@ -92,13 +94,14 @@ export default async function RecettePage({ params }: { params: { slug: string }
   let recette = null;
   let recettesSimilaires: Recette[] = [];
   let aggregateRating: { ratingValue: number; reviewCount: number } | null = null;
+  let baseRecipes: Array<{ slug: string; titre: string }> = [];
 
   try {
     const response = await getRecetteBySlug(params.slug);
     recette = response.data;
 
     if (recette) {
-      const [similaires, rating] = await Promise.all([
+      const [similaires, rating, bases] = await Promise.all([
         getRecettesSimilairesWithFallback(
           recette.id,
           {
@@ -108,9 +111,11 @@ export default async function RecettePage({ params }: { params: { slug: string }
           4
         ),
         getRecetteAggregateRating(recette.id),
+        getBaseRecipes(),
       ]);
       recettesSimilaires = similaires;
       aggregateRating = rating;
+      baseRecipes = bases;
     }
   } catch (error) {
     console.error('Erreur lors de la récupération de la recette:', error);
@@ -167,6 +172,18 @@ export default async function RecettePage({ params }: { params: { slug: string }
     seoEnrichi?.faq && seoEnrichi.faq.length >= 2
       ? buildFaqJsonLd(seoEnrichi.faq, recetteUrl)
       : null;
+
+  // Liens vers les recettes de base (« préparer la béchamel » → lien vers sa fiche) mentionnées dans les étapes
+  const steps = splitStepsHtml(recette.attributes.etapes);
+  const canSplitSteps = steps.after !== '';
+  const showMidStepsAd = steps.stepCount > MID_STEPS_AD_THRESHOLD;
+  const firstHalf = linkifyBaseRecipes(canSplitSteps ? steps.before : recette.attributes.etapes, baseRecipes, recette.attributes.slug);
+  const secondHalf = canSplitSteps
+    ? linkifyBaseRecipes(steps.after, baseRecipes, recette.attributes.slug, firstHalf.linked)
+    : null;
+
+  // Recettes liées : la sélection manuelle (admin) prime sur la suggestion automatique
+  const manualRelated = recette.attributes.recettesLiees?.data ?? [];
 
   const structuredData = buildRecipeJsonLd({
     name: recette.attributes.titre,
@@ -288,11 +305,24 @@ export default async function RecettePage({ params }: { params: { slug: string }
 
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Préparation</h2>
-              <div
-                className="prose max-w-none text-gray-700"
-                dangerouslySetInnerHTML={{ __html: recette.attributes.etapes }}
-              />
+              <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: firstHalf.html }} />
+
+              {showMidStepsAd && (
+                <div className="my-8 flex justify-center">
+                  <AdSlot
+                    placement="recipe-mid-steps"
+                    adFormat="auto"
+                    className="min-h-[250px] w-full max-w-[728px]"
+                  />
+                </div>
+              )}
+
+              {secondHalf && (
+                <div className="prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: secondHalf.html }} />
+              )}
             </div>
+
+            <RelatedRecipes manual={manualRelated} fallback={recettesSimilaires} />
 
             {seoEnrichi && <RecipeEnrichedSections seoEnrichi={seoEnrichi} />}
 
@@ -365,17 +395,6 @@ export default async function RecettePage({ params }: { params: { slug: string }
             </div>
           </div>
         </div>
-
-        {recettesSimilaires.length > 0 && (
-          <div className="mt-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8">Recettes similaires</h2>
-            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
-              {recettesSimilaires.map((recetteSimilaire) => (
-                <RecetteCardCompact key={recetteSimilaire.id} recette={toCardRecipe(recetteSimilaire)} />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </article>
   );

@@ -45,7 +45,22 @@ export function formatMinutes(minutes: number): string {
   return mins === 0 ? `${hours}h` : `${hours}h ${mins}min`;
 }
 
-export function getTotalMinutes(recette: Recette): number {
+/** Ce que toCardRecipe lit réellement : une Recette complète le satisfait, tout comme une entrée de recettesLiees */
+export interface CardRecipeSource {
+  id: number;
+  attributes: {
+    titre: string;
+    slug: string;
+    tempsPreparation?: number;
+    tempsCuisson?: number;
+    difficulte?: string;
+    imagePrincipale?: {
+      data: { attributes: { url: string; alternativeText?: string } } | null;
+    };
+  };
+}
+
+export function getTotalMinutes(recette: CardRecipeSource): number {
   return (recette.attributes.tempsPreparation || 0) + (recette.attributes.tempsCuisson || 0);
 }
 
@@ -63,7 +78,7 @@ export interface CardRecipe {
   note?: string;
 }
 
-export function toCardRecipe(recette: Recette): CardRecipe {
+export function toCardRecipe(recette: CardRecipeSource): CardRecipe {
   const image = recette.attributes.imagePrincipale?.data?.attributes;
   return {
     id: recette.id,
