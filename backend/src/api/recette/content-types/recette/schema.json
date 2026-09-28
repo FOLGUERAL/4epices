@@ -132,6 +132,19 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::recette.recette"
+    },
+    "chefSimonStatus": {
+      "type": "enumeration",
+      "enum": ["a_publier", "publie"],
+      "default": "a_publier"
+    },
+    "chefSimonDatePublication": {
+      "type": "datetime",
+      "required": false
+    },
+    "chefSimonUrl": {
+      "type": "string",
+      "required": false
     }
   }
 }

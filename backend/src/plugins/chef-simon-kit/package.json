@@ -1,0 +1,11 @@
+{
+  "name": "chef-simon-kit",
+  "version": "1.0.0",
+  "description": "Génère le Kit Chef Simon (titre, intro, ingrédients, lien UTM, photo) à copier/coller pour une recette",
+  "strapi": {
+    "name": "chef-simon-kit",
+    "displayName": "Kit Chef Simon",
+    "description": "Génère le Kit Chef Simon pour une recette",
+    "kind": "plugin"
+  }
+}
