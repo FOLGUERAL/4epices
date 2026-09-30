@@ -56,6 +56,9 @@ services:
       STRAPI_URL: http://backend:1337
       # Secret admin (serveur uniquement, jamais NEXT_PUBLIC_*) : voir ADMIN_AUTH.md
       ADMIN_SECRET: ${ADMIN_SECRET:-}
+      # Liens d'affiliation Amazon Associates (bloc « Ustensiles » des pages recette)
+      ENABLE_AFFILIATE_LINKS: ${ENABLE_AFFILIATE_LINKS:-false}
+      AMAZON_ASSOCIATES_TAG: ${AMAZON_ASSOCIATES_TAG:-}
       # URL publique pour le client (déjà dans NEXT_PUBLIC_STRAPI_URL)
       # Configuration IA (Groq recommandé - gratuit et performant)
       AI_PROVIDER: ${AI_PROVIDER:-groq}
