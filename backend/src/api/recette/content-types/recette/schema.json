@@ -133,6 +133,12 @@
       "relation": "manyToMany",
       "target": "api::recette.recette"
     },
+    "ustensiles": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::ustensile.ustensile",
+      "mappedBy": "recettes"
+    },
     "chefSimonStatus": {
       "type": "enumeration",
       "enum": ["a_publier", "publie"],

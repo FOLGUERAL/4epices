@@ -94,6 +94,8 @@ module.exports = {
           'api::recette.recette.findOne',
           'api::categorie.categorie.find',
           'api::categorie.categorie.findOne',
+          'api::ustensile.ustensile.find',
+          'api::ustensile.ustensile.findOne',
           'api::tag.tag.find',
           'api::tag.tag.findOne',
           'api::avis.avis.find',

@@ -103,6 +103,20 @@ export interface Recette {
         };
       }>;
     };
+    /** Ustensiles suggérés (liens d'affiliation Amazon Associates, ajoutés au rendu) */
+    ustensiles?: {
+      data: Array<{
+        id: number;
+        attributes: {
+          nom: string;
+          slug: string;
+          lienAmazon?: string;
+          image?: {
+            data: { attributes: { url: string; alternativeText?: string } } | null;
+          };
+        };
+      }>;
+    };
   };
 }
 
@@ -186,6 +200,7 @@ export async function getRecetteBySlug(slug: string): Promise<StrapiResponse<Rec
   queryParams.append('populate[categories]', '*');
   queryParams.append('populate[tags]', '*');
   queryParams.append('populate[recettesLiees][populate]', 'imagePrincipale');
+  queryParams.append('populate[ustensiles][populate]', 'image');
 
   const response = await fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
   

@@ -18,6 +18,7 @@ import { linkifyBaseRecipes, splitStepsHtml } from '@/lib/recipeLinks';
 import RecipeEnrichedSections from '@/components/RecipeEnrichedSections';
 import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
+import UstensilesList from '@/components/UstensilesList';
 import ShareRecipe from '@/components/ShareRecipe';
 import RatingForm from '@/components/RatingForm';
 import RatingList from '@/components/RatingList';
@@ -293,6 +294,8 @@ export default async function RecettePage({ params }: { params: { slug: string }
                 />
               </div>
             )}
+
+            <UstensilesList ustensiles={recette.attributes.ustensiles?.data ?? []} />
 
             {/* Annonce Google AdSense entre ingrédients et préparation */}
             <div className="mb-8 flex justify-center">

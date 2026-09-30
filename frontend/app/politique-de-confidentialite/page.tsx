@@ -71,6 +71,16 @@ export default function PolitiqueConfidentialite() {
                 la page « Comment Google utilise les données »
               </a>.
             </p>
+
+            <h3 className="text-xl font-semibold text-gray-800 mb-3">2.4. Programme Partenaires Amazon</h3>
+            <p className="text-gray-700 mb-4">
+              4Épices participe au Programme Partenaires d&apos;Amazon EU, un programme d&apos;affiliation
+              conçu pour permettre à des sites de percevoir une rémunération grâce à la création de liens
+              vers Amazon.fr. En tant que Partenaire Amazon, 4Épices réalise un bénéfice sur les achats
+              remplissant les conditions requises. Ces liens (par exemple dans le bloc « Ustensiles » des
+              pages recette) ne posent aucun cookie sur 4epices.fr : le suivi se fait uniquement sur le
+              site Amazon.fr après un clic.
+            </p>
           </section>
 
           <section className="mb-8">
