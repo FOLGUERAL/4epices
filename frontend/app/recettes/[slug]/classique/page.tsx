@@ -19,6 +19,7 @@ import RecipeEnrichedSections from '@/components/RecipeEnrichedSections';
 import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
 import UstensilesList from '@/components/UstensilesList';
+import ThermomixLink from '@/components/ThermomixLink';
 import ShareRecipe from '@/components/ShareRecipe';
 import RatingForm from '@/components/RatingForm';
 import RatingList from '@/components/RatingList';
@@ -283,6 +284,11 @@ export default async function RecettePage({ params }: { params: { slug: string }
               portions={recette.attributes.nombrePersonnes}
               difficulty={recette.attributes.difficulte}
             />
+
+            {recette.attributes.compatibleThermomix &&
+              (recette.attributes.etapesThermomix?.length ?? 0) > 0 && (
+                <ThermomixLink slug={recette.attributes.slug} />
+              )}
 
             {rawIngredients.length > 0 && (
               <div className="mb-8">

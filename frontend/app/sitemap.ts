@@ -41,16 +41,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Récupérer toutes les recettes
   let recettesRoutes: MetadataRoute.Sitemap = [];
+  let thermomixRoutes: MetadataRoute.Sitemap = [];
   try {
-    const recettesResponse = await getRecettes({ pageSize: 1000 });
+    const recettesResponse = await getRecettes({
+      pageSize: 1000,
+      populate: 'imagePrincipale,categories,tags,etapesThermomix',
+    });
     const recettes = recettesResponse.data || [];
-    
+
     recettesRoutes = recettes.map((recette) => ({
       url: `${baseUrl}/recettes/${recette.attributes.slug}`,
       lastModified: new Date(recette.attributes.updatedAt || recette.attributes.publishedAt),
       changeFrequency: 'weekly' as const,
       priority: 0.9,
     }));
+
+    // Même garde que la page /thermomix elle-même : jamais d'URL pour une recette sans vraies étapes
+    thermomixRoutes = recettes
+      .filter(
+        (recette) =>
+          recette.attributes.compatibleThermomix &&
+          (recette.attributes.etapesThermomix?.length ?? 0) > 0
+      )
+      .map((recette) => ({
+        url: `${baseUrl}/recettes/${recette.attributes.slug}/thermomix`,
+        lastModified: new Date(recette.attributes.updatedAt || recette.attributes.publishedAt),
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
+      }));
   } catch (error) {
     console.error('Erreur lors de la récupération des recettes pour le sitemap:', error);
   }
@@ -105,6 +123,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticRoutes,
     ...recettesRoutes,
+    ...thermomixRoutes,
     ...categoriesRoutes,
     ...tagsRoutes,
     ...ingredientsRoutes,

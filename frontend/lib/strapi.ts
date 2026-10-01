@@ -103,6 +103,17 @@ export interface Recette {
         };
       }>;
     };
+    /** Version Thermomix : vraie page /thermomix seulement si compatibleThermomix ET au moins une étape */
+    compatibleThermomix?: boolean;
+    introThermomix?: string;
+    etapesThermomix?: Array<{
+      id: number;
+      description: string;
+      vitesse?: string;
+      duree?: string;
+      temperature?: string;
+      sens?: 'direct' | 'inverse';
+    }>;
     /** Ustensiles suggérés (liens d'affiliation Amazon Associates, ajoutés au rendu) */
     ustensiles?: {
       data: Array<{
@@ -201,6 +212,7 @@ export async function getRecetteBySlug(slug: string): Promise<StrapiResponse<Rec
   queryParams.append('populate[tags]', '*');
   queryParams.append('populate[recettesLiees][populate]', 'imagePrincipale');
   queryParams.append('populate[ustensiles][populate]', 'image');
+  queryParams.append('populate[etapesThermomix]', '*');
 
   const response = await fetchAPI<Recette[]>(`/recettes?${queryParams.toString()}`);
   

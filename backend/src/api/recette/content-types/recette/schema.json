@@ -151,6 +151,19 @@
     "chefSimonUrl": {
       "type": "string",
       "required": false
+    },
+    "compatibleThermomix": {
+      "type": "boolean",
+      "default": false
+    },
+    "introThermomix": {
+      "type": "text",
+      "required": false
+    },
+    "etapesThermomix": {
+      "type": "component",
+      "repeatable": true,
+      "component": "recette.etape-thermomix"
     }
   }
 }

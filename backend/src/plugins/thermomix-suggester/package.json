@@ -1,0 +1,11 @@
+{
+  "name": "thermomix-suggester",
+  "version": "1.0.0",
+  "description": "Suggère si une recette est adaptée au Thermomix et propose un brouillon d'étapes",
+  "strapi": {
+    "name": "thermomix-suggester",
+    "displayName": "Suggestion Thermomix",
+    "description": "Suggère une version Thermomix pour une recette",
+    "kind": "plugin"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "collectionName": "components_recette_etapes_thermomix",
+  "info": {
+    "displayName": "Étape Thermomix",
+    "icon": "star"
+  },
+  "options": {},
+  "attributes": {
+    "description": {
+      "type": "text",
+      "required": true
+    },
+    "vitesse": {
+      "type": "string",
+      "required": false
+    },
+    "duree": {
+      "type": "string",
+      "required": false
+    },
+    "temperature": {
+      "type": "string",
+      "required": false
+    },
+    "sens": {
+      "type": "enumeration",
+      "enum": ["direct", "inverse"],
+      "required": false
+    }
+  }
+}
