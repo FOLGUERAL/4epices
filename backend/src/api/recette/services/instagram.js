@@ -93,13 +93,12 @@ module.exports = ({ strapi }) => ({
     const pinterestImages = recetteData.imagesPinterest?.data || recetteData.imagesPinterest || [];
     const imagePrincipale = recetteData.imagePrincipale?.data || recetteData.imagePrincipale;
 
-    for (const imageData of [...instagramImages, ...pinterestImages]) {
+    // Ordre de priorité : images Instagram dédiées, puis image principale du site, puis Pinterest en
+    // dernier recours (souvent en 2:3, plus haut que le 4:5 max accepté par le feed Instagram).
+    for (const imageData of [...instagramImages, imagePrincipale, ...pinterestImages]) {
       const imageUrl = await this.getImageUrl(imageData);
       if (imageUrl && !images.includes(imageUrl)) images.push(imageUrl);
     }
-
-    const mainImageUrl = await this.getImageUrl(imagePrincipale);
-    if (mainImageUrl && !images.includes(mainImageUrl)) images.push(mainImageUrl);
 
     return images;
   },
