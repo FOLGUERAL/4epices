@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-session';
+import { backendAdminHeaders } from '@/lib/backend-auth';
 import axios from 'axios';
 
 export const runtime = 'nodejs';
@@ -42,7 +43,7 @@ export async function DELETE(
     const response = await axios.delete(
       `${strapiUrl}/api/pinterest/queue/${encodedTaskId}`,
       {
-        timeout: 15_000,
+        headers: backendAdminHeaders(), timeout: 15_000,
       }
     );
 

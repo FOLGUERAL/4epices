@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-session';
+import { backendAdminHeaders } from '@/lib/backend-auth';
 import axios from 'axios';
 
 export const runtime = 'nodejs';
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
       `${getStrapiUrl()}/api/instagram/process-queue`,
       {},
       {
-        headers: { 'X-Cron-Source': 'admin' },
+        headers: { 'X-Cron-Source': 'admin', ...backendAdminHeaders() },
         timeout: 30_000,
       }
     );

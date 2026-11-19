@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-session';
+import { backendAdminHeaders } from '@/lib/backend-auth';
 import axios from 'axios';
 
 export const runtime = 'nodejs';
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const response = await axios.get(`${getStrapiUrl()}/api/instagram/queue-status`, {
-      timeout: 15_000,
+      headers: backendAdminHeaders(), timeout: 15_000,
     });
     return NextResponse.json(response.data, { status: 200 });
   } catch (error: any) {

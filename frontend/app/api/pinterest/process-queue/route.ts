@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-session';
+import { backendAdminHeaders } from '@/lib/backend-auth';
 import axios from 'axios';
 
 export const runtime = 'nodejs';
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
           'X-Cron-Source': 'admin', // Identifier comme appel depuis l'admin
+        ...backendAdminHeaders(),
         },
         timeout: 15_000,
       }

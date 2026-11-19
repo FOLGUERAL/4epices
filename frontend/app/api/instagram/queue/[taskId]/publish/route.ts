@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-session';
+import { backendAdminHeaders } from '@/lib/backend-auth';
 import axios from 'axios';
 
 export const runtime = 'nodejs';
@@ -36,7 +37,7 @@ export async function POST(
       `${getStrapiUrl()}/api/instagram/queue/${encodeURIComponent(taskId)}/publish`,
       {},
       // Deux appels Graph API (création du media container puis publication) : marge large
-      { timeout: 90_000 }
+      { headers: backendAdminHeaders(), timeout: 90_000 }
     );
     return NextResponse.json(response.data, { status: 200 });
   } catch (error: any) {

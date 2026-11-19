@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-session';
+import { backendAdminHeaders } from '@/lib/backend-auth';
 import axios from 'axios';
 
 export const runtime = 'nodejs';
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const response = await axios.post(`${strapiUrl}/api/pinterest/strategy/stock`, body, {
-      timeout: 60_000,
+      headers: backendAdminHeaders(), timeout: 60_000,
     });
 
     return NextResponse.json(response.data, { status: 200 });

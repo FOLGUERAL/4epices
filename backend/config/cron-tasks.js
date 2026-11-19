@@ -120,6 +120,11 @@ module.exports = {
    * Exécuté toutes les heures pour les recettes qui n'ont pas encore de pins
    */
   '0 * * * *': async ({ strapi }) => {
+    // Désactivé par défaut : ce job n'a jamais tourné en prod (cron Strapi inactif jusqu'ici) et
+    // créerait d'un coup 6 pins pour chaque recette pinterestAutoPublish sans pin. À activer
+    // volontairement avec PINTEREST_AUTO_PIN_CRON=true dans backend/.env.
+    if (process.env.PINTEREST_AUTO_PIN_CRON !== 'true') return;
+
     try {
       const now = new Date();
       

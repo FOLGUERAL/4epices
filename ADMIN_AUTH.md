@@ -42,6 +42,25 @@ Sans `ADMIN_SECRET`, tout l'accès admin est refusé.
 openssl rand -base64 32
 ```
 
+### Protection des routes admin du backend (`INTERNAL_API_SECRET`)
+
+Le backend Strapi est public (`api.4epices.fr`). Ses routes d'administration (queues, stratégie et stats
+Instagram/Pinterest, publication immédiate…) refusent donc toute requête qui n'envoie pas l'en-tête
+`x-internal-secret` (policy `global::require-internal-secret`). Seules les routes proxy Next (`/api/...`),
+après avoir vérifié la session admin, l'envoient (`frontend/lib/backend-auth.ts`).
+
+La **même valeur** doit être définie des deux côtés :
+
+- **Backend** : `INTERNAL_API_SECRET` dans `backend/.env`
+- **Frontend** : `INTERNAL_API_SECRET` dans le `.env` racine (production Docker) ou `frontend/.env.local` (dev)
+
+```bash
+openssl rand -hex 32
+```
+
+Sans cette variable côté backend, les routes admin répondent 403 (fail-closed). Restent publics : le callback
+OAuth Pinterest et les routes du bouton de partage Pinterest (`status`, `boards`, `share`, `disconnect`).
+
 ### Changer le secret
 
 Modifier `ADMIN_SECRET` puis redémarrer le conteneur frontend : toutes les sessions en cours sont invalidées.

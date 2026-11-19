@@ -1,3 +1,5 @@
+const cronTasks = require('./cron-tasks');
+
 module.exports = ({ env }) => {
   const raw = env.array('APP_KEYS');
   const fromEnv = Array.isArray(raw)
@@ -21,6 +23,12 @@ module.exports = ({ env }) => {
     },
     webhooks: {
       populateRelations: env.bool('WEBHOOKS_POPULATE_RELATIONS', false),
+    },
+    // Jobs planifiés (queues Instagram et Pinterest) : voir config/cron-tasks.js.
+    // Sans ce bloc, Strapi 4 ignore cron-tasks.js.
+    cron: {
+      enabled: env.bool('CRON_ENABLED', true),
+      tasks: cronTasks,
     },
   };
 };

@@ -1,12 +1,15 @@
 'use strict';
 
 /**
- * Routes publiques Pinterest OAuth
- * Exposées sous /api grâce au préfixe Strapi.
+ * Routes Pinterest, exposées sous /api grâce au préfixe Strapi.
  *
- * - GET /api/pinterest/callback : callback OAuth (Pinterest redirige ici avec ?code=...)
- * - GET /api/pinterest/me       : vérifie le token (GET /v5/user_account) et renvoie le username
+ * - Publiques : callback OAuth (Pinterest redirige ici), et status/boards/share/disconnect
+ *   utilisés par le bouton de partage via des proxies Next publics.
+ * - Réservées à l'admin (ADMIN_ONLY) : appelées uniquement par les routes proxy Next qui vérifient
+ *   la session admin puis envoient INTERNAL_API_SECRET (voir src/policies/require-internal-secret.js).
  */
+
+const ADMIN_ONLY = ['global::require-internal-secret'];
 
 module.exports = {
   routes: [
@@ -23,7 +26,8 @@ module.exports = {
       path: '/pinterest/me',
       handler: 'pinterest.me',
       config: {
-        auth: false, // pour la démo (UI admin déjà protégée côté frontend)
+        auth: false,
+        policies: ADMIN_ONLY,
       },
     },
     {
@@ -56,6 +60,7 @@ module.exports = {
       handler: 'pinterest.adminBoards',
       config: {
         auth: false, // Utilise le token admin
+        policies: ADMIN_ONLY,
       },
     },
     {
@@ -79,7 +84,8 @@ module.exports = {
       path: '/pinterest/queue-status',
       handler: 'pinterest.queueStatus',
       config: {
-        auth: false, // Pour debug
+        auth: false,
+        policies: ADMIN_ONLY,
       },
     },
     {
@@ -87,7 +93,8 @@ module.exports = {
       path: '/pinterest/stats',
       handler: 'pinterest.stats',
       config: {
-        auth: false, // UI admin protegee cote frontend
+        auth: false,
+        policies: ADMIN_ONLY,
       },
     },
     {
@@ -95,7 +102,8 @@ module.exports = {
       path: '/pinterest/process-queue',
       handler: 'pinterest.processQueue',
       config: {
-        auth: false, // Pour debug/manuel
+        auth: false,
+        policies: ADMIN_ONLY,
       },
     },
     {
@@ -103,7 +111,8 @@ module.exports = {
       path: '/pinterest/queue/:taskId',
       handler: 'pinterest.cancelTask',
       config: {
-        auth: false, // Accessible à tous (peut être restreint plus tard)
+        auth: false,
+        policies: ADMIN_ONLY,
       },
     },
     {
@@ -111,7 +120,8 @@ module.exports = {
       path: '/pinterest/strategy/stock',
       handler: 'pinterest.planStockStrategy',
       config: {
-        auth: false, // UI admin protegee cote frontend
+        auth: false,
+        policies: ADMIN_ONLY,
       },
     },
   ],

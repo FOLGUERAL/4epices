@@ -51,6 +51,8 @@ services:
       STRAPI_URL: http://backend:1337
       # Secret admin (serveur uniquement, jamais NEXT_PUBLIC_*) : voir ADMIN_AUTH.md
       ADMIN_SECRET: ${ADMIN_SECRET:-}
+      # Secret partagé frontend -> backend pour les routes admin de Strapi (même valeur que dans backend/.env)
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
       # Liens d'affiliation Amazon Associates (bloc « Ustensiles » des pages recette)
       ENABLE_AFFILIATE_LINKS: ${ENABLE_AFFILIATE_LINKS:-false}
       AMAZON_ASSOCIATES_TAG: ${AMAZON_ASSOCIATES_TAG:-}
@@ -84,22 +86,8 @@ services:
     networks:
       - 4epices_network
 
-  cron:
-    image: curlimages/curl:latest
-    container_name: 4epices_cron
-    restart: unless-stopped
-    command: >
-      sh -c "
-      while true; do
-        sleep 300;
-        echo \"[Cron Docker] Traitement de la queue Pinterest...\";
-        curl -X POST http://backend:1337/api/pinterest/process-queue -H \"X-Cron-Source: docker\" || echo \"[Cron Docker] Erreur lors de l'appel\";
-      done
-      "
-    depends_on:
-      - backend
-    networks:
-      - 4epices_network
+  # Plus de conteneur « cron » : les queues Instagram et Pinterest sont traitées par le cron
+  # intégré de Strapi (backend/config/cron-tasks.js, activé dans backend/config/server.js).
 
 networks:
  4epices_network:

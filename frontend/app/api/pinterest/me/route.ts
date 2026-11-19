@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-session';
+import { backendAdminHeaders } from '@/lib/backend-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     const response = await axios.get(`${strapiUrl}/api/pinterest/me`, {
-      timeout: 15_000,
+      headers: backendAdminHeaders(), timeout: 15_000,
     });
 
     return NextResponse.json(response.data, { status: 200 });
