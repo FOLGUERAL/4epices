@@ -20,17 +20,12 @@ services:
       dockerfile: Dockerfile
     container_name: 4epices_backend
     restart: unless-stopped
+    # Toute la configuration du backend (Groq, Instagram, Pinterest, DB...) vit
+    # dans backend/.env. Ne pas la redéclarer ici via ${VAR:-} : un bloc
+    # `environment:` est prioritaire sur `env_file` et lit le .env racine,
+    # ce qui écrase les valeurs de backend/.env par des chaînes vides.
     env_file:
       - ./backend/.env
-    environment:
-      # Configuration IA pour génération de contenu Pinterest (Groq)
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
-      GROQ_VISION_MODEL: ${GROQ_VISION_MODEL:-qwen/qwen3.6-27b}
-      # Configuration Instagram Graph API (Feed image unique)
-      INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
-      INSTAGRAM_USER_ID: ${INSTAGRAM_USER_ID:-}
-      INSTAGRAM_API_VERSION: ${INSTAGRAM_API_VERSION:-v23.0}
     ports:
       - "1337:1337"
     volumes:
