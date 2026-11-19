@@ -156,6 +156,47 @@ module.exports = {
     }
   },
 
+  /**
+   * Publie immédiatement une tâche de la queue, sans attendre son scheduledTime.
+   * Même traitement que le cron (processTask) : succès -> tâche retirée ;
+   * échec -> tentative comptée, tâche supprimée après maxAttempts.
+   */
+  async publishTask(ctx) {
+    const { taskId } = ctx.params;
+    if (!taskId) return ctx.badRequest('taskId est requis');
+
+    const instagramService = strapi.service('api::recette.instagram');
+    if (!instagramService.isConfigured()) {
+      return ctx.badRequest('Configuration Instagram manquante');
+    }
+
+    const queueService = strapi.service('api::instagram-queue.instagram-queue');
+    const task = await queueService.findTaskByUid(taskId);
+    if (!task) return ctx.notFound(`Tache ${taskId} non trouvee`);
+
+    try {
+      const result = await queueService.processTask({ id: taskId });
+      if (!result.success) {
+        strapi.log.warn(`[Instagram Manual] Publication immediate ${taskId} echouee: ${result.error}`);
+        ctx.status = 502;
+        ctx.body = { success: false, error: result.error, attempts: result.attempts };
+        return;
+      }
+
+      strapi.log.info(`[Instagram Manual] Tache ${taskId} publiee immediatement`);
+      return ctx.send({
+        success: true,
+        message: 'Publication Instagram en ligne',
+        postId: result.postData?.id || null,
+      });
+    } catch (error) {
+      strapi.log.error('[Instagram Publish Task] Erreur:', error);
+      return ctx.internalServerError('Erreur lors de la publication Instagram', {
+        error: error.message,
+      });
+    }
+  },
+
   async cancelTask(ctx) {
     const { taskId } = ctx.params;
     if (!taskId) return ctx.badRequest('taskId est requis');

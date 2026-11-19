@@ -47,6 +47,7 @@ export default function InstagramDashboard() {
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [stats, setStats] = useState<InstagramStats | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [publishingTaskId, setPublishingTaskId] = useState<string | null>(null);
   const [planningStock, setPlanningStock] = useState(false);
   const [stockDays, setStockDays] = useState(30);
   const [stockPostsPerDay, setStockPostsPerDay] = useState(1);
@@ -124,6 +125,28 @@ export default function InstagramDashboard() {
       );
     } finally {
       setPlanningStock(false);
+    }
+  };
+
+  const handlePublishNow = async (task: InstagramTask) => {
+    const title = task.recetteTitle || `Recette #${task.recetteId}`;
+    if (!confirm(`Publier « ${title} » sur Instagram maintenant ?`)) return;
+
+    setPublishingTaskId(task.id);
+    try {
+      const response = await axios.post(`/api/instagram/queue/${encodeURIComponent(task.id)}/publish`);
+      toast.success(response.data?.message || 'Publication Instagram en ligne');
+    } catch (error: any) {
+      const err = error.response?.data?.error;
+      const message =
+        (typeof err === 'string' && err) ||
+        err?.details?.error ||
+        err?.message ||
+        'Erreur lors de la publication Instagram';
+      toast.error(message);
+    } finally {
+      setPublishingTaskId(null);
+      await fetchDashboard();
     }
   };
 
@@ -303,12 +326,22 @@ export default function InstagramDashboard() {
                     {task.lastError && <div className="text-red-600">{task.lastError}</div>}
                   </div>
                 </div>
-                <button
-                  onClick={() => handleCancelTask(task.id)}
-                  className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
-                >
-                  Annuler
-                </button>
+                <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                  <button
+                    onClick={() => handlePublishNow(task)}
+                    disabled={publishingTaskId !== null || !status?.connected}
+                    className="rounded-lg bg-pink-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-pink-700 disabled:opacity-50"
+                  >
+                    {publishingTaskId === task.id ? 'Publication...' : 'Publier maintenant'}
+                  </button>
+                  <button
+                    onClick={() => handleCancelTask(task.id)}
+                    disabled={publishingTaskId === task.id}
+                    className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Annuler
+                  </button>
+                </div>
               </div>
             </div>
           ))}

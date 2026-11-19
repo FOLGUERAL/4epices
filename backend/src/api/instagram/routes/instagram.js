@@ -27,6 +27,12 @@ module.exports = {
       config: { auth: false },
     },
     {
+      method: 'POST',
+      path: '/instagram/queue/:taskId/publish',
+      handler: 'instagram.publishTask',
+      config: { auth: false },
+    },
+    {
       method: 'DELETE',
       path: '/instagram/queue/:taskId',
       handler: 'instagram.cancelTask',
