@@ -243,9 +243,9 @@ psql -U "4epices_user" "4epices" < backup_YYYYMMDD.sql
 # 1. Modifier les variables dans docker-compose.yml ou dans un fichier .env à la racine
 # Par exemple, pour changer GROQ_MODEL :
 # Dans docker-compose.yml, modifier la ligne :
-#   GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+#   GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
 # Ou créer/modifier un fichier .env à la racine avec :
-#   GROQ_MODEL=llama-3.3-70b-versatile
+#   GROQ_MODEL=openai/gpt-oss-120b
 
 # 2. Recharger les variables d'environnement en recréant les conteneurs
 docker-compose down
@@ -281,7 +281,7 @@ pm2 logs 4epices-frontend --lines 50
 **Frontend (dans docker-compose.yml ou .env) :**
 - `AI_PROVIDER` : groq, ollama, ou openai
 - `GROQ_API_KEY` : Clé API Groq
-- `GROQ_MODEL` : Modèle Groq (ex: llama-3.3-70b-versatile)
+- `GROQ_MODEL` : Modèle Groq (ex: openai/gpt-oss-120b)
 - `OLLAMA_URL` : URL d'Ollama (ex: http://ollama:11434)
 - `OLLAMA_MODEL` : Modèle Ollama (ex: llama3.2:3b)
 - `OPENAI_API_KEY` : Clé API OpenAI
@@ -313,4 +313,3 @@ pm2 set pm2-logrotate:retain 7
 **Frontend (.env.local) :**
 - `NEXT_PUBLIC_STRAPI_URL` : URL du backend (https://api.4epices.fr)
 - `NEXT_PUBLIC_SITE_URL` : URL du site (https://4epices.fr)
-

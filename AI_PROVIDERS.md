@@ -20,14 +20,14 @@ Ce guide explique comment configurer différents providers IA pour la générati
 # Dans votre .env ou docker-compose.yml
 AI_PROVIDER=groq
 GROQ_API_KEY=gsk_...
-GROQ_MODEL=llama-3.3-70b-versatile  # Modèle recommandé (gratuit)
+GROQ_MODEL=openai/gpt-oss-120b  # Modèle recommandé
 ```
 
 ### Modèles disponibles
 
-- `llama-3.3-70b-versatile` : **Recommandé** - Très performant, gratuit (remplace llama-3.1-70b-versatile)
-- `llama-3.1-8b-instant` : Plus rapide, moins performant
-- `mixtral-8x7b-32768` : Bon compromis vitesse/qualité
+- `openai/gpt-oss-120b` : **Recommandé** - remplacement conseillé par Groq pour les anciens modèles Llama 3.3 70B et Llama 4 Scout
+- `qwen/qwen3.6-27b` : Alternative rapide et solide
+- `openai/gpt-oss-20b` : Plus léger pour les tâches simples
 
 ### Limites
 
@@ -122,7 +122,7 @@ frontend:
   environment:
     AI_PROVIDER: groq
     GROQ_API_KEY: ${GROQ_API_KEY}
-    GROQ_MODEL: llama-3.1-70b-versatile
+    GROQ_MODEL: openai/gpt-oss-120b
     # Fallback optionnel
     OPENAI_API_KEY: ${OPENAI_API_KEY}
 ```
