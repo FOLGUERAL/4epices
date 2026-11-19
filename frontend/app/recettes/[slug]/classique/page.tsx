@@ -14,7 +14,7 @@ import {
 import { resolveIngredientSlugAndNom } from '@/lib/ingredientDictionary';
 import { buildRecipeJsonLd, buildFaqJsonLd, getSiteUrl, parseSeoEnrichi, SITE_NAME } from '@/lib/seo';
 import { MID_STEPS_AD_THRESHOLD } from '@/lib/ads';
-import { linkifyBaseRecipes, splitStepsHtml } from '@/lib/recipeLinks';
+import { linkifyBaseRecipes, splitStepsHtml, addStepAnchors } from '@/lib/recipeLinks';
 import RecipeEnrichedSections from '@/components/RecipeEnrichedSections';
 import OptimizedImage from '@/components/OptimizedImage';
 import IngredientsAdjuster from '@/components/IngredientsAdjuster';
@@ -176,10 +176,13 @@ export default async function RecettePage({ params }: { params: { slug: string }
       : null;
 
   // Liens vers les recettes de base (« préparer la béchamel » → lien vers sa fiche) mentionnées dans les étapes
-  const steps = splitStepsHtml(recette.attributes.etapes);
+  // Ancres #etape-N posées avant le découpage/liens : elles traversent intactes jusqu'au rendu final,
+  // pour que le JSON-LD (HowToStep.url) pointe vers un vrai endroit de la page.
+  const etapesWithAnchors = addStepAnchors(recette.attributes.etapes);
+  const steps = splitStepsHtml(etapesWithAnchors);
   const canSplitSteps = steps.after !== '';
   const showMidStepsAd = steps.stepCount > MID_STEPS_AD_THRESHOLD;
-  const firstHalf = linkifyBaseRecipes(canSplitSteps ? steps.before : recette.attributes.etapes, baseRecipes, recette.attributes.slug);
+  const firstHalf = linkifyBaseRecipes(canSplitSteps ? steps.before : etapesWithAnchors, baseRecipes, recette.attributes.slug);
   const secondHalf = canSplitSteps
     ? linkifyBaseRecipes(steps.after, baseRecipes, recette.attributes.slug, firstHalf.linked)
     : null;
@@ -204,6 +207,7 @@ export default async function RecettePage({ params }: { params: { slug: string }
     categories:
       recette.attributes.categories?.data?.map((cat) => cat.attributes.nom).join(', ') ||
       undefined,
+    categorySlugs: recette.attributes.categories?.data?.map((cat) => cat.attributes.slug),
     keywords:
       recette.attributes.tags?.data?.map((tag) => tag.attributes.nom).join(', ') ||
       undefined,

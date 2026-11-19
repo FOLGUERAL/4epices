@@ -86,6 +86,30 @@ export function extractStepsFromEtapesHtml(html: string): string[] {
   return splitByEtape.length > 1 ? splitByEtape : [plain];
 }
 
+/**
+ * Cuisine (au sens Schema.org : origine régionale/culturelle du plat, ex. "French", "Italian") dérivée
+ * de la catégorie existante de la recette — jamais un nouveau champ de saisie. Seules les catégories qui
+ * représentent vraiment une cuisine d'origine sont mappées ; les autres (healthy, snacking, patisserie,
+ * brunch-and-apero, bases-de-cuisine, cuisine-du-monde — trop vague pour être une cuisine précise) sont
+ * ignorées plutôt que de leur inventer une valeur fausse.
+ */
+const CUISINE_BY_CATEGORY_SLUG: Record<string, string> = {
+  francais: 'Française',
+  italien: 'Italienne',
+  asiatique: 'Asiatique',
+  oriental: 'Orientale',
+};
+
+/** Prend la première catégorie de la recette qui correspond à une cuisine connue, sinon rien. */
+export function deriveRecipeCuisine(categorySlugs?: string[]): string | undefined {
+  if (!categorySlugs) return undefined;
+  for (const slug of categorySlugs) {
+    const cuisine = CUISINE_BY_CATEGORY_SLUG[slug];
+    if (cuisine) return cuisine;
+  }
+  return undefined;
+}
+
 export function buildRecipeJsonLd(options: {
   name: string;
   description: string;
@@ -99,6 +123,8 @@ export function buildRecipeJsonLd(options: {
   ingredients: string[];
   etapesHtml: string;
   categories?: string;
+  /** Slugs des catégories de la recette, pour en dériver recipeCuisine automatiquement */
+  categorySlugs?: string[];
   keywords?: string;
   aggregateRating?: { ratingValue: number; reviewCount: number };
 }) {
@@ -112,10 +138,20 @@ export function buildRecipeJsonLd(options: {
       ? steps.map((text, index) => ({
           '@type': 'HowToStep',
           position: index + 1,
+          name: `Étape ${index + 1}`,
           text,
+          url: `${options.url}#etape-${index + 1}`,
         }))
       : options.etapesHtml
-        ? [{ '@type': 'HowToStep', position: 1, text: options.etapesHtml.replace(/<[^>]+>/g, ' ').trim() }]
+        ? [
+            {
+              '@type': 'HowToStep',
+              position: 1,
+              name: 'Étape 1',
+              text: options.etapesHtml.replace(/<[^>]+>/g, ' ').trim(),
+              url: `${options.url}#etape-1`,
+            },
+          ]
         : undefined;
 
   const payload: Record<string, unknown> = {
@@ -137,6 +173,8 @@ export function buildRecipeJsonLd(options: {
   if (total > 0) payload.totalTime = `PT${total}M`;
   if (recipeInstructions) payload.recipeInstructions = recipeInstructions;
   if (options.categories) payload.recipeCategory = options.categories;
+  const recipeCuisine = deriveRecipeCuisine(options.categorySlugs);
+  if (recipeCuisine) payload.recipeCuisine = recipeCuisine;
   if (options.keywords) payload.keywords = options.keywords;
 
   const rating = options.aggregateRating;

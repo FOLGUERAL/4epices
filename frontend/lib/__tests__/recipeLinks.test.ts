@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveBaseKeyword, linkifyBaseRecipes, splitStepsHtml, type BaseRecipeLink } from '../recipeLinks';
+import { deriveBaseKeyword, linkifyBaseRecipes, splitStepsHtml, addStepAnchors, type BaseRecipeLink } from '../recipeLinks';
 
 // Les 42 recettes « bases-de-cuisine » publiées, telles que renvoyées par l'API
 const BASES: BaseRecipeLink[] = [
@@ -153,5 +153,29 @@ describe('splitStepsHtml', () => {
 
   it('ne découpe pas un texte vide', () => {
     expect(splitStepsHtml('')).toEqual({ before: '', after: '', stepCount: 1 });
+  });
+});
+
+describe('addStepAnchors', () => {
+  it('numérote les ancres dans l\'ordre, sur les vraies étapes du croque-monsieur', () => {
+    const result = addStepAnchors(CROQUE_MONSIEUR_ETAPES);
+    expect(result).toContain('<p id="etape-1"><strong>Étape 1');
+    expect(result).toContain('<p id="etape-4"><strong>Étape 4');
+    expect(result).toContain('<p id="etape-7"><strong>Étape 7');
+    expect(result.match(/id="etape-\d"/g)).toHaveLength(7);
+  });
+
+  it('garde les attributs déjà présents sur un <p>', () => {
+    const html = '<p class="intro">Première étape</p>';
+    expect(addStepAnchors(html)).toBe('<p id="etape-1" class="intro">Première étape</p>');
+  });
+
+  it('ne touche pas au texte hors balises <p>', () => {
+    const html = '<p>Étape 1</p><ul><li>Une liste</li></ul>';
+    expect(addStepAnchors(html)).toBe('<p id="etape-1">Étape 1</p><ul><li>Une liste</li></ul>');
+  });
+
+  it('renvoie une chaîne vide telle quelle', () => {
+    expect(addStepAnchors('')).toBe('');
   });
 });

@@ -114,6 +114,7 @@ export default async function RecetteThermomixPage({ params }: { params: { slug:
     yield: attrs.nombrePersonnes,
     ingredients: ingredientsForStructuredData,
     etapesHtml: etapesHtmlForJsonLd,
+    categorySlugs: attrs.categories?.data?.map((cat) => cat.attributes.slug),
   });
 
   return (
@@ -181,7 +182,7 @@ export default async function RecetteThermomixPage({ params }: { params: { slug:
             ].filter(Boolean) as string[];
 
             return (
-              <li key={etape.id} className="rounded-lg border border-gray-200 p-4">
+              <li key={etape.id} id={`etape-${i + 1}`} className="rounded-lg border border-gray-200 p-4">
                 <p className="mb-2 font-medium text-gray-900">
                   {i + 1}. {etape.description}
                 </p>

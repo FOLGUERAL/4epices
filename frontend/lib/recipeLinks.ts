@@ -158,3 +158,17 @@ export function splitStepsHtml(html: string): SplitSteps {
   const midpoint = Math.ceil(stepCount / 2);
   return { before: paragraphs.slice(0, midpoint).join(''), after: paragraphs.slice(midpoint).join(''), stepCount };
 }
+
+/**
+ * Ajoute `id="etape-N"` sur chaque `<p>` d'étape, dans l'ordre (1, 2, 3…), pour que les ancres
+ * `#etape-N` posées dans le JSON-LD Recipe (voir lib/seo.ts) pointent vers un vrai endroit de la
+ * page plutôt qu'une ancre morte. À appeler sur le HTML brut, avant splitStepsHtml/linkifyBaseRecipes
+ * (ces deux-là laissent les attributs d'un `<p>` existant intacts, l'id survit donc jusqu'au rendu).
+ */
+export function addStepAnchors(html: string): string {
+  let position = 0;
+  return html.replace(/<p([^>]*)>/gi, (match, attrs) => {
+    position += 1;
+    return `<p id="etape-${position}"${attrs}>`;
+  });
+}
